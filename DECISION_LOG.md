@@ -18,6 +18,10 @@
 - **Option 2 (Selected):** Screen Scraping as Primary.
     - *Reasoning:* Works for every user "out of the box." CaptureAge integration will remain as a "High Fidelity" optional plugin for power users, but the core product must function 100% without it.
 
+## [DECIDED] Validation Methodology
+- **Decision:** "Test Bench" First.
+- **Reasoning:** Before writing complex vision logic, we must assemble a diverse set of real-world screenshots (1080p, 4K, Ultrawide) to ensure the `ui_map.json` logic is robust from day one, rather than debugging resolution issues later.
+
 ## [PENDING] Desktop Framework
 - **Candidate:** Tauri (Rust).
     - *Pros:* Tiny installer (~6MB), high performance for CV, native access to Windows DXGI, handles "User-land" permissions.

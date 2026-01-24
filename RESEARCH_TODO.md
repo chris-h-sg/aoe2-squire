@@ -4,11 +4,12 @@
 **Goal:** Prove we can reliably extract data from *any* resolution without requiring the user to configure coordinates manually.
 
 - [ ] **Data Gathering (The "Test Bench"):**
-    - [ ] Collect 5-10 screenshots of AoE2:DE from different setups:
-        - [ ] 1080p (Standard)
-        - [ ] 1440p / 4K (High DPI)
+    - [x] Collect 5-10 screenshots of AoE2:DE from different setups (Saved in `test_bench/`):
+        - [x] Standard (16:9) -> `aoe2_16x9.png`
+        - [x] Aspect Ratio Variant (16:10) -> `aoe2_16x10.png`
+        - [x] 4K (High DPI) -> `aoe2_4k.png`
         - [ ] "UI Scale" variants (e.g., 125% scale in-game)
-        - [ ] Ultrawide (21:9)
+        - [x] Ultrawide (21:9 & 32:9) -> `aoe2_21x9.png`, `aoe2_32x9.png`
 - [ ] **UI Map Logic:**
     - [ ] Define the `ui_map.json` structure (Anchors + Percentage Offsets).
     - [ ] Identify a reliable "Anchor Image" (e.g., the current Age icon or Minimap corner) that is consistent across all UI scales.
