@@ -20,6 +20,28 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
     - **Usage**: `python research/test_vision.py`
     - **Purpose**: Verifies that the extraction logic produces the exact known-good values for the 1080p baseline image. Always run this after making changes to ensure no regressions.
 
+## CLI Usage (poc_vision.py)
+
+You can customize the output and target using the following flags:
+
+| Flag | Description |
+| :--- | :--- |
+| `--image <filename>` | Run analysis on a specific file in `test_bench` (e.g., `--image aoe2_4k.png`). |
+| `--save-red-mask` | Saves the isolated "Red UI" mask to `research/output/red_mask_<filename>`. Useful for debugging UI scale detection. |
+| `--save-debug-image` | Saves the full screenshot with colored bounding boxes drawn on it to `research/output/debug_<filename>`. |
+| `--save-candidates` | Extracts every potential digit blob found by OCR into `research/output/digit_candidates/`. **Crucial for gathering new templates.** |
+| `--save-crops` | Saves the intermediate processing stages (Raw -> Filtered -> Clean) for every UI element into `research/output/crops/`. |
+
+### Example: Gathering New Templates
+If you find a screenshot where OCR is failing:
+1. Place it in `test_bench/`.
+2. Run: 
+   ```bash
+   python research/poc_vision.py --image my_screenshot.png --save-candidates
+   ```
+3. Inspect `research/output/digit_candidates/`.
+4. Rename valid digit images to `{char}.png` (e.g., `5.png`) and move them to `research/templates/`.
+
 ## Pipeline Logic
 
 The extraction process follows a 3-stage pipeline:

@@ -49,71 +49,59 @@ def process_stage_2_filter(crop):
     return filtered
 
 def process_stage_3_clean(filtered_crop):
-    """Stage 3: Convert to binary black & white for OCR."""
     gray = cv2.cvtColor(filtered_crop, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, BINARY_THRESHOLD, 255, cv2.THRESH_BINARY)
     return thresh
 
-def get_resource_panel_height(img):
+    return thresh
+
+# ===== CONFIGURATION =====
+# Red Pixel Filter config (BGR)
+RED_MASK_LOWER = np.array([0, 0, 201])    # B<X, G<X, R>200 (OpenCV uses BGR)
+RED_MASK_UPPER = np.array([60, 60, 255])
+# =========================
+
+
+def get_ui_right_margin(img):
     """
-    Determines the height of the resource panel by finding the top and bottom borders.
-    Uses a vertical strip crop and looks for black lines.
+    Determines the distance from the right screen edge to the rightmost red UI element.
+    Used for detecting UI Scale.
     """
     if img is None:
         return 0
 
     h, w, _ = img.shape
     
-    # Configuration
-    CROP_WIDTH = 20
-    CROP_X_OFFSET = 3
-    BRIGHTNESS_THRESHOLD = 20
-    BLACK_PIXEL_COUNT_THRESHOLD = 18
+    # Analyze only the top 20% of the screen
+    top_h = int(h * 0.2)
+    crop = img[0:top_h, :]
 
-    # 1. Crop the leftmost pixels of the entire image height with offset
-    left_crop = img[0:h, CROP_X_OFFSET : CROP_X_OFFSET + CROP_WIDTH]
+    # Create mask for red pixels: R > 200, G < 60, B < 60
+    # InRange is faster than manual channel splitting
+    # Note: OpenCV is BGR
+    mask = cv2.inRange(crop, RED_MASK_LOWER, RED_MASK_UPPER)
     
-    # 2. Set all pixels below brightness threshold to 0 and all above to 255
-    gray = cv2.cvtColor(left_crop, cv2.COLOR_BGR2GRAY)
-    _, cleaned = cv2.threshold(gray, BRIGHTNESS_THRESHOLD, 255, cv2.THRESH_BINARY)
-
-    # 3. Analyze for black lines
-    black_pixel_counts = np.sum(cleaned == 0, axis=1)
-    matching_rows = np.where(black_pixel_counts > BLACK_PIXEL_COUNT_THRESHOLD)[0]
-
-    if len(matching_rows) == 0:
+    # Find coordinates of all non-zero (white) pixels in the mask
+    # Nonzero returns (row_idxs, col_idxs)
+    y_idxs, x_idxs = np.nonzero(mask)
+    
+    if len(x_idxs) == 0:
         return 0
-
-    # Group consecutive lines
-    lines = []
-    if len(matching_rows) > 0:
-        current_group_start = matching_rows[0]
-        current_group_end = matching_rows[0]
-
-        for i in range(1, len(matching_rows)):
-            row = matching_rows[i]
-            if row == current_group_end + 1:
-                current_group_end = row
-            else:
-                lines.append((current_group_start, current_group_end))
-                current_group_start = row
-                current_group_end = row
-        lines.append((current_group_start, current_group_end))
-
-    if len(lines) >= 2:
-        y1 = lines[0][0]
-        y2 = lines[1][0]
-        return y2 - y1 + 1
+        
+    # Find the rightmost pixel (max x)
+    max_x = np.max(x_idxs)
     
-    return 0
+    # Return distance from right edge
+    return w - max_x
 
 
-def perform_ocr(cleaned_crop, templates, region_name="unknown"):
+
+def perform_ocr(cleaned_crop, templates, region_name="unknown", save_candidates=False, ui_scale=1.0):
     """Identifies digits in a cleaned crop using 1:1 template matching."""
     if not templates:
         return ""
     
-    print(f"\n  === OCR for {region_name} ===")
+    print(f"\n  === OCR for {region_name} (Scale {ui_scale:.2f}) ===")
 
     rects = []
     contours, _ = cv2.findContours(cleaned_crop, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -149,18 +137,28 @@ def perform_ocr(cleaned_crop, templates, region_name="unknown"):
         best_match = 0
         
         # Save candidates for inspection
-        candidates_dir = os.path.join("research", "output", "digit_candidates")
-        os.makedirs(candidates_dir, exist_ok=True)
-        cv2.imwrite(os.path.join(candidates_dir, f"{region_name}_blob{blob_idx}.png"), digit_blob)
+        if save_candidates:
+            candidates_dir = os.path.join("research", "output", "digit_candidates")
+            os.makedirs(candidates_dir, exist_ok=True)
+            cv2.imwrite(os.path.join(candidates_dir, f"{region_name}_blob{blob_idx}.png"), digit_blob)
         
         # DEBUG: Find Top 3 Leaderboard
         all_matches = []
         for char, template in templates.items():
-            t_h, t_w = template.shape
+            # SCALE THE TEMPLATE
+            t_img = template
+            if ui_scale != 1.0:
+                t_h, t_w = template.shape
+                new_w = max(1, int(t_w * ui_scale))
+                new_h = max(1, int(t_h * ui_scale))
+                t_img = cv2.resize(template, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+            
+            t_h, t_w = t_img.shape
             max_h, max_w = max(t_h, h_c), max(t_w, w_c)
             t_pad = np.zeros((max_h, max_w), dtype=np.uint8)
             b_pad = np.zeros((max_h, max_w), dtype=np.uint8)
-            t_pad[(max_h-t_h)//2 : (max_h-t_h)//2 + t_h, (max_w-t_w)//2 : (max_w-t_w)//2 + t_w] = template
+            
+            t_pad[(max_h-t_h)//2 : (max_h-t_h)//2 + t_h, (max_w-t_w)//2 : (max_w-t_w)//2 + t_w] = t_img
             b_pad[(max_h-h_c)//2 : (max_h-h_c)//2 + h_c, (max_w-w_c)//2 : (max_w-w_c)//2 + w_c] = digit_blob
             
             intersection = np.logical_and(t_pad, b_pad).sum()
@@ -190,19 +188,14 @@ def perform_ocr(cleaned_crop, templates, region_name="unknown"):
     print(f"  Final result: '{result}'")
     return result
 
-    print("\n--- OCR Results (Baseline) ---")
-    print(json.dumps(results, indent=2))
 
-    output_path = os.path.join("research", "output", "debug_" + os.path.basename(image_path))
-    cv2.imwrite(output_path, img)
-    print(f"  Saved debug output to {output_path}")
-    
-    return results
+def analyze_screenshot(image_path, config, templates, debug_options=None):
+    return analyze_screenshot_return_results(image_path, config, templates, debug_options)
 
-def analyze_screenshot(image_path, config, templates):
-    return analyze_screenshot_return_results(image_path, config, templates)
+def analyze_screenshot_return_results(image_path, config, templates, debug_options=None):
+    if debug_options is None:
+        debug_options = {}
 
-def analyze_screenshot_return_results(image_path, config, templates):
     print(f"Analyzing: {image_path}")
     img = cv2.imread(image_path)
     if img is None:
@@ -212,6 +205,24 @@ def analyze_screenshot_return_results(image_path, config, templates):
     h, w, _ = img.shape
     print(f"  Resolution: {w}x{h}")
     
+    # 0. Calculate UI Scale
+    baseline_margin = 265.0
+    current_margin = get_ui_right_margin(img)
+    if current_margin == 0:
+        print("  Warning: Could not detect UI margin. Falling back to scale 1.0.")
+        ui_scale = 1.0
+    else:
+        ui_scale = current_margin / baseline_margin
+    
+    print(f"  Scale Factor: {ui_scale:.4f} (Margin: {current_margin})")
+
+    # Optional: Save Red Mask
+    if debug_options.get('save_red_mask', False):
+        mask = cv2.inRange(img, RED_MASK_LOWER, RED_MASK_UPPER)
+        red_out = os.path.join("research", "output", "red_mask_" + os.path.basename(image_path))
+        cv2.imwrite(red_out, mask)
+        print(f"  Saved red mask to {red_out}")
+
     elements = config.get('elements', {})
     
     # 1. Setup Directories
@@ -222,18 +233,28 @@ def analyze_screenshot_return_results(image_path, config, templates):
         "clean": os.path.join(base_out, "crops", "clean"),
         "candidates": os.path.join(base_out, "digit_candidates")
     }
-    for d in dirs.values():
-        os.makedirs(d, exist_ok=True)
+    
+    # Only create directories if we intend to save files
+    should_save_crops = debug_options.get('save_crops', False)
+    if should_save_crops:
+        for d in dirs.values():
+            os.makedirs(d, exist_ok=True)
 
     results = {}
     debug_drawings = [] 
 
     for name, data in elements.items():
         try:
-            x, y, width, height = data['x_px'], data['y_px'], data['w_px'], data['h_px']
-            split_pct = data.get('split_pct', 1.0)
+            # APPLY SCALING TO BASE COORDINATES
+            raw_x, raw_y = data['x_px'], data['y_px']
+            raw_w, raw_h = data['w_px'], data['h_px']
             
-            debug_drawings.append(('rect', (x, y), (x + width, y + height), (0, 0, 255), 2))
+            x = int(raw_x * ui_scale)
+            y = int(raw_y * ui_scale)
+            width = int(raw_w * ui_scale)
+            height = int(raw_h * ui_scale)
+            
+            split_pct = data.get('split_pct', 1.0)
             
             regions = []
             if split_pct < 1.0:
@@ -241,18 +262,23 @@ def analyze_screenshot_return_results(image_path, config, templates):
                 # Vils (70% size, bottom-right aligned)
                 v_rw = int(split_x * 0.70)
                 v_rh = int(height * 0.35)
-                v_rx = x + (split_x - v_rw) - 2
-                v_ry = y + (height - v_rh) - 2
+                v_rx = x + (split_x - v_rw) - int(2 * ui_scale) 
+                v_ry = y + (height - v_rh) - int(2 * ui_scale)
                 regions.append(("vils", v_rx, v_ry, v_rw, v_rh))
                 
-                # Totals (12px vertical padding)
-                t_rx = x + split_x + 5
-                t_ry = y + 12
-                t_rw = width - split_x - 10
-                t_rh = height - 24
-                regions.append(("total", t_rx, t_ry, t_rw, t_rh))
+                # Totals (12px vertical padding - should we scale this?)
+                # Padding often scales too. Let's try scaling it.
+                pad_x = int(5 * ui_scale)
+                pad_y = int(12 * ui_scale)
                 
-                debug_drawings.append(('line', (x + split_x, y), (x + split_x, y + height), (255, 0, 0), 1))
+                t_rx = x + split_x + pad_x
+                t_ry = y + pad_y
+                t_rw = width - split_x - (pad_x * 2)
+                t_rh = height - (pad_y * 2)
+                regions.append(("total", t_rx, t_ry, t_rw, t_rh))
+
+                
+
             else:
                 regions.append(("value", x+5, y+5, width-10, height-10))
 
@@ -264,18 +290,23 @@ def analyze_screenshot_return_results(image_path, config, templates):
                 rw = max(1, rw)
                 rh = max(1, rh)
                 crop = img[ry:ry+rh, rx:rx+rw].copy()
-                cv2.imwrite(os.path.join(dirs["raw"], f"{current_label}.png"), crop)
+                if should_save_crops:
+                    cv2.imwrite(os.path.join(dirs["raw"], f"{current_label}.png"), crop)
                 
                 # --- STAGE 2: FILTERED (Grayscale Logic) ---
                 filtered = process_stage_2_filter(crop)
-                cv2.imwrite(os.path.join(dirs["filtered"], f"{current_label}.png"), filtered)
+                if should_save_crops:
+                    cv2.imwrite(os.path.join(dirs["filtered"], f"{current_label}.png"), filtered)
                 
                 # --- STAGE 3: CLEAN (Binary Threshold) ---
                 cleaned = process_stage_3_clean(filtered)
-                cv2.imwrite(os.path.join(dirs["clean"], f"{current_label}.png"), cleaned)
+                if should_save_crops:
+                    cv2.imwrite(os.path.join(dirs["clean"], f"{current_label}.png"), cleaned)
                 
                 # --- FINAL: OCR ---
-                text = perform_ocr(cleaned, templates, current_label)
+                text = perform_ocr(cleaned, templates, current_label, 
+                                 save_candidates=debug_options.get('save_candidates', False),
+                                 ui_scale=ui_scale)
                 results[name][sub_name] = text
                 
                 debug_drawings.append(('rect', (rx, ry), (rx + rw, ry + rh), (0, 255, 255), 1))
@@ -284,25 +315,42 @@ def analyze_screenshot_return_results(image_path, config, templates):
         except KeyError as e:
             print(f"    Missing pixel key {e} for element {name}")
 
-    # Draw Debug Visuals
-    for cmd in debug_drawings:
-        if cmd[0] == 'rect':
-            cv2.rectangle(img, cmd[1], cmd[2], cmd[3], cmd[4])
-        elif cmd[0] == 'line':
-            cv2.line(img, cmd[1], cmd[2], cmd[3], cmd[4])
-        elif cmd[0] == 'text':
-            cv2.putText(img, cmd[1], cmd[2], cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 255), 1)
-
     print("\n--- OCR Results (Baseline) ---")
     print(json.dumps(results, indent=2))
 
-    output_path = os.path.join("research", "output", "debug_" + os.path.basename(image_path))
-    cv2.imwrite(output_path, img)
-    print(f"  Saved debug output to {output_path}")
+    if debug_options.get('save_debug_image', False):
+        # Draw Debug Visuals
+        for cmd in debug_drawings:
+            if cmd[0] == 'rect':
+                cv2.rectangle(img, cmd[1], cmd[2], cmd[3], cmd[4])
+            elif cmd[0] == 'line':
+                cv2.line(img, cmd[1], cmd[2], cmd[3], cmd[4])
+            elif cmd[0] == 'text':
+                cv2.putText(img, cmd[1], cmd[2], cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 255), 1)
+
+        output_path = os.path.join("research", "output", "debug_" + os.path.basename(image_path))
+        cv2.imwrite(output_path, img)
+        print(f"  Saved debug output to {output_path}")
     
     return results
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Analyze RTS screenshot for resource data")
+    parser.add_argument("--save-red-mask", action="store_true", help="Output the isolated red mask image")
+    parser.add_argument("--save-debug-image", action="store_true", help="Output the main debug image with bounding boxes")
+    parser.add_argument("--save-candidates", action="store_true", help="Output individual digit blobs found during OCR")
+    parser.add_argument("--save-crops", action="store_true", help="Output raw, filtered, and clean crop stages")
+    parser.add_argument("--image", type=str, help="Specific image filename to analyze (default: runs on aoe2_16x9.png if not specified)")
+    args = parser.parse_args()
+    
+    debug_options = {
+        'save_red_mask': args.save_red_mask,
+        'save_debug_image': args.save_debug_image,
+        'save_candidates': args.save_candidates,
+        'save_crops': args.save_crops
+    }
+
     test_bench_dir = "test_bench"
     if not os.path.exists(test_bench_dir):
         print("Test bench directory not found!")
@@ -311,9 +359,19 @@ def main():
     config = load_config() 
     templates = load_templates(os.path.join("research", "templates"))
 
-    for filename in os.listdir(test_bench_dir):
-        if filename.lower() == "aoe2_16x9.png":
-            analyze_screenshot(os.path.join(test_bench_dir, filename), config, templates)
+    # Determine which files to process
+    if args.image:
+        target_files = [args.image]
+    else:
+        # Default behavior: Run on the standard baseline 16x9 image
+        target_files = ["aoe2_16x9.png"]
+
+    for filename in target_files:
+        path = os.path.join(test_bench_dir, filename)
+        if os.path.exists(path):
+            analyze_screenshot(path, config, templates, debug_options)
+        else:
+            print(f"Skipping {filename}: File not found in {test_bench_dir}")
 
 if __name__ == "__main__":
     main()

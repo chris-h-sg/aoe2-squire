@@ -28,12 +28,13 @@
 *   **Reasoning**: Allows capturing larger numbers (e.g., 3 digits) while still avoiding the UI frames.
 
 ### 5. UI Scale Detection
-*   **Decision**: Determine UI Scale dynamically by measuring the **Height of the Top Resource Panel**.
+*   **Decision**: Determine UI Scale dynamically by measuring the **Distance of the rightmost red UI element from the right edge**.
 *   **Method**:
-    *   Crop a vertical strip (width=20px) from the far-left edge of the screen (x_offset=3px).
-    *   Threshold at brightness > 20.
-    *   Scan for horizontal black lines (rows with > 18 black pixels).
-    *   **Panel Height** = (Y2 - Y1) + 1.
-*   **Reference**:
-    *   At 1080p (100% Scale), the panel height is **69 pixels**.
-    *   We will use this baseline to calculate a global scaling factor for all other bounding boxes.
+    *   Filter for bright red pixels (>200 Red, <60 Green/Blue).
+    *   Find the rightmost pixel in the top 20% of the screen.
+    *   **Right Margin** = `ImageWidth - Max_X`.
+*   **Baseline**:
+    *   At the 1080p baseline (`aoe2_16x9.png`), the margin is **265 pixels**.
+*   **Reasoning**:
+    *   The top panel borders (lines) varied too much in thickness and color across resolutions/settings.
+    *   The "Age/Idle/Menu" cluster in the top right contains consistent bright red pixels that move proportionally with the UI scale.
