@@ -1,0 +1,54 @@
+{
+    "comment": "UI Map using Fixed Pixels for AoE2 16:9 1080p Baseline. Added Idle Villager box shifted right.",
+    "anchors": {
+        "screen_top_left": {
+            "type": "absolute",
+            "x": 0,
+            "y": 0
+        }
+    },
+    "elements": {
+        "wood": {
+            "x_px": 10,
+            "y_px": 12,
+            "w_px": 120,
+            "h_px": 50,
+            "split_pct": 0.45
+        },
+        "food": {
+            "x_px": 135,
+            "y_px": 12,
+            "w_px": 120,
+            "h_px": 50,
+            "split_pct": 0.45
+        },
+        "gold": {
+            "x_px": 260,
+            "y_px": 12,
+            "w_px": 120,
+            "h_px": 50,
+            "split_pct": 0.45
+        },
+        "stone": {
+            "x_px": 385,
+            "y_px": 12,
+            "w_px": 120,
+            "h_px": 50,
+            "split_pct": 0.45
+        },
+        "population": {
+            "x_px": 510,
+            "y_px": 12,
+            "w_px": 120,
+            "h_px": 50,
+            "split_pct": 0.45
+        },
+        "idle_vils": {
+            "x_px": 648,
+            "y_px": 12,
+            "w_px": 50,
+            "h_px": 50,
+            "split_pct": 1.0
+        }
+    }
+}

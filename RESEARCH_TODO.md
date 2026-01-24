@@ -14,8 +14,8 @@
     - [ ] Define the `ui_map.json` structure (Anchors + Percentage Offsets).
     - [ ] Identify a reliable "Anchor Image" (e.g., the current Age icon or Minimap corner) that is consistent across all UI scales.
 - [ ] **Prototype Script (`poc_vision.py`):**
-    - [ ] Implementation: Python + OpenCV.
-    - [ ] Input: The "Test Bench" folder of screenshots.
+    - [x] Implementation: Python + OpenCV.
+    - [x] Input: The "Test Bench" folder of screenshots.
     - [ ] Process: Locate anchor -> Calculate offsets -> Crop regions -> OCR digits.
     - [ ] Output: JSON identifying Resource values and Villager counts for each screenshot.
 - [ ] **Validation:**

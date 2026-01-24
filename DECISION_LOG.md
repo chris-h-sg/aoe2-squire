@@ -1,37 +1,29 @@
-# Decision Log & Architecture Evolution
+# Decision Log
 
-## [DECIDED] Local-First vs. Cloud-Service
-- **Option 1 (Discarded):** Cloud-based Replay-as-a-Service.
-    - *Reasoning:* High compute costs ($0.70/hr for GPU instances), DRM/Steam licensing hurdles for server-side game instances, and no "headless" mode for the engine.
-- **Option 2 (Selected):** Local Desktop Agent.
-    - *Reasoning:* Zero server cost (user provides GPU/License), immediate access to local file system, and better privacy/trust potential.
+## Vision Pipeline (Jan 24, 2026)
 
-## [DECIDED] Screen Scraping vs. Memory Hooking
-- **Option 1 (Discarded):** Memory Hooking (Directly reading RAM).
-    - *Reasoning:* High risk of Anti-Cheat bans, extremely fragile (breaks every game patch), requires Admin permissions.
-- **Option 2 (Selected):** Passive Screen Scraping (OCR/Template Matching).
-    - *Reasoning:* Safer (passive), resilient to internal engine changes, works across different games with the same logic, no Admin rights needed.
+### 1. OCR Matching Strategy
+*   **Decision**: Adopted **1:1 Pixel Overlap (Intersection over Union)** instead of `cv2.matchTemplate` or Tesseract.
+*   **Reasoning**:
+    *   The game font is small (pixel art).
+    *   Standard scaling/resizing destroys the pixel structure, leading to misrecognition.
+    *   Tesseract handles low-resolution game text very poorly.
+    *   Simple pixel-to-pixel overlap against a perfect template library proved 100% effective once the image was cleaned.
 
-## [DECIDED] Primary Data Source Priority
-- **Option 1 (Discarded):** CaptureAge Pro API as Primary.
-    - *Reasoning:* Restricts the user base to those who pay for/install CaptureAge Pro. Creates an unacceptable barrier to entry for a "mass market" tool.
-- **Option 2 (Selected):** Screen Scraping as Primary.
-    - *Reasoning:* Works for every user "out of the box." CaptureAge integration will remain as a "High Fidelity" optional plugin for power users, but the core product must function 100% without it.
+### 2. Preprocessing & Color Filtering
+*   **Decision**: Filter pixels based on **Grayscale Consistency** (R≈G≈B) rather than targeting specific colors (e.g., "yellow").
+*   **Logic**:
+    *   Calculate `max_diff = max(|r-g|, |g-b|, |r-b|)`.
+    *   We found `COLOR_TOLERANCE = 40` to be optimal.
+    *   This generalizes better than "remove yellow" because it handles any colored background (icons, wood borders, stone borders) while preserving the white text.
+*   **Critical Fix**: Must cast image channels to `int16` before subtraction. `uint8` subtraction wraps around (e.g. 5 - 10 = 250), which broke the filter logic.
 
-## [DECIDED] Validation Methodology
-- **Decision:** "Test Bench" First.
-- **Reasoning:** Before writing complex vision logic, we must assemble a diverse set of real-world screenshots (1080p, 4K, Ultrawide) to ensure the `ui_map.json` logic is robust from day one, rather than debugging resolution issues later.
+### 3. Binary Thresholding
+*   **Decision**: Lowered Binary Threshold to **110**.
+*   **Reasoning**:
+    *   Original threshold (150-170) cut off faint/anti-aliased edges of digits like '3', making them look like '5'.
+    *   Lowering to 110 captures more of the digit body, preserving unique features.
 
-## [PENDING] Desktop Framework
-- **Candidate:** Tauri (Rust).
-    - *Pros:* Tiny installer (~6MB), high performance for CV, native access to Windows DXGI, handles "User-land" permissions.
-- **Alternative:** Electron.
-- **Status:** **Decision Pending.**
-
-## [DECIDED] UI Strategy: Tray-based Agent vs. CLI
-- **Decision:** Tray-based Desktop Agent.
-- **Reasoning:** Building a CLI-only MVP for a gaming audience is a "Developer Trap." UX friction (copying files, manual commands) kills adoption. A background tray app that "just works" when the game starts is mandatory for trust and retention.
-
-## [PENDING] Feedback Timing
-- **Strategy 1:** Live "In-ear" coaching alerts. (High risk of being flagged as a cheat).
-- **Strategy 2:** Instant Post-Game Report. (100% safe, focus of the MVP).
+### 4. Crop Regions
+*   **Decision**: Expanded Villager Count boxes to 70% width (aligned right).
+*   **Reasoning**: Allows capturing larger numbers (e.g., 3 digits) while still avoiding the UI frames.
