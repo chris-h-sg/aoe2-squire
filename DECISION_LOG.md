@@ -25,5 +25,15 @@
     *   Lowering to 110 captures more of the digit body, preserving unique features.
 
 ### 4. Crop Regions
-*   **Decision**: Expanded Villager Count boxes to 70% width (aligned right).
 *   **Reasoning**: Allows capturing larger numbers (e.g., 3 digits) while still avoiding the UI frames.
+
+### 5. UI Scale Detection
+*   **Decision**: Determine UI Scale dynamically by measuring the **Height of the Top Resource Panel**.
+*   **Method**:
+    *   Crop a vertical strip (width=20px) from the far-left edge of the screen (x_offset=3px).
+    *   Threshold at brightness > 20.
+    *   Scan for horizontal black lines (rows with > 18 black pixels).
+    *   **Panel Height** = (Y2 - Y1) + 1.
+*   **Reference**:
+    *   At 1080p (100% Scale), the panel height is **69 pixels**.
+    *   We will use this baseline to calculate a global scaling factor for all other bounding boxes.

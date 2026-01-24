@@ -54,6 +54,60 @@ def process_stage_3_clean(filtered_crop):
     _, thresh = cv2.threshold(gray, BINARY_THRESHOLD, 255, cv2.THRESH_BINARY)
     return thresh
 
+def get_resource_panel_height(img):
+    """
+    Determines the height of the resource panel by finding the top and bottom borders.
+    Uses a vertical strip crop and looks for black lines.
+    """
+    if img is None:
+        return 0
+
+    h, w, _ = img.shape
+    
+    # Configuration
+    CROP_WIDTH = 20
+    CROP_X_OFFSET = 3
+    BRIGHTNESS_THRESHOLD = 20
+    BLACK_PIXEL_COUNT_THRESHOLD = 18
+
+    # 1. Crop the leftmost pixels of the entire image height with offset
+    left_crop = img[0:h, CROP_X_OFFSET : CROP_X_OFFSET + CROP_WIDTH]
+    
+    # 2. Set all pixels below brightness threshold to 0 and all above to 255
+    gray = cv2.cvtColor(left_crop, cv2.COLOR_BGR2GRAY)
+    _, cleaned = cv2.threshold(gray, BRIGHTNESS_THRESHOLD, 255, cv2.THRESH_BINARY)
+
+    # 3. Analyze for black lines
+    black_pixel_counts = np.sum(cleaned == 0, axis=1)
+    matching_rows = np.where(black_pixel_counts > BLACK_PIXEL_COUNT_THRESHOLD)[0]
+
+    if len(matching_rows) == 0:
+        return 0
+
+    # Group consecutive lines
+    lines = []
+    if len(matching_rows) > 0:
+        current_group_start = matching_rows[0]
+        current_group_end = matching_rows[0]
+
+        for i in range(1, len(matching_rows)):
+            row = matching_rows[i]
+            if row == current_group_end + 1:
+                current_group_end = row
+            else:
+                lines.append((current_group_start, current_group_end))
+                current_group_start = row
+                current_group_end = row
+        lines.append((current_group_start, current_group_end))
+
+    if len(lines) >= 2:
+        y1 = lines[0][0]
+        y2 = lines[1][0]
+        return y2 - y1 + 1
+    
+    return 0
+
+
 def perform_ocr(cleaned_crop, templates, region_name="unknown"):
     """Identifies digits in a cleaned crop using 1:1 template matching."""
     if not templates:

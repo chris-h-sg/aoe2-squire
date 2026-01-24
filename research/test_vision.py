@@ -72,5 +72,29 @@ class TestVisionBaseline(unittest.TestCase):
         # Check Idle
         self.assertEqual(results['idle_vils']['value'], expected_results['idle_vils']['value'], "Idle Vils Mismatch")
 
+    def test_resource_panel_height_all_resolutions(self):
+        """
+        Verifies that resource panel height is correctly detected for all
+        test bench images.
+        """
+        expected_heights = {
+            "aoe2_16x10.png": 56,
+            "aoe2_16x9.png": 69,
+            "aoe2_21x9.png": 74,
+            "aoe2_32x9.png": 74,
+            "aoe2_4k.png": 74
+        }
+        
+        test_bench_dir = "test_bench"
+        for filename, expected_height in expected_heights.items():
+            image_path = os.path.join(test_bench_dir, filename)
+            if not os.path.exists(image_path):
+                print(f"Skipping {filename} (not found)")
+                continue
+                
+            img = cv2.imread(image_path)
+            height = poc_vision.get_resource_panel_height(img)
+            self.assertEqual(height, expected_height, f"Height mismatch for {filename}")
+
 if __name__ == '__main__':
     unittest.main()
