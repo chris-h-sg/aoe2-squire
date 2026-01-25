@@ -38,3 +38,11 @@
 *   **Reasoning**:
     *   The top panel borders (lines) varied too much in thickness and color across resolutions/settings.
     *   The "Age/Idle/Menu" cluster in the top right contains consistent bright red pixels that move proportionally with the UI scale.
+
+## OCR Engine: Tesseract Evaluation (Jan 25, 2026)
+*   **Decision**: Tesseract is **not reliable enough** for out-of-the-box production use without custom font training.
+*   **Reasoning**:
+    *   While better than template matching for scaled/distorted text, its LSTM engine is not optimized for pixel-art fonts.
+    *   It frequently generates "ghost digits" due to background noise in the crops.
+    *   Required preprocessing (4x scaling, blurring, inversion) adds significant complexity and run-time overhead compared to the current 1:1 pixel overlap solution.
+*   **Future Path**: Only adopt if we implement **Synthetic Font Training** to create a specialized `.traineddata` file for the game's specific HUD font.

@@ -6,77 +6,77 @@
             "x_px": 64,
             "y_px": 25,
             "w_px": 65,
-            "h_px": 21,
+            "h_px": 22,
             "split_pct": 1.0
         },
         "wood_vils": {
             "x_px": 32,
             "y_px": 47,
-            "w_px": 25,
-            "h_px": 14,
+            "w_px": 27,
+            "h_px": 16,
             "split_pct": 1.0
         },
         "food_total": {
             "x_px": 189,
             "y_px": 25,
             "w_px": 65,
-            "h_px": 21,
+            "h_px": 22,
             "split_pct": 1.0
         },
         "food_vils": {
             "x_px": 157,
             "y_px": 47,
-            "w_px": 25,
-            "h_px": 14,
+            "w_px": 27,
+            "h_px": 16,
             "split_pct": 1.0
         },
         "gold_total": {
             "x_px": 314,
             "y_px": 25,
             "w_px": 65,
-            "h_px": 21,
+            "h_px": 22,
             "split_pct": 1.0
         },
         "gold_vils": {
             "x_px": 282,
             "y_px": 47,
-            "w_px": 25,
-            "h_px": 14,
+            "w_px": 27,
+            "h_px": 16,
             "split_pct": 1.0
         },
         "stone_total": {
             "x_px": 439,
             "y_px": 25,
             "w_px": 65,
-            "h_px": 21,
+            "h_px": 22,
             "split_pct": 1.0
         },
         "stone_vils": {
             "x_px": 407,
             "y_px": 47,
-            "w_px": 25,
-            "h_px": 14,
+            "w_px": 27,
+            "h_px": 16,
             "split_pct": 1.0
         },
         "population_total": {
             "x_px": 564,
             "y_px": 25,
             "w_px": 65,
-            "h_px": 21,
+            "h_px": 22,
             "split_pct": 1.0
         },
         "population_vils": {
             "x_px": 532,
             "y_px": 47,
-            "w_px": 25,
-            "h_px": 14,
+            "w_px": 27,
+            "h_px": 16,
             "split_pct": 1.0
         },
         "idle_vils": {
             "x_px": 666,
-            "y_px": 38,
-            "w_px": 25,
-            "h_px": 14,
+            "y_px": 37,
+            "w_px": 27,
+            "h_px": 16,
             "split_pct": 1.0
         }
     }

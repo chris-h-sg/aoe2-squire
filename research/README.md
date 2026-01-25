@@ -27,10 +27,16 @@ You can customize the output and target using the following flags:
 | Flag | Description |
 | :--- | :--- |
 | `--image <filename>` | Run analysis on a specific file in `test_bench` (e.g., `--image aoe2_4k.png`). |
+| `--ocr-engine <engine>` | Choose OCR engine: `template` (default) or `tesseract`. |
+| `--ocr-raw` | (Tesseract only) Feed raw color crops directly to the OCR engine. |
+| `--ocr-filtered` | (Tesseract only) Feed color-filtered crops to OCR without binary thresholding. |
+| `--ocr-hybrid` | (Tesseract only) Use filtered crops for Villager counts and raw crops for Resource totals. |
+| `--ocr-hints` | (Tesseract only) Use custom word/pattern hints from `research/tess_config/`. |
 | `--save-red-mask` | Saves the isolated "Red UI" mask to `research/output/red_mask_<filename>`. Useful for debugging UI scale detection. |
 | `--save-debug-image` | Saves the full screenshot with colored bounding boxes drawn on it to `research/output/debug_<filename>`. |
 | `--save-candidates` | Extracts every potential digit blob found by OCR into `research/output/digit_candidates/`. **Crucial for gathering new templates.** |
 | `--save-crops` | Saves the intermediate processing stages (Raw -> Filtered -> Clean) for every UI element into `research/output/crops/`. |
+| `--save-ocr-input` | Saves the exact upscaled (4x) images being passed to Tesseract into `research/output/ocr_input/`. |
 
 ### Example: Gathering New Templates
 If you find a screenshot where OCR is failing:
@@ -61,10 +67,33 @@ The extraction process follows a 3-stage pipeline:
     - **Config**: `BINARY_THRESHOLD` (default: 110).
     - **Purpose**: Creates a crisp black-and-white image for template matching.
 
-4.  **OCR Matching**:
+4.  **OCR Matching (Standard)**:
     - Uses **1:1 Pixel Overlap (Intersection over Union)** instead of standard template matching.
     - This is more robust for tiny, low-resolution pixel-art fonts where scaling/resizing introduces blurring.
     - Templates are stored in `research/templates/`.
+
+5.  **Tesseract OCR (Alternative)**:
+    - Selectable via `--ocr-engine tesseract`.
+    - **Upscaling**: Crops are rescaled by **4x** using cubic interpolation to meet Tesseract's preferred character size.
+    - **Preprocessing**:
+        - **Edge Smoothing**: Applies a Gaussian blur to rounded off pixelated edges.
+        - **Polarity**: Always inverts the image to provide Black-on-White text.
+        - **Normalization**: Stretches contrast so the text pops against the background.
+    - **Optimization**: Supports **Hybrid Mode** (`--ocr-hybrid`) to use different preprocessing (Raw vs Filtered) depending on the UI element's background color.
+    - **Hardcoded Hints**: Uses `research/tess_config/` (words and patterns) to force the engine to prioritize expected RTS resource formats like digit counts and population slashes (`64/75`).
+
+## Tesseract OCR Evaluation
+
+### Findings
+- **Small Pixel Fonts**: Tesseract (LSTM engine) struggles with the tiny, low-resolution pixel-art fonts used in the AoE2 HUD. Even with 4x upscaling, recognition is often brittle.
+- **Background Noise**: Colored backgrounds (villager icons) introduce noise that confuses the engine, sometimes leading to ghost digits (e.g., `18249` reading as `182493`).
+- **Engine Polarity**: Tesseract significantly prefers black-on-white text. We successfully mitigated some issues by normalizing contrast and inverting all inputs.
+- **Reliability Conclusion**: While significantly better than standard template matching for scaled/distorted text, it is not yet "100% reliable" without further training.
+
+### Future Improvement Ideas
+- **Custom Font Training**: Create a custom `.traineddata` file using synthetic training data generated from the game's actual `.ttf` files (e.g., `Slayer.ttf`). This is the most robust long-term solution.
+- **Crop-to-Blobs Optimization**: Prior to OCR, find the bounding box of only the white/colored "blobs" (text) within the crop. This removes background borders/noise from the engine's view.
+- **User Dictionary Enforcement**: Strictly enforce that the OCR engine only outputs "words" from our pre-defined dictionary or patterns, rejecting any out-of-scope recognized text.
 
 ## Configuration Tweakables
 
@@ -73,3 +102,27 @@ In `poc_vision.py`:
 COLOR_TOLERANCE = 40   # Higher = more permissive (keeps more pixels)
 BINARY_THRESHOLD = 110 # Lower = captures dimmer pixels
 ```
+
+## Font Research & Extraction
+
+We investigated the game's internal font files (`fonts/`) to obtain perfect OCR templates.
+
+### Technology & Format
+*   **Format**: The game uses a custom **Texture Atlas** system. Binary `.box` files serve as maps, providing UV coordinates for character glyphs stored in 2048x2048 `.png` / `.dds` texture pages.
+*   **Rendering**: Characters are stored as **Multi-channel Signed Distance Fields (MSDF)**. This technique encodes the distance to edges across the Red, Green, and Blue channels, allowing the game to render perfectly sharp text at any resolution (from 720p to 4K).
+*   **Decoding**: Extraction requires calculating the `median(R, G, B)` of the distance field. We implemented a custom decoder in `research/font_extractor.py` that includes **Supersampling** (high-res decoding followed by Lanczos downscaling) to produce clean, anti-aliased templates at 11px and 12px sizes.
+
+### Investigated Fonts
+*   `combined`: The standard internal serif font.
+*   `combined_sansserif`: Used for tooltips and secondary UI elements.
+*   `georgia_european`: Used for decorative headings.
+
+### Conclusion: Missing HUD Font
+Despite successful extraction of thousands of glyphs, we have determined that **the specific font used for the primary resource counts (Food, Wood, etc.) is likely not in these files.**
+
+**Key Discrepancy:**
+*   In-game measurement: The digit '9' is **9px wide** at an **11px height**.
+*   Extracted `combined` font: The digit '9' is significantly thinner (**7px wide** at 11px height).
+*   The special wide-mapping IDs (0-9) in these files appear to be placeholder boxes or unrelated symbols, not the "High Readability" digits seen in the HUD.
+
+**Current Verdict:** We should continue using screenshot-based template gathering for the main resource panel, as the extracted game fonts do not match the HUD's specific aspect ratios.

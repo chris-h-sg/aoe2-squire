@@ -4,9 +4,42 @@ import numpy as np
 import json
 import os
 
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
+
 # ===== CONFIGURATION =====
 COLOR_TOLERANCE = 30   # Logic: Max diff between R,G,B channels. Higher = more permissive.
 BINARY_THRESHOLD = 120 # Logic: Brightness cutoff. Lower = captures dimmer pixels.
+
+# Tesseract Search Paths (Common Windows locations)
+TESSERACT_SEARCH_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Users\{}\AppData\Local\Tesseract-OCR\tesseract.exe".format(os.getlogin()),
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
+]
+
+def init_tesseract():
+    if pytesseract is None:
+        return False
+    
+    # Check if tesseract is already in path
+    import subprocess
+    try:
+        subprocess.run(["tesseract", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except FileNotFoundError:
+        pass
+
+    # Try common paths
+    for path in TESSERACT_SEARCH_PATHS:
+        if os.path.exists(path):
+            pytesseract.pytesseract.tesseract_cmd = path
+            return True
+    
+    return False
+
 # =========================
 
 def load_config():
@@ -96,12 +129,84 @@ def get_ui_right_margin(img):
 
 
 
+def perform_ocr_tesseract(crop, region_name="unknown", whitelist="0123456789/", debug_options=None):
+    """Identifies text in a crop using Tesseract OCR."""
+    if pytesseract is None:
+        print("  [!] Pytesseract not installed. Install with: pip install pytesseract")
+        return ""
+    
+    if debug_options is None:
+        debug_options = {}
+
+    # Determine mode for filename
+    mode = "binary"
+    if debug_options.get('ocr_hybrid', False):
+        mode = "hybrid"
+    elif debug_options.get('ocr_raw', False):
+        mode = "raw"
+    elif debug_options.get('ocr_filtered', False):
+        mode = "filtered"
+
+    # Scale up 4x for better Tesseract performance on small fonts
+    if len(crop.shape) == 3:
+        # Convert to grayscale first to handle inversion properly
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        h, w = gray.shape
+    else:
+        gray = crop
+        h, w = gray.shape
+        
+    rescaled = cv2.resize(gray, (w * 4, h * 4), interpolation=cv2.INTER_CUBIC)
+    
+    # --- IMAGE SMOOTHING ---
+    # Slight blur helps Tesseract handle pixel-art fonts by smoothing edges
+    rescaled = cv2.GaussianBlur(rescaled, (3, 3), 0)
+    
+    # --- CONTRAST ENHANCEMENT ---
+    # Normalize to ensure white text is actually white and background is dark
+    rescaled = cv2.normalize(rescaled, None, 0, 255, cv2.NORM_MINMAX)
+    
+    # Tesseract configuration: 
+    # --psm 8: Treat the image as a single word.
+    # --dpi 300: Hint the resolution for better scaling.
+    custom_config = f'--psm 8 --dpi 300 -c tessedit_char_whitelist={whitelist}'
+    
+    if debug_options.get('ocr_hints', False):
+        words_path = os.path.abspath(os.path.join("research", "tess_config", "words.txt"))
+        patterns_path = os.path.abspath(os.path.join("research", "tess_config", "patterns.txt"))
+        # Force Tesseract to prioritize user dictionary/patterns
+        custom_config += ' -c load_system_dawg=0 -c load_freq_dawg=0'
+        
+        if os.path.exists(words_path):
+            custom_config += f' --user-words "{words_path}"'
+        if os.path.exists(patterns_path):
+            custom_config += f' --user-patterns "{patterns_path}"'
+    
+    # Pad the crop
+    padded = cv2.copyMakeBorder(rescaled, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+    
+    # ALWAYS invert to black on white for Tesseract's LSTM engine
+    ocr_input = cv2.bitwise_not(padded)
+    
+    # ALWAYS save the exact input Tesseract sees (for research/debugging)
+    out_dir = os.path.join("research", "output", "ocr_input", mode)
+    os.makedirs(out_dir, exist_ok=True)
+    cv2.imwrite(os.path.join(out_dir, f"{region_name}.png"), ocr_input)
+
+    try:
+        text = pytesseract.image_to_string(ocr_input, config=custom_config).strip()
+        print(f"  Tesseract result for {region_name}: '{text}'")
+        return text
+    except Exception as e:
+        print(f"  [!] Tesseract error: {e}")
+        return ""
+
 def perform_ocr(cleaned_crop, templates, region_name="unknown", save_candidates=False, ui_scale=1.0):
     """Identifies digits in a cleaned crop using 1:1 template matching."""
     if not templates:
         return ""
     
-    print(f"\n  === OCR for {region_name} (Scale {ui_scale:.2f}) ===")
+    print(f"\n  === Template OCR for {region_name} (Scale {ui_scale:.2f}) ===")
 
     rects = []
     contours, _ = cv2.findContours(cleaned_crop, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -293,9 +398,31 @@ def analyze_screenshot_return_results(image_path, config, templates, debug_optio
                 cv2.imwrite(os.path.join(dirs["clean"], f"{current_label}.png"), cleaned)
             
             # --- FINAL: OCR ---
-            text = perform_ocr(cleaned, templates, current_label, 
-                             save_candidates=debug_options.get('save_candidates', False),
-                             ui_scale=ui_scale)
+            engine = debug_options.get('ocr_engine', 'template')
+            if engine == 'tesseract':
+                if debug_options.get('ocr_hybrid', False):
+                    # Hybrid logic: Villager-specific counts use filtered, others use raw
+                    if current_label in ["population_vils", "idle_vils"]:
+                        ocr_source = filtered
+                    else:
+                        ocr_source = crop
+                elif debug_options.get('ocr_raw', False):
+                    ocr_source = crop
+                elif debug_options.get('ocr_filtered', False):
+                    ocr_source = filtered
+                else:
+                    ocr_source = cleaned
+                
+                # Determine whitelist: Only population_total gets the slash
+                whitelist = "0123456789"
+                if current_label == "population_total":
+                    whitelist += "/"
+                    
+                text = perform_ocr_tesseract(ocr_source, current_label, whitelist, debug_options)
+            else:
+                text = perform_ocr(cleaned, templates, current_label, 
+                                 save_candidates=debug_options.get('save_candidates', False),
+                                 ui_scale=ui_scale)
             
             # Use sub_key (derived from name split) for results
             results[base_name][sub_key] = text
@@ -333,14 +460,32 @@ def main():
     parser.add_argument("--save-candidates", action="store_true", help="Output individual digit blobs found during OCR")
     parser.add_argument("--save-crops", action="store_true", help="Output raw, filtered, and clean crop stages")
     parser.add_argument("--image", type=str, help="Specific image filename to analyze (default: runs on aoe2_16x9.png if not specified)")
+    parser.add_argument("--ocr-engine", type=str, choices=['template', 'tesseract'], default='template', help="OCR engine to use (default: template)")
+    parser.add_argument("--ocr-raw", action="store_true", help="Feed raw crops to OCR engine instead of cleaned binary")
+    parser.add_argument("--ocr-filtered", action="store_true", help="Feed color-filtered (non-grayscale removed) crops to OCR engine without thresholding")
+    parser.add_argument("--ocr-hybrid", action="store_true", help="Use filtered for vils, raw for totals (Tesseract only)")
+    parser.add_argument("--ocr-hints", action="store_true", help="Provide Tesseract with custom word/pattern hints from research/tess_config/")
+    parser.add_argument("--save-ocr-input", action="store_true", help="Save the exact images being passed to the OCR engine")
     args = parser.parse_args()
     
     debug_options = {
         'save_red_mask': args.save_red_mask,
         'save_debug_image': args.save_debug_image,
         'save_candidates': args.save_candidates,
-        'save_crops': args.save_crops
+        'save_crops': args.save_crops,
+        'ocr_engine': args.ocr_engine,
+        'ocr_raw': args.ocr_raw,
+        'ocr_filtered': args.ocr_filtered,
+        'ocr_hybrid': args.ocr_hybrid,
+        'ocr_hints': args.ocr_hints,
+        'save_ocr_input': args.save_ocr_input
     }
+
+    if args.ocr_engine == 'tesseract':
+        if not init_tesseract():
+            print("Error: Tesseract OCR requested but tesseract executable not found.")
+            print("Please install Tesseract and ensure it's in your PATH, or in C:\\Program Files\\Tesseract-OCR\\")
+            return
 
     test_bench_dir = "test_bench"
     if not os.path.exists(test_bench_dir):
