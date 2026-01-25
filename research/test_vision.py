@@ -20,7 +20,7 @@ class TestVisionBaseline(unittest.TestCase):
         # Load config and templates
         with open(self.config_path, 'r') as f:
             self.config = json.load(f)
-        self.templates = poc_vision.load_templates(os.path.join("research", "templates"))
+        self.templates = poc_vision.load_templates(os.path.join("research", "templates", "resource_numbers"))
         
         # Suppress prints during tests
         self.suppress_output = True

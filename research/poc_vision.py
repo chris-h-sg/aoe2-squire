@@ -6,7 +6,7 @@ import os
 
 # ===== CONFIGURATION =====
 COLOR_TOLERANCE = 30   # Logic: Max diff between R,G,B channels. Higher = more permissive.
-BINARY_THRESHOLD = 110 # Logic: Brightness cutoff. Lower = captures dimmer pixels.
+BINARY_THRESHOLD = 120 # Logic: Brightness cutoff. Lower = captures dimmer pixels.
 # =========================
 
 def load_config():
@@ -206,7 +206,7 @@ def analyze_screenshot_return_results(image_path, config, templates, debug_optio
     print(f"  Resolution: {w}x{h}")
     
     # 0. Calculate UI Scale
-    baseline_margin = 265.0
+    baseline_margin = config.get('baseline_margin', 265.0)
     current_margin = get_ui_right_margin(img)
     if current_margin == 0:
         print("  Warning: Could not detect UI margin. Falling back to scale 1.0.")
@@ -214,7 +214,7 @@ def analyze_screenshot_return_results(image_path, config, templates, debug_optio
     else:
         ui_scale = current_margin / baseline_margin
     
-    print(f"  Scale Factor: {ui_scale:.4f} (Margin: {current_margin})")
+    print(f"  Scale Factor: {ui_scale:.4f} (Margin: {current_margin}, Baseline: {baseline_margin})")
 
     # Optional: Save Red Mask
     if debug_options.get('save_red_mask', False):
@@ -249,68 +249,59 @@ def analyze_screenshot_return_results(image_path, config, templates, debug_optio
             raw_x, raw_y = data['x_px'], data['y_px']
             raw_w, raw_h = data['w_px'], data['h_px']
             
-            x = int(raw_x * ui_scale)
-            y = int(raw_y * ui_scale)
-            width = int(raw_w * ui_scale)
-            height = int(raw_h * ui_scale)
+            rx = int(raw_x * ui_scale)
+            ry = int(raw_y * ui_scale)
+            rw = int(raw_w * ui_scale)
+            rh = int(raw_h * ui_scale)
             
-            split_pct = data.get('split_pct', 1.0)
+            # Apply a tiny margin for larger boxes to avoid border noise
+            if rw > 50 or rh > 30:
+                margin = int(2 * ui_scale)
+                rx += margin
+                ry += margin
+                rw -= 2 * margin
+                rh -= 2 * margin
+
+            # Group results by resource name (e.g. "wood_total" -> "wood": {"total": ...})
+            base_name = name
+            sub_key = "value"
+            if "_" in name:
+                parts = name.split("_")
+                base_name = parts[0]
+                sub_key = parts[1]
+
+            if base_name not in results:
+                results[base_name] = {}
             
-            regions = []
-            if split_pct < 1.0:
-                split_x = int(width * split_pct)
-                # Vils (70% size, bottom-right aligned)
-                v_rw = int(split_x * 0.70)
-                v_rh = int(height * 0.35)
-                v_rx = x + (split_x - v_rw) - int(2 * ui_scale) 
-                v_ry = y + (height - v_rh) - int(2 * ui_scale)
-                regions.append(("vils", v_rx, v_ry, v_rw, v_rh))
-                
-                # Totals (12px vertical padding - should we scale this?)
-                # Padding often scales too. Let's try scaling it.
-                pad_x = int(5 * ui_scale)
-                pad_y = int(12 * ui_scale)
-                
-                t_rx = x + split_x + pad_x
-                t_ry = y + pad_y
-                t_rw = width - split_x - (pad_x * 2)
-                t_rh = height - (pad_y * 2)
-                regions.append(("total", t_rx, t_ry, t_rw, t_rh))
-
-                
-
-            else:
-                regions.append(("value", x+5, y+5, width-10, height-10))
-
-            results[name] = {}
-            for sub_name, rx, ry, rw, rh in regions:
-                current_label = f"{name}_{sub_name}"
-                
-                # --- STAGE 1: RAW CROP ---
-                rw = max(1, rw)
-                rh = max(1, rh)
-                crop = img[ry:ry+rh, rx:rx+rw].copy()
-                if should_save_crops:
-                    cv2.imwrite(os.path.join(dirs["raw"], f"{current_label}.png"), crop)
-                
-                # --- STAGE 2: FILTERED (Grayscale Logic) ---
-                filtered = process_stage_2_filter(crop)
-                if should_save_crops:
-                    cv2.imwrite(os.path.join(dirs["filtered"], f"{current_label}.png"), filtered)
-                
-                # --- STAGE 3: CLEAN (Binary Threshold) ---
-                cleaned = process_stage_3_clean(filtered)
-                if should_save_crops:
-                    cv2.imwrite(os.path.join(dirs["clean"], f"{current_label}.png"), cleaned)
-                
-                # --- FINAL: OCR ---
-                text = perform_ocr(cleaned, templates, current_label, 
-                                 save_candidates=debug_options.get('save_candidates', False),
-                                 ui_scale=ui_scale)
-                results[name][sub_name] = text
-                
-                debug_drawings.append(('rect', (rx, ry), (rx + rw, ry + rh), (0, 255, 255), 1))
-                debug_drawings.append(('text', current_label, (rx, ry - 2)))
+            current_label = name
+            
+            # --- STAGE 1: RAW CROP ---
+            rw = max(1, rw)
+            rh = max(1, rh)
+            crop = img[ry:ry+rh, rx:rx+rw].copy()
+            if should_save_crops:
+                cv2.imwrite(os.path.join(dirs["raw"], f"{current_label}.png"), crop)
+            
+            # --- STAGE 2: FILTERED (Grayscale Logic) ---
+            filtered = process_stage_2_filter(crop)
+            if should_save_crops:
+                cv2.imwrite(os.path.join(dirs["filtered"], f"{current_label}.png"), filtered)
+            
+            # --- STAGE 3: CLEAN (Binary Threshold) ---
+            cleaned = process_stage_3_clean(filtered)
+            if should_save_crops:
+                cv2.imwrite(os.path.join(dirs["clean"], f"{current_label}.png"), cleaned)
+            
+            # --- FINAL: OCR ---
+            text = perform_ocr(cleaned, templates, current_label, 
+                             save_candidates=debug_options.get('save_candidates', False),
+                             ui_scale=ui_scale)
+            
+            # Use sub_key (derived from name split) for results
+            results[base_name][sub_key] = text
+            
+            debug_drawings.append(('rect', (rx, ry), (rx + rw, ry + rh), (0, 255, 255), 1))
+            debug_drawings.append(('text', current_label, (rx, ry - 2)))
 
         except KeyError as e:
             print(f"    Missing pixel key {e} for element {name}")
@@ -357,7 +348,7 @@ def main():
         return
 
     config = load_config() 
-    templates = load_templates(os.path.join("research", "templates"))
+    templates = load_templates(os.path.join("research", "templates", "resource_numbers"))
 
     # Determine which files to process
     if args.image:
