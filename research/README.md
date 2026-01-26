@@ -19,6 +19,7 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
 - **`test_vision.py`**: Unit test suite.
     - **Usage**: `python research/test_vision.py`
     - **Purpose**: Verifies that the extraction logic produces the exact known-good values for the 1080p baseline image. Always run this after making changes to ensure no regressions.
+    - **Expected Values**: Ground truth values for all test images are stored in `test_bench/expected_values.json`. This file uses a `value_sets` system to avoid repetition across images that share the same expected values.
 
 ## CLI Usage (poc_vision.py)
 

@@ -1,0 +1,98 @@
+{
+    "_comment": "Expected OCR values for test bench screenshots. Images can reference named value sets to avoid repetition.",
+    "value_sets": {
+        "baseline_1080p": {
+            "wood": {
+                "vils": "17",
+                "total": "18249"
+            },
+            "food": {
+                "vils": "25",
+                "total": "16800"
+            },
+            "gold": {
+                "vils": "8",
+                "total": "10000"
+            },
+            "stone": {
+                "vils": "9",
+                "total": "3400"
+            },
+            "population": {
+                "vils": "64",
+                "total": "64/75"
+            },
+            "idle_vils": {
+                "value": "3"
+            }
+        },
+        "baseline_other": {
+            "wood": {
+                "vils": "0",
+                "total": "500"
+            },
+            "food": {
+                "vils": "0",
+                "total": "1000"
+            },
+            "gold": {
+                "vils": "0",
+                "total": "500"
+            },
+            "stone": {
+                "vils": "0",
+                "total": "500"
+            },
+            "population": {
+                "vils": "10",
+                "total": "22/80"
+            },
+            "idle_vils": {
+                "value": "10"
+            }
+        },
+        "enormous_font_test": {
+            "wood": {
+                "total": "18249"
+            },
+            "food": {
+                "total": "16800"
+            },
+            "gold": {
+                "total": "10000"
+            },
+            "stone": {
+                "total": "3400"
+            },
+            "population": {
+                "total": "64/75"
+            }
+        }
+    },
+    "images": {
+        "aoe2_16x9.png": {
+            "use_value_set": "baseline_1080p"
+        },
+        "aoe2_16x9_max.png": {
+            "use_value_set": "baseline_1080p"
+        },
+        "aoe2_16x9_min.png": {
+            "use_value_set": "baseline_1080p"
+        },
+        "aoe2_16x10.png": {
+            "use_value_set": "baseline_other"
+        },
+        "aoe2_21x9.png": {
+            "use_value_set": "baseline_other"
+        },
+        "aoe2_32x9.png": {
+            "use_value_set": "baseline_other"
+        },
+        "aoe2_4k.png": {
+            "use_value_set": "baseline_other"
+        },
+        "enormous.png": {
+            "use_value_set": "enormous_font_test"
+        }
+    }
+}

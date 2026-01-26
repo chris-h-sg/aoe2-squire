@@ -115,10 +115,10 @@ def get_ui_right_margin(img):
     mask = cv2.inRange(crop, RED_MASK_LOWER, RED_MASK_UPPER)
     
     # Find coordinates of all non-zero (white) pixels in the mask
-    # Nonzero returns (row_idxs, col_idxs)
+    # Use a smaller cluster requirement for robustness
     y_idxs, x_idxs = np.nonzero(mask)
     
-    if len(x_idxs) == 0:
+    if len(x_idxs) < 5: 
         return 0
         
     # Find the rightmost pixel (max x)
@@ -201,18 +201,27 @@ def perform_ocr_tesseract(crop, region_name="unknown", whitelist="0123456789/", 
         print(f"  [!] Tesseract error: {e}")
         return ""
 
-def perform_ocr(cleaned_crop, templates, region_name="unknown", save_candidates=False, ui_scale=1.0):
-    """Identifies digits in a cleaned crop using 1:1 template matching."""
+def perform_ocr(crop, templates, region_name="unknown", save_candidates=False, ui_scale=1.0):
+    """Identifies digits in a crop using Template Matching with Correlation."""
     if not templates:
         return ""
     
+    # Ensure we are working with single-channel grayscale for detection
+    if len(crop.shape) == 3:
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = crop
+
+    # Step 1: Create a binary version just for layout (contour) detection
+    _, layout_mask = cv2.threshold(gray, BINARY_THRESHOLD, 255, cv2.THRESH_BINARY)
+
     print(f"\n  === Template OCR for {region_name} (Scale {ui_scale:.2f}) ===")
 
     rects = []
-    contours, _ = cv2.findContours(cleaned_crop, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(layout_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
-        ch, cw = cleaned_crop.shape
+        ch, cw = gray.shape
         if w > 1 and h > 5 and w < cw * 0.9 and h < ch * 0.9:
             rects.append([x, y, w, h])
     
@@ -233,11 +242,58 @@ def perform_ocr(cleaned_crop, templates, region_name="unknown", save_candidates=
     
     print(f"  After filtering: {len(filtered)} unique blobs")
     filtered.sort() # Sort left-to-right
+
+    # SPLIT LOGIC: HUD fonts are tight; sometimes digits touch.
+    # If a blob is much wider than it is tall, it's likely multiple digits.
+    split_filtered = []
+    for x, y, w, h in filtered:
+        # Standard digits are roughly 8-10px wide at 11-12px height.
+        # If width > 1.4 * height, it's probably 2+ digits.
+        if w > h * 1.4:
+            num_digits = int(round(w / (h * 0.8))) # Estimate digit count
+            print(f"    [Split] Large blob {w}x{h} detected. Estimating {num_digits} digits.")
+            dw = w / num_digits
+            for i in range(num_digits):
+                split_filtered.append([int(x + i*dw), y, int(dw), h])
+        else:
+            split_filtered.append([x, y, w, h])
+    
+    filtered = split_filtered
+    print(f"  After splitting: {len(filtered)} unique blobs")
+    
+    # NEW: Handle templates of any resolution (e.g., 150px "huge" templates)
+    # Target height at 1080p (ui_scale 1.0) is approx 12px as per user specs.
+    # We use '0' as our height reference to calculate the normalization factor.
+    ref_digit = templates.get('0')
+    normalization_factor = 1.0
+    if ref_digit is not None:
+        template_h = ref_digit.shape[0]
+        # If the template is larger than baseline, normalize it down to 12px
+        if template_h > 20: 
+            normalization_factor = 12.0 / template_h
+            print(f"  Normalization Factor: {normalization_factor:.4f} (Source: {template_h}px -> Target: 12px)")
+
+    # Total scale: normalization (to baseline) * current screen UI scale
+    effective_scale = normalization_factor * ui_scale
+    if effective_scale != 1.0:
+        print(f"  Effective Template Scale: {effective_scale:.4f}")
+
+    # HYBRID SCALING: We upscale the small screenshot blob to a "working resolution"
+    # to allow the high-res templates to contribute more detail.
+    WORKING_HEIGHT = 36 # 3x the baseline height
     
     found_chars = []
     blob_idx = 0
     for x_c, y_c, w_c, h_c in filtered:
-        digit_blob = cleaned_crop[y_c:y_c+h_c, x_c:x_c+w_c]
+        # 1. Capture the raw grayscale blob
+        digit_blob_raw = gray[y_c:y_c+h_c, x_c:x_c+w_c]
+        
+        # 2. Upscale the blob to the working resolution
+        # We use CUBIC to keep the anti-aliased edges smooth
+        scale_up = WORKING_HEIGHT / h_c
+        new_bw = max(1, int(w_c * scale_up))
+        digit_blob = cv2.resize(digit_blob_raw, (new_bw, WORKING_HEIGHT), interpolation=cv2.INTER_CUBIC)
+        
         best_char = "?"
         best_match = 0
         
@@ -250,27 +306,19 @@ def perform_ocr(cleaned_crop, templates, region_name="unknown", save_candidates=
         # DEBUG: Find Top 3 Leaderboard
         all_matches = []
         for char, template in templates.items():
-            # SCALE THE TEMPLATE
-            t_img = template
-            if ui_scale != 1.0:
-                t_h, t_w = template.shape
-                new_w = max(1, int(t_w * ui_scale))
-                new_h = max(1, int(t_h * ui_scale))
-                t_img = cv2.resize(template, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+            # SCALE THE TEMPLATE down to the WORKING_HEIGHT
+            # Keep grayscale intensity for anti-aliasing!
+            t_h_orig, t_w_orig = template.shape
+            t_scale = WORKING_HEIGHT / t_h_orig
+            t_new_w = max(1, int(t_w_orig * t_scale))
             
-            t_h, t_w = t_img.shape
-            max_h, max_w = max(t_h, h_c), max(t_w, w_c)
-            t_pad = np.zeros((max_h, max_w), dtype=np.uint8)
-            b_pad = np.zeros((max_h, max_w), dtype=np.uint8)
+            t_img = cv2.resize(template, (t_new_w, WORKING_HEIGHT), interpolation=cv2.INTER_AREA)
             
-            t_pad[(max_h-t_h)//2 : (max_h-t_h)//2 + t_h, (max_w-t_w)//2 : (max_w-t_w)//2 + t_w] = t_img
-            b_pad[(max_h-h_c)//2 : (max_h-h_c)//2 + h_c, (max_w-w_c)//2 : (max_w-w_c)//2 + w_c] = digit_blob
-            
-            intersection = np.logical_and(t_pad, b_pad).sum()
-            union = np.logical_or(t_pad, b_pad).sum()
-            if union > 0:
-                score = intersection / union
-                all_matches.append((score, char))
+            # Use Template Matching (Correlation) instead of Binary IoU
+            # Correlation handles anti-aliased edges and intensity much better than logic-gate IoU.
+            res = cv2.matchTemplate(digit_blob, t_img, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, _ = cv2.minMaxLoc(res)
+            all_matches.append((max_val, char))
         
         all_matches.sort(reverse=True)
         top_matches = all_matches[:3]
@@ -281,7 +329,7 @@ def perform_ocr(cleaned_crop, templates, region_name="unknown", save_candidates=
             for score, char in top_matches:
                 print(f"      - '{char}': {score:.2f}")
                     
-            if best_match > 0.4: 
+            if best_match > 0.6: # Correlation threshold is usually higher than IoU
                 found_chars.append(best_char)
                 print(f"      [OK] ACCEPTED")
             else:
@@ -411,7 +459,7 @@ def analyze_screenshot_return_results(image_path, config, templates, debug_optio
                 elif debug_options.get('ocr_filtered', False):
                     ocr_source = filtered
                 else:
-                    ocr_source = cleaned
+                    ocr_source = filtered
                 
                 # Determine whitelist: Only population_total gets the slash
                 whitelist = "0123456789"
@@ -420,7 +468,8 @@ def analyze_screenshot_return_results(image_path, config, templates, debug_optio
                     
                 text = perform_ocr_tesseract(ocr_source, current_label, whitelist, debug_options)
             else:
-                text = perform_ocr(cleaned, templates, current_label, 
+                # Use FILTERED crop (grayscale) instead of CLEANED (binary) for Template OCR
+                text = perform_ocr(filtered, templates, current_label, 
                                  save_candidates=debug_options.get('save_candidates', False),
                                  ui_scale=ui_scale)
             
@@ -493,7 +542,7 @@ def main():
         return
 
     config = load_config() 
-    templates = load_templates(os.path.join("research", "templates", "resource_numbers"))
+    templates = load_templates(os.path.join("research", "templates", "huge_numbers"))
 
     # Determine which files to process
     if args.image:
