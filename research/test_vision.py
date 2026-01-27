@@ -3,100 +3,169 @@ import os
 import json
 import cv2
 import sys
+import numpy as np
 
-# Append the directory containing poc_vision to sys.path so we can import it
+# Append the directory containing poc_vision to sys.path
 sys.path.append(os.path.join(os.getcwd(), 'research'))
 
-# Import the module to test
-# Since poc_vision.py is a script, we might need to refactor it slightly to be importable
-# or we can import it as a module if we're careful.
 import poc_vision
 
-class TestVisionBaseline(unittest.TestCase):
-    def setUp(self):
-        self.image_path = os.path.join("test_bench", "aoe2_16x9.png")
-        self.config_path = "ui_map.json"
+class TestVisionSystem(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Paths
+        cls.test_bench_dir = "test_bench"
+        cls.ui_map_path = "ui_map.json"
+        cls.templates_dir = os.path.join("research", "templates", "enormous_numbers")
+        cls.expected_values_path = os.path.join("test_bench", "expected_values.json")
         
-        # Load config and templates
-        with open(self.config_path, 'r') as f:
-            self.config = json.load(f)
-        self.templates = poc_vision.load_templates(os.path.join("research", "templates", "resource_numbers"))
-        
-        # Suppress prints during tests
-        self.suppress_output = True
+        # Load Resources
+        with open(cls.ui_map_path, 'r') as f:
+            cls.ui_map = json.load(f)
+            
+        with open(cls.expected_values_path, 'r') as f:
+            cls.all_expected = json.load(f)
+            
+        cls.templates = poc_vision.load_templates(cls.templates_dir)
 
-    def test_16x9_baseline_accuracy(self):
-        """
-        Verifies that the vision system extracts the exact expected values
-        from the reference 16x9 screenshot.
-        """
-        # Expected values based on user confirmation
-        expected_results = {
-            "wood": { "vils": "0", "total": "638" },
-            "food": { "vils": "0", "total": "149" },
-            "gold": { "vils": "1", "total": "62" },
-            "stone": { "vils": "2", "total": "50" },
-            "population": { "vils": "36", "total": "40/105" },
-            "idle_vils": { "value": "27" }
-        }
-
-        # Modify analyze_screenshot to RETURN results instead of just printing them
-        # We need to monkeypatch or call the internal logic. 
-        # Since analyze_screenshot currently doesn't return, let's copy the logic or refactor.
-        # Ideally, we should refactor poc_vision.py to return the dict.
-        # For this test, I will assume we refactor poc_vision.py below.
-        
-        results = poc_vision.analyze_screenshot_return_results(self.image_path, self.config, self.templates)
-        
-        # Check Wood
-        self.assertEqual(results['wood']['vils'], expected_results['wood']['vils'], "Wood Vils Mismatch")
-        self.assertEqual(results['wood']['total'], expected_results['wood']['total'], "Wood Total Mismatch")
-        
-        # Check Food
-        self.assertEqual(results['food']['vils'], expected_results['food']['vils'], "Food Vils Mismatch")
-        self.assertEqual(results['food']['total'], expected_results['food']['total'], "Food Total Mismatch")
-        
-        # Check Gold
-        self.assertEqual(results['gold']['vils'], expected_results['gold']['vils'], "Gold Vils Mismatch")
-        self.assertEqual(results['gold']['total'], expected_results['gold']['total'], "Gold Total Mismatch")
-        
-        # Check Stone
-        self.assertEqual(results['stone']['vils'], expected_results['stone']['vils'], "Stone Vils Mismatch")
-        self.assertEqual(results['stone']['total'], expected_results['stone']['total'], "Stone Total Mismatch")
-        
-        # Check Population
-        # Allowing for the known regression/noise issue if strictly testing current state
-        # self.assertEqual(results['population']['vils'], "36", "Pop Vils (Current State)")
-        self.assertEqual(results['population']['total'], expected_results['population']['total'], "Pop Total Mismatch")
-        
-        # Check Idle
-        self.assertEqual(results['idle_vils']['value'], expected_results['idle_vils']['value'], "Idle Vils Mismatch")
-
-    def test_ui_right_margin(self):
-        """
-        Verifies that the right margin of the UI (red elements) is detected
-        correctly for all test bench images. This is used for UI scaling.
-        """
-        expected_margins = {
-            "aoe2_16x10.png": 211,
-            "aoe2_16x9.png": 265,
-            "aoe2_16x9_max.png": 263,
-            "aoe2_16x9_min.png": 159,
-            "aoe2_21x9.png": 281,
-            "aoe2_32x9.png": 281,
-            "aoe2_4k.png": 281
+    def test_detect_ui_scale_approximation(self):
+        """Test if the UI scale is detected within a reasonable margin for known images."""
+        expected_scales = {
+            "aoe2_16x9_max.png": 1.00,
         }
         
-        test_bench_dir = "test_bench"
-        for filename, expected_margin in expected_margins.items():
-            image_path = os.path.join(test_bench_dir, filename)
+        for filename, expected_scale in expected_scales.items():
+            image_path = os.path.join(self.test_bench_dir, filename)
             if not os.path.exists(image_path):
-                print(f"Skipping {filename} (not found)")
                 continue
                 
             img = cv2.imread(image_path)
-            margin = poc_vision.get_ui_right_margin(img)
-            self.assertEqual(margin, expected_margin, f"Margin mismatch for {filename}")
+            scale = poc_vision.detect_ui_scale(img)
+            with self.subTest(image=filename):
+                self.assertAlmostEqual(scale, expected_scale, delta=0.05, 
+                                     msg=f"UI Scale deviation for {filename}")
+
+    def get_allowed_images(self):
+        return {
+            "aoe2_16x9.png", 
+            "aoe2_16x9_min.png", 
+            "aoe2_16x9_max.png"
+        }
+
+    def test_extract_digits_count_parameterized(self):
+        """Test if the extractor finds the correct number of digits in a known box (All allowed)."""
+        allowed = self.get_allowed_images()
+        
+        for filename in allowed:
+            image_path = os.path.join(self.test_bench_dir, filename)
+            if not os.path.exists(image_path):
+                continue
+
+            with self.subTest(image=filename):
+                img = cv2.imread(image_path)
+                scale = poc_vision.detect_ui_scale(img)
+                
+                # Get expected value for wood_total
+                config = self.all_expected['images'].get(filename, {})
+                set_name = config.get('use_value_set')
+                expected_val = self.all_expected['value_sets'][set_name]['wood']['total']
+                expected_count = len(expected_val)
+
+                # Coords from ui_map.json for 'wood_total'
+                coords = self.ui_map['elements']['wood_total']
+                x = int(coords['x_px'] * scale)
+                y = int(coords['y_px'] * scale)
+                w = int(coords['w_px'] * scale)
+                h = int(coords['h_px'] * scale)
+                
+                if x+w > img.shape[1] or y+h > img.shape[0]:
+                    self.fail(f"Coordinates out of bounds for {filename}")
+
+                box_img = img[y:y+h, x:x+w].copy()
+                digits = poc_vision.extract_digits(box_img, scale)
+                
+                self.assertEqual(len(digits), expected_count, 
+                               f"Digit count mismatch for {filename} (Expected {expected_count})")
+
+    def test_digit_matching_parameterized(self):
+        """Test if specific digits are matched correctly (All allowed)."""
+        allowed = self.get_allowed_images()
+        
+        for filename in allowed:
+            image_path = os.path.join(self.test_bench_dir, filename)
+            if not os.path.exists(image_path):
+                continue
+                
+            with self.subTest(image=filename):
+                img = cv2.imread(image_path)
+                scale = poc_vision.detect_ui_scale(img)
+                
+                # Get expected value for wood_total
+                config = self.all_expected['images'].get(filename, {})
+                set_name = config.get('use_value_set')
+                expected_str = self.all_expected['value_sets'][set_name]['wood']['total']
+                
+                coords = self.ui_map['elements']['wood_total']
+                x = int(coords['x_px'] * scale)
+                y = int(coords['y_px'] * scale)
+                w = int(coords['w_px'] * scale)
+                h = int(coords['h_px'] * scale)
+                
+                box_img = img[y:y+h, x:x+w].copy()
+                digits = poc_vision.extract_digits(box_img, scale)
+                
+                detected_str = ""
+                for i, digit_img in enumerate(digits):
+                    char, conf, _ = poc_vision.match_digit_to_template(digit_img, self.templates)
+                    detected_str += char
+                    
+                self.assertEqual(detected_str, expected_str, 
+                               f"Mismatch in digit matching for {filename}")
+
+    def test_all_images_end_to_end(self):
+        """
+        Iterates through allowed images in expected_values.json and verifies the vision pipeline.
+        """
+        images_config = self.all_expected.get('images', {})
+        value_sets = self.all_expected.get('value_sets', {})
+        
+        # User requested specific whitelist for now
+        allowed_images = self.get_allowed_images()
+        
+        for filename, config in images_config.items():
+            if filename not in allowed_images:
+                continue
+
+            image_path = os.path.join(self.test_bench_dir, filename)
+            
+            # Skip if file doesn't exist locally (don't fail the test suite for missing local files)
+            if not os.path.exists(image_path):
+                print(f"Skipping {filename} (File not found)")
+                continue
+
+            with self.subTest(image=filename):
+                print(f"Testing {filename}...")
+                
+                # Run Pipeline
+                results = poc_vision.process_image(image_path, self.ui_map, self.templates)
+                
+                # Get Expected Data
+                set_name = config.get('use_value_set')
+                expected_data = value_sets.get(set_name)
+                
+                self.assertIsNotNone(expected_data, f"Value set '{set_name}' not found for {filename}")
+                
+                # Compare extracted results against expected values key-by-key
+                for resource, details in expected_data.items():
+                    if resource not in results:
+                        self.fail(f"Resource '{resource}' not detected in {filename}")
+                        
+                    for key, val in details.items():
+                        if key not in results[resource]:
+                            self.fail(f"Key '{resource}.{key}' not detected in {filename}")
+                            
+                        self.assertEqual(results[resource][key], val, 
+                                       f"Mismatch in {filename} for {resource}.{key}")
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(buffer=False) # Disable buffer to see progress prints

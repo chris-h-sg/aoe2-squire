@@ -76,15 +76,23 @@ def match_digit(digit_img, processed_templates):
     
     all_matches = []
     
+    # 1. Pre-compute 9 shifted versions of the input canvas
+    shifted_inputs = []
+    
+    for dy in OFFSETS:
+        for dx in OFFSETS:
+            # Shift Input by (-dx, -dy)
+            M = np.float32([[1, 0, -dx], [0, 1, -dy]])
+            shifted = cv2.warpAffine(input_canvas, M, (CANVAS_SIZE, CANVAS_SIZE))
+            shifted_inputs.append(shifted)
+    
+    # 2. Compare against all templates
     for char, template_canvas in processed_templates.items():
         best_ssd = float('inf')
         
-        # Trial pre-computed wiggle matrices
-        for T in WIGGLE_MATRICES:
-            # Shift template and calculate SSD
-            shifted_template = cv2.warpAffine(template_canvas, T, (CANVAS_SIZE, CANVAS_SIZE))
-            
-            diff = input_canvas - shifted_template
+        # Check against all 9 pre-shifted inputs
+        for shifted_input in shifted_inputs:
+            diff = shifted_input - template_canvas
             ssd = np.sum(diff * diff)
             if ssd < best_ssd:
                 best_ssd = ssd
