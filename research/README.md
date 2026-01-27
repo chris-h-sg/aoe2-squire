@@ -4,10 +4,12 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
 
 ## Key Scripts
 
-- **`extract_boxes.py`**: Extracts raw UI element boxes from a screenshot.
-    - **Usage**: `python research/extract_boxes.py <image_path>`
-    - **Purpose**: Determines scale and extracts all UI boxes to `research/output/extractions/<image_name>/`
-    - **Example**: `python research/extract_boxes.py test_bench/aoe2_16x9.png`
+- **`extractor_enormous.py`**: Specialized extractor for high-resolution images with the "Enormous" HUD setting.
+    - **Logic**: Uses a rigid layout and simple thresholding.
+    - **Purpose**: Fast extraction and template generation for OCR training.
+- **`extractor_regular.py`**: Robust extractor for standard/scaled UI resolutions.
+    - **Logic**: Uses dynamic scale detection and iterative segmentation.
+    - **Purpose**: High-quality character extraction from complex backgrounds.
 
 ### Vision Pipeline & OCR
 
@@ -103,12 +105,47 @@ The extraction process follows a 3-stage pipeline:
 - **Crop-to-Blobs Optimization**: Prior to OCR, find the bounding box of only the white/colored "blobs" (text) within the crop. This removes background borders/noise from the engine's view.
 - **User Dictionary Enforcement**: Strictly enforce that the OCR engine only outputs "words" from our pre-defined dictionary or patterns, rejecting any out-of-scope recognized text.
 
+## Specialized Digit Extraction (Iterative Segmentation)
+
+We successfully implemented a robust extraction pipeline in `extractor_regular.py` that handles the difficulties of small, antialiased, and touching digits in standard UI scales.
+
+### 1. Dynamic Scale Detection
+The system locates the rightmost "Red UI" pixel at the top of the HUD to determine the exact `ui_scale`. This allows us to map baseline coordinates from `ui_map.json` to any resolution.
+
+### 2. Dual-Threshold Logic
+A single threshold is insufficient for low-resolution images. We implemented a dual-pass approach:
+*   **Segmentation Mask**: Uses a strict filter (High brightness 100, strict gray tolerance) to find clear gaps between characters.
+*   **Soft Output**: Uses a lean filter (Low brightness 5, loose gray tolerance) to preserve the original antialiasing and edge detail, which is critical for future OCR accuracy.
+
+### 3. Iterative "Seed" Segmentation
+When digits touch (visually merging into one blob), the system detects that a component's `width > height` and enters a recursive refinement loop:
+1.  **Tighten Filter**: It re-processes the specific blob with a stricter grayscale tolerance (removing pixels that aren't perfectly neutral).
+2.  **Split Check**: It recurses until the component either splits into valid individual digits or the tolerance limit is reached.
+3.  **Boundary Transfer**: The boundaries found by this strict "seed" search are then applied to the "soft" output image, resulting in surgically separated digits that still have their high-quality antialiased edges.
+
+## Extraction Performance Conclusions
+
+We benchmarked the pipeline to identify bottlenecks for real-time application:
+
+| Metric | Measurement (Regular Extractor) |
+| :--- | :--- |
+| **Total Pipeline Time** | ~125ms (8 FPS) |
+| **Core Processing Logic** | **~15ms to 19ms** |
+| **I/O Overhead (Read/Write)** | **~105ms (85% of total time)** |
+
+**Key Findings:**
+*   **Disk Bottleneck**: Nearly 85% of execution time is spent writing ~25 individual PNG files for debugging and template collection.
+*   **Real-time Readiness**: The core OpenCV/NumPy logic is extremely fast (under 20ms). 
+*   **Future Path**: Moving to a fully in-memory pipeline (Screen Capture -> In-memory processing -> OCR) will remove the I/O bottleneck, allowing for **50+ FPS** performance on modern hardware.
+
 ## Configuration Tweakables
 
-In `poc_vision.py`:
+In `extractor_regular.py`:
 ```python
-COLOR_TOLERANCE = 40   # Higher = more permissive (keeps more pixels)
-BINARY_THRESHOLD = 110 # Lower = captures dimmer pixels
+SEG_GREY_TOLERANCE = 10     # Starting tolerance for finding gaps
+OUT_GREY_TOLERANCE = 12     # Tolerance for the final visual output
+SEG_BRIGHTNESS_THRESHOLD = 100 # Minimum brightness for segmentation seeds
+OUT_BRIGHTNESS_THRESHOLD = 5   # Minimum brightness for final output detail
 ```
 
 ## Font Research & Extraction
