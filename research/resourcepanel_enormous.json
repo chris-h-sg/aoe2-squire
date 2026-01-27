@@ -5,7 +5,7 @@
       "xorigin": 20,
       "yorigin": 150,
       "width": 3000,
-      "height": 1200,
+      "height": 1600,
       "alignment": "TopLeft"
     },
     "Widgets": [
@@ -17,19 +17,19 @@
             "xorigin": 0,
             "yorigin": 0,
             "width": 3000,
-            "height": 1200,
+            "height": 1600,
             "alignment": "TopLeft"
           },
           "ZPlane": 1,
           "StateMaterials": {
             "UserStates": 1,
             "UserState0": {
-                    "Material": "FlatColor",
-                    "Color": {
-                      "r": 0,
-                      "g": 0,
-                      "b": 0
-                    }
+              "Material": "FlatColor",
+              "Color": {
+                "r": 0,
+                "g": 0,
+                "b": 0
+              }
             }
           },
           "ChildWidgets": [
@@ -166,8 +166,8 @@
                 "Type": "Label",
                 "Name": "PopulationCount",
                 "ViewPort": {
-                  "xorigin": 850,
-                  "yorigin": 1100,
+                  "xorigin": 20,
+                  "yorigin": 1400,
                   "width": 2000,
                   "height": 400,
                   "alignment": "CentreLeft"

@@ -4,6 +4,13 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
 
 ## Key Scripts
 
+- **`extract_boxes.py`**: Extracts raw UI element boxes from a screenshot.
+    - **Usage**: `python research/extract_boxes.py <image_path>`
+    - **Purpose**: Determines scale and extracts all UI boxes to `research/output/extractions/<image_name>/`
+    - **Example**: `python research/extract_boxes.py test_bench/aoe2_16x9.png`
+
+### Vision Pipeline & OCR
+
 - **`poc_vision.py`**: The main script.
     - **Usage**: `python research/poc_vision.py`
     - **Input**: Reads images from `test_bench/` (expects `aoe2_16x9.png`).
