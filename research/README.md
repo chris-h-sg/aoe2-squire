@@ -122,10 +122,10 @@ The system locates the rightmost "Red UI" pixel at the top of the HUD to determi
 A single threshold is insufficient for low-resolution images. We implemented a dual-pass approach:
 *   **Segmentation Mask**: Uses a strict filter (High brightness 100, strict gray tolerance) to find clear gaps between characters.
 *   **Soft Output**: Uses a lean filter (Low brightness 5, loose gray tolerance) to preserve the original antialiasing and edge detail, which is critical for future OCR accuracy.
-### 3. Iterative "Seed" Segmentation
-When digits touch (visually merging into one blob), the system detects that a component's `width > height` and enters a recursive refinement loop:
-1.  **Tighten Filter**: It re-processes the specific blob with a stricter grayscale tolerance (removing pixels that aren't perfectly neutral).
-2.  **Split Check**: It recurses until the component either splits into valid individual digits or the tolerance limit is reached.
+### 3. Iterative Refinement
+When digits touch (visually merging into one blob), the system detects that a component's `width > height` and enters a multi-stage recursive refinement loop:
+1.  **Reduce Grey Tolerance**: It first attempts to tighten the grayscale tolerance (down to a minimum of 2) to find clear gaps.
+2.  **Increase Brightness Threshold**: If tightening the grey tolerance fails, it incrementally increases the brightness threshold (up to 160) to "erode" the connection between the digits.
 3.  **Boundary Transfer**: The boundaries found by this strict "seed" search are then applied to the "soft" output image, resulting in surgically separated digits that still have their high-quality antialiased edges.
 
 ## Extraction Performance Conclusions
@@ -193,15 +193,19 @@ To overcome vertical jitter and horizontal snapping issues, we trial **9 local o
 - The **Minimum SSD** is taken as the final score.
 - This approach effectively "finds" the best fit, making the system immune to the jitter found in low-res screenshots.
 
-### 3. Discriminative Power
-We verified that this approach maintains healthy margins between similar characters:
-- **0 vs 3**: The structural gaps in the '3' are now heavily penalized by the SSD when compared to a '0'.
-- **5 vs 3**: The unique horizontal/vertical intersections are preserved through the 1.0 blur.
-- **7 vs /**: Our tightest margin (SSD margin > 18.0), confirming the system is robust against extreme similarities.
+### 3. Discriminative Power & Symmetry Tie-Breaker
+Because '0' can look extremely similar to '3', '6', and '9' in small fonts, we've implemented a **Horizontal Symmetry Tie-Breaker**:
+- **Mechanism**: The digit is flipped horizontally and compared to its original state.
+- **Trigger**: Only activates if the SSD margin between a '0' and any of {'3', '6', '9'} is **< 20%**.
+- **Rule**:
+    - If '0' wins but Symmetry is high (Asymmetric > 60), it's overridden to the second-place char.
+    - If an asymmetric char wins but Symmetry is low (Symmetric < 40), it's overridden to '0'.
+- This resolved the final remaining misidentifications in low-res images.
 
 ### Evaluation Results
-| UI Scale | Samples | Accuracy | Closest Margin |
-| :--- | :--- | :--- | :--- |
-| **Max** (16x9_max) | 24 | 100% | 18.43 (7 vs /) |
-| **Default** (16x9) | 24 | 100% | 25.73 (5 vs 3) |
-| **Min** (16x9_min) | 24 | 100% | 45.48 (9 vs 0) |
+
+| UI Scale | Samples | Accuracy | Closest Margin | Tie-Breaker Applied |
+| :--- | :--- | :--- | :--- | :--- |
+| **Max** (16x9_max) | 33 | 100% | 18.43 (7 vs /) | No |
+| **Default** (16x9) | 33 | 100% | 25.73 (5 vs 3) | No |
+| **Min** (16x9_min) | 33 | 100% | -13.46 (9 vs 0) | Yes (stone_vils) |

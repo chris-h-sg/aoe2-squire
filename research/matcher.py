@@ -18,6 +18,12 @@ WIGGLE_MATRICES = [
     for dx in OFFSETS
 ]
 
+def calculate_h_symmetry(canvas):
+    """Calculates horizontal symmetry score (lower is more symmetric)."""
+    flipped = cv2.flip(canvas, 1) # 1 = horizontal flip
+    diff = canvas - flipped
+    return np.sum(diff * diff)
+
 def prepare_canvas(img, target_h):
     """Scales, centers by bounding box, and blurs an image into a fixed canvas."""
     # 1. Upscale
@@ -86,7 +92,39 @@ def match_digit(digit_img, processed_templates):
         all_matches.append((best_ssd, char))
     
     all_matches.sort()
-    return all_matches
+    
+    # --- TIE-BREAKER LOGIC ---
+    # In small fonts, '0' is often confused with '3', '6', or '9'.
+    # We use horizontal symmetry as a tie-breaker when matches are close.
+    tb_info = ""
+    if len(all_matches) > 1:
+        best_ssd, best_char = all_matches[0]
+        second_ssd, second_char = all_matches[1]
+        
+        asym_chars = {'3', '6', '9'}
+        is_conflict = (best_char == '0' and second_char in asym_chars) or \
+                      (best_char in asym_chars and second_char == '0')
+        
+        # Trigger if SSD difference is less than 20% of the winner
+        if is_conflict:
+            if (second_ssd - best_ssd < best_ssd * 0.20):
+                input_canvas = prepare_canvas(digit_img, WORKING_HEIGHT)
+                sym_score = calculate_h_symmetry(input_canvas)
+                
+                # 1. Identified as 0 but is asymmetric (SymH > 60) -> Swap to 3/6/9
+                if best_char == '0' and sym_score > 60:
+                    all_matches[0], all_matches[1] = all_matches[1], all_matches[0]
+                    tb_info = f" [SwapH:{sym_score:.1f}]"
+                # 2. Identified as 3/6/9 but is symmetric (SymH < 40) -> Swap to 0
+                elif best_char in asym_chars and sym_score < 40:
+                    all_matches[0], all_matches[1] = all_matches[1], all_matches[0]
+                    tb_info = f" [SwapH:{sym_score:.1f}]"
+                else:
+                    tb_info = f" [TrustH:{sym_score:.1f}]"
+            else:
+                tb_info = " [GapOK]"
+
+    return all_matches, tb_info
 
 def parse_expected(filename):
     """Parses the expected value from the filename."""
@@ -129,7 +167,7 @@ def main():
         if img is None: continue
 
         expected = parse_expected(f.name)
-        all_matches = match_digit(img, templates)
+        all_matches, tb_info = match_digit(img, templates)
         
         best_score, best_char = all_matches[0]
         second_score, second_char = all_matches[1] if len(all_matches) > 1 else (float('inf'), "?")
@@ -140,7 +178,9 @@ def main():
             closest_info = f"{f.name} (Best: '{best_char}', 2nd: '{second_char}', Margin: {margin:.2f})"
 
         status = "OK" if best_char == expected else "FAIL"
-        if status == "OK":
+        status += tb_info
+        
+        if best_char == expected:
             matches += 1
         elif expected != "extra":
             mismatches.append((f.name, expected, best_char, best_score))

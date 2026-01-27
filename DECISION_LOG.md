@@ -46,3 +46,26 @@
     *   It frequently generates "ghost digits" due to background noise in the crops.
     *   Required preprocessing (4x scaling, blurring, inversion) adds significant complexity and run-time overhead compared to the current 1:1 pixel overlap solution.
 *   **Future Path**: Only adopt if we implement **Synthetic Font Training** to create a specialized `.traineddata` file for the game's specific HUD font.
+
+## OCR Infrastructure (Jan 27, 2026)
+
+### 1. Robust Digit Segmentation
+*   **Decision**: Implemented a **Multi-Stage Iterative Refinement** in `get_components_recursive`.
+*   **Logic**:
+    1.  If a blob is wider than it is tall (`w > h`), indicating touching digits:
+    2.  First, decrease `grey_tol` incrementally (step: 2, min: 2).
+    3.  If still touching, increase `brightness_threshold` incrementally (step: 10, max: 160).
+*   **Reasoning**: Tightening grey tolerance separates digits that touch via soft anti-aliased shadows, while increasing brightness separates digits that actually "bleed" into each other in low-contrast scenarios.
+
+### 2. Matcher Tie-Breaker: Horizontal Symmetry
+*   **Decision**: Introduced a **Horizontal Symmetry Override** for conflicts between '0' and {'3', '6', '9'}.
+*   **Parameters**:
+    *   **Margin**: SSD difference < 20%.
+    *   **Logic**: Flip digit horizontally; calculate `SSD(orig, flipped)`.
+    *   **Thresholds**: '0' must be < 40 (Symmetric); '3', '6', '9' must be > 60 (Asymmetric).
+*   **Reasoning**: Specifically targets the weakness where small circular fonts make '0' and '9' look identical to a pixel-wise SSD, but preserve their fundamental symmetry differences.
+
+### 3. Expected Value Schema
+*   **Decision**: Consolidated all resource lookups to follow the `{main_type}_{sub_type}` pattern.
+*   **Fix**: Renamed `idle_vils` to `idle` (main) and `vils` (sub) in `expected_values.json` to match the extractor's parsing logic (`name.split('_')`).
+*   **Reasoning**: Prevents special-case hardcoding and ensures the extractor can dynamically look up ground truth for any UI element.
