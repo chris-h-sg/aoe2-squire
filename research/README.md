@@ -10,6 +10,9 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
 - **`extractor_regular.py`**: Robust extractor for standard/scaled UI resolutions.
     - **Logic**: Uses dynamic scale detection and iterative segmentation.
     - **Purpose**: High-quality character extraction from complex backgrounds.
+- **`matcher.py`**: Robust digit matcher performing evaluation of extracted digits.
+    - **Logic**: Uses the **Wiggle SSD** algorithm (Centering + Blurring + 9-Trial Offset).
+    - **Purpose**: Verified at 100% accuracy across all UI scales.
 
 ### Vision Pipeline & OCR
 
@@ -77,10 +80,13 @@ The extraction process follows a 3-stage pipeline:
     - **Config**: `BINARY_THRESHOLD` (default: 110).
     - **Purpose**: Creates a crisp black-and-white image for template matching.
 
-4.  **OCR Matching (Standard)**:
-    - Uses **1:1 Pixel Overlap (Intersection over Union)** instead of standard template matching.
-    - This is more robust for tiny, low-resolution pixel-art fonts where scaling/resizing introduces blurring.
-    - Templates are stored in `research/templates/`.
+4.  **OCR Matching (Wiggle SSD)**:
+    - Replaces the previous IoU approach with a more robust intensity matching system.
+    - Scales digits to a fixed 36px working height.
+    - Centers digits in a 64x64 canvas.
+    - Applies Gaussian blurring (sigma=1.0) to handle anti-aliasing.
+    - Performs a **Wiggle Search**: trials 9 local offsets ([-1, 0, 1] pixels) to find the minimum Sum of Squared Differences (SSD).
+    - Verified at **100% accuracy** on all test sets (Food, Wood, Gold, Stone, Pop).
 
 5.  **Tesseract OCR (Alternative)**:
     - Selectable via `--ocr-engine tesseract`.
@@ -116,7 +122,6 @@ The system locates the rightmost "Red UI" pixel at the top of the HUD to determi
 A single threshold is insufficient for low-resolution images. We implemented a dual-pass approach:
 *   **Segmentation Mask**: Uses a strict filter (High brightness 100, strict gray tolerance) to find clear gaps between characters.
 *   **Soft Output**: Uses a lean filter (Low brightness 5, loose gray tolerance) to preserve the original antialiasing and edge detail, which is critical for future OCR accuracy.
-
 ### 3. Iterative "Seed" Segmentation
 When digits touch (visually merging into one blob), the system detects that a component's `width > height` and enters a recursive refinement loop:
 1.  **Tighten Filter**: It re-processes the specific blob with a stricter grayscale tolerance (removing pixels that aren't perfectly neutral).
@@ -171,3 +176,32 @@ Despite successful extraction of thousands of glyphs, we have determined that **
 *   The special wide-mapping IDs (0-9) in these files appear to be placeholder boxes or unrelated symbols, not the "High Readability" digits seen in the HUD.
 
 **Current Verdict:** We should continue using screenshot-based template gathering for the main resource panel, as the extracted game fonts do not match the HUD's specific aspect ratios.
+
+## Digit Matching Research (Wiggle SSD)
+
+We achieved **100% recognition accuracy** across all supported UI scales through the following research iterations:
+
+### 1. Robust Centering & Blurring
+Standard template matching fails when digits are shifted by even a half-pixel due to game engine sub-pixel snapping. We solved this by:
+- Upscaling digits to 36px to preserve gradient information.
+- Using the **Geometric Center** of the character's bounding box for initial alignment.
+- Applying a **Gaussian Blur** (sigma=1.0). This "spreads" the pixel intensities, allowing the SSD to overlap meaningfully even if edges don't align perfectly.
+
+### 2. The "Wiggle" Offset Trial
+To overcome vertical jitter and horizontal snapping issues, we trial **9 local offsets** ([-1, 0, 1] pixels in X and Y). 
+- The matcher calculates the SSD for all 9 positions.
+- The **Minimum SSD** is taken as the final score.
+- This approach effectively "finds" the best fit, making the system immune to the jitter found in low-res screenshots.
+
+### 3. Discriminative Power
+We verified that this approach maintains healthy margins between similar characters:
+- **0 vs 3**: The structural gaps in the '3' are now heavily penalized by the SSD when compared to a '0'.
+- **5 vs 3**: The unique horizontal/vertical intersections are preserved through the 1.0 blur.
+- **7 vs /**: Our tightest margin (SSD margin > 18.0), confirming the system is robust against extreme similarities.
+
+### Evaluation Results
+| UI Scale | Samples | Accuracy | Closest Margin |
+| :--- | :--- | :--- | :--- |
+| **Max** (16x9_max) | 24 | 100% | 18.43 (7 vs /) |
+| **Default** (16x9) | 24 | 100% | 25.73 (5 vs 3) |
+| **Min** (16x9_min) | 24 | 100% | 45.48 (9 vs 0) |

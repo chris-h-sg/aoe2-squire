@@ -67,7 +67,7 @@ def step2_cleanup_box(box_img):
     if len(box_img.shape) == 3:
         box_img = cv2.cvtColor(box_img, cv2.COLOR_BGR2GRAY)
         
-    _, cleaned = cv2.threshold(box_img, 20, 255, cv2.THRESH_TOZERO)
+    _, cleaned = cv2.threshold(box_img, 180, 255, cv2.THRESH_TOZERO)
     return cleaned
 
 def step3_segment_into_digits(box_img, min_digit_area=100):
