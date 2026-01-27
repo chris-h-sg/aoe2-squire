@@ -22,8 +22,8 @@
                 "vils": "64",
                 "total": "64/75"
             },
-            "idle_vils": {
-                "value": "3"
+            "idle": {
+                "vils": "3"
             }
         },
         "baseline_other": {
@@ -47,8 +47,8 @@
                 "vils": "10",
                 "total": "22/80"
             },
-            "idle_vils": {
-                "value": "10"
+            "idle": {
+                "vils": "10"
             }
         },
         "enormous_font_test": {
