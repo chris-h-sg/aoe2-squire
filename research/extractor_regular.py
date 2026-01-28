@@ -42,7 +42,7 @@ def step2_cleanup_box(box_img):
     - Implements static 'soft' filtering for final output.
     """
     # --- ADJUSTABLE THRESHOLDS ---
-    OUT_GREY_TOLERANCE = 12
+    OUT_GREY_TOLERANCE = 20
     OUT_BRIGHTNESS_THRESHOLD = 5
     # ----------------------------
     return apply_base_filter(box_img, OUT_GREY_TOLERANCE, OUT_BRIGHTNESS_THRESHOLD)
@@ -54,43 +54,60 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
     - Crops final digits from pre-cleaned 'out_img'.
     """
     # --- ADJUSTABLE THRESHOLDS ---
-    SEG_GREY_TOLERANCE = 10
+    SEG_GREY_TOLERANCE = 20
     SEG_BRIGHTNESS_THRESHOLD = 100
     BASELINE_MIN_AREA = 15
     # ----------------------------
 
     min_area = int(BASELINE_MIN_AREA * (ui_scale ** 2))
     
-    def get_components_recursive(roi_bgr, grey_tol, brightness_thresh, offset_x=0, offset_y=0, connectivity=8):
-        seg = apply_base_filter(roi_bgr, grey_tol, brightness_thresh)
-        _, binary = cv2.threshold(seg, 1, 255, cv2.THRESH_BINARY)
+    def get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x=0, offset_y=0, connectivity=8):
+        # Step 1: Filter and find connected components
+        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold)
+        binary = (seg > 0).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
+        # Filter components by minimum area
         valid_indices = [i for i in range(1, num_labels) if stats[i, cv2.CC_STAT_AREA] >= min_area]
-        
-        if not valid_indices: return []
-        
-        if len(valid_indices) > 1:
-            res = []
-            for i in valid_indices:
-                x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-                res.extend(get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y, connectivity))
-            return res
+        if not valid_indices:
+            return []
+
+        img_h, img_w = roi_bgr.shape[:2]
+
+        # Case A: Stall (1 wide blob, same size as parent)
+        # If we have 1 component that occupies the full dimensions and is still wide, force threshold refinement.
+        if len(valid_indices) == 1:
+            idx = valid_indices[0]
+            w = stats[idx, cv2.CC_STAT_WIDTH]
+            h = stats[idx, cv2.CC_STAT_HEIGHT]
             
-        i = valid_indices[0]
-        x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-        
-        if w + 2 > h:
-            if grey_tol > 2:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol - 2, brightness_thresh, offset_x + x, offset_y + y, connectivity)
-            if brightness_thresh < 160:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh + 10, offset_x + x, offset_y + y, connectivity)
-            if connectivity == 8:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y, 4)
-            print(f"  Exiting with {w}x{h}")
-        
-        # Base case: Final segment found
-        return [{'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h}]
+            if w == img_w and h == img_h and (w + 2 > h):
+                if grey_tolerance > 2:
+                    return get_components_recursive(roi_bgr, grey_tolerance - 2, brightness_threshold, offset_x, offset_y, connectivity)
+                if brightness_threshold < 160:
+                    return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold + 10, offset_x, offset_y, connectivity)
+                if connectivity == 8:
+                    return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x, offset_y, 4)
+                
+                # Base Case: Exhausted refinements, return current box
+                return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]
+
+        # Case B: Standard Processing
+        # Iterate through found components. If too wide, mask and recurse for a split.
+        results = []
+        for i in valid_indices:
+            x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
+            
+            if w + 2 > h:
+                # ISOLATION MASKING: Create a crop and zero out detached pixels
+                isolated_roi = roi_bgr[y:y+h, x:x+w].copy()
+                isolated_roi[labels[y:y+h, x:x+w] != i] = 0
+                results.extend(get_components_recursive(isolated_roi, grey_tolerance, brightness_threshold, offset_x + x, offset_y + y, connectivity))
+            else:
+                # Base Case: Clean digit or good shape found
+                results.append({'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h})
+                
+        return results
 
     # 1. Find the bounding boxes using iterative strict filter on original BGR
     digit_boxes = get_components_recursive(box_img, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD)
@@ -104,11 +121,13 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
     print(f"  Segmentation iterative: found {len(digits)} components.")
     return digits
 
-def run_pipeline(image_path, ui_map):
+def run_pipeline(image_path, ui_map, debug=False):
     start_time = time.time()
     
     img = cv2.imread(image_path)
     if img is None: return
+    
+    debug_img = img.copy() if debug else None
     
     image_name = Path(image_path).stem
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -129,6 +148,10 @@ def run_pipeline(image_path, ui_map):
     digit_dir = os.path.join(output_base, "digits")
     os.makedirs(digit_dir, exist_ok=True)
     
+    box_dir = os.path.join(output_base, "boxes") if debug else None
+    if box_dir:
+        os.makedirs(box_dir, exist_ok=True)
+    
     # Load Expected Values
     expected_values = {}
     expected_path = os.path.join(script_dir, '..', 'test_bench', 'expected_values.json')
@@ -147,8 +170,16 @@ def run_pipeline(image_path, ui_map):
         y = int(coords['y_px'] * ui_scale)
         w = int(coords['w_px'] * ui_scale)
         h = int(coords['h_px'] * ui_scale)
+
+        if debug_img is not None:
+            cv2.rectangle(debug_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.putText(debug_img, name, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
         box_img = img[y:y+h, x:x+w].copy()
         
+        if box_dir:
+            cv2.imwrite(os.path.join(box_dir, f"{name}.png"), box_img)
+
         print(f"Processing box: {name}...")
         
         # Step 2: Cleanup (Produces high-quality soft-filtered output image)
@@ -169,6 +200,11 @@ def run_pipeline(image_path, ui_map):
             filename = f"{name}_pos_{i:02d}_val_{char_name}.png"
             cv2.imwrite(os.path.join(digit_dir, filename), digit_img)
 
+    if debug_img is not None:
+        debug_out_path = os.path.join(output_base, f"{image_name}_debug.png")
+        cv2.imwrite(debug_out_path, debug_img)
+        print(f"Debug image saved to: {debug_out_path}")
+
     total_time = time.time() - start_time
     print(f"\nPipeline complete in {total_time:.4f}s")
     print(f"Core logic took {core_logic_time:.4f}s (excludes image read/write)")
@@ -177,13 +213,14 @@ def run_pipeline(image_path, ui_map):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("image_path")
+    parser.add_argument("--debug", action="store_true", help="Output a debug image with extraction boxes")
     args = parser.parse_args()
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(script_dir, '..', 'ui_map.json'), 'r') as f:
         ui_map = json.load(f)
         
-    run_pipeline(args.image_path, ui_map)
+    run_pipeline(args.image_path, ui_map, debug=args.debug)
 
 if __name__ == "__main__":
     main()

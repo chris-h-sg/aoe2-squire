@@ -16,11 +16,11 @@ RED_MASK_UPPER = np.array([60, 60, 255])
 BASELINE_MARGIN = 263
 
 # --- Extraction Clean-up ---
-OUT_GREY_TOLERANCE = 12
+OUT_GREY_TOLERANCE = 20
 OUT_BRIGHTNESS_THRESHOLD = 5
 
 # --- Segmentation ---
-SEG_GREY_TOLERANCE = 10
+SEG_GREY_TOLERANCE = 20
 SEG_BRIGHTNESS_THRESHOLD = 100
 BASELINE_MIN_AREA = 15
 
@@ -96,40 +96,47 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
     """
     min_area = int(BASELINE_MIN_AREA * (ui_scale ** 2))
     
-    def get_components_recursive(roi_bgr, grey_tol, brightness_thresh, offset_x=0, offset_y=0, connectivity=8):
-        seg = apply_base_filter(roi_bgr, grey_tol, brightness_thresh)
-        _, binary = cv2.threshold(seg, 1, 255, cv2.THRESH_BINARY)
+    def get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x=0, offset_y=0, connectivity=8):
+        # Step 1: Filter and find connected components
+        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold)
+        binary = (seg > 0).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
+        # Filter components by minimum area
         valid_indices = [i for i in range(1, num_labels) if stats[i, cv2.CC_STAT_AREA] >= min_area]
-        
-        if not valid_indices: 
+        if not valid_indices:
             return []
-        
-        # If multiple blobs found, recurse into each
-        if len(valid_indices) > 1:
-            res = []
-            for i in valid_indices:
-                x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-                res.extend(get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y, connectivity))
-            return res
+
+        img_h, img_w = roi_bgr.shape[:2]
+
+        # Case A: Stall (1 wide blob, same size as parent)
+        if len(valid_indices) == 1:
+            idx = valid_indices[0]
+            w, h = stats[idx, cv2.CC_STAT_WIDTH], stats[idx, cv2.CC_STAT_HEIGHT]
             
-        # If single blob, check if it's too wide (merged digits)
-        i = valid_indices[0]
-        x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-        
-        if w + 2 > h:
-            # Try stricter filters to split fused digits
-            if grey_tol > 2:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol - 2, brightness_thresh, offset_x + x, offset_y + y, connectivity)
-            if brightness_thresh < 160:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh + 10, offset_x + x, offset_y + y, connectivity)
-            if connectivity == 8:
-                # Try one more time with 4-connectivity when thresholds are exhausted
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y, 4)
-        
-        # Base case: Final segment found
-        return [{'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h}]
+            if w == img_w and h == img_h and (w + 2 > h):
+                if grey_tolerance > 2:
+                    return get_components_recursive(roi_bgr, grey_tolerance - 2, brightness_threshold, offset_x, offset_y, connectivity)
+                if brightness_threshold < 160:
+                    return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold + 10, offset_x, offset_y, connectivity)
+                if connectivity == 8:
+                    return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x, offset_y, 4)
+                return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]
+
+        # Case B: Standard Processing
+        results = []
+        for i in valid_indices:
+            x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
+            
+            if w + 2 > h:
+                # Too wide, mask neighbor pixels and recurse
+                isolated_roi = roi_bgr[y:y+h, x:x+w].copy()
+                isolated_roi[labels[y:y+h, x:x+w] != i] = 0
+                results.extend(get_components_recursive(isolated_roi, grey_tolerance, brightness_threshold, offset_x + x, offset_y + y, connectivity))
+            else:
+                results.append({'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h})
+                
+        return results
 
     # 1. Find the bounding boxes
     digit_boxes = get_components_recursive(box_img, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD)

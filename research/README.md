@@ -8,11 +8,15 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
     - **Logic**: Uses a rigid layout and simple thresholding.
     - **Purpose**: Fast extraction and template generation for OCR training.
 - **`extractor_regular.py`**: Robust extractor for standard/scaled UI resolutions.
-    - **Logic**: Uses dynamic scale detection and iterative segmentation.
+    - **Logic**: Uses dynamic scale detection and **Isolation Masking** recursive segmentation.
     - **Purpose**: High-quality character extraction from complex backgrounds.
+- **`poc_video.py`**: Video analysis tool for time-series data extraction.
+    - **Logic**: Samples frames at intervals, detects UI scale per-frame, and uses the vision pipeline to build a CSV.
+    - **Purpose**: Batch processing game footage for macro-analysis.
 - **`matcher.py`**: Robust digit matcher performing evaluation of extracted digits.
     - **Logic**: Uses the **Wiggle SSD** algorithm (Centering + Blurring + 9-Trial Offset).
     - **Purpose**: Verified at 100% accuracy across all UI scales.
+- **`test_video.py`**: Automated test suite for validating video extraction consistency.
 
 ### Vision Pipeline & OCR
 
@@ -56,11 +60,12 @@ The extraction process follows an optimized 4-stage pipeline:
 
 2.  **Stage 2: Extraction & Segmentation (`extract_digits`)**:
     - **Cleanup**: Applies a soft filter (`OUT_GREY_TOLERANCE=12`, `OUT_BRIGHTNESS_THRESHOLD=5`) to remove colored backgrounds while preserving anti-aliased text edges.
-    - **Recursive Segmentation**: 
-        - Uses `cv2.connectedComponentsWithStats` on a strictly thresholded mask (`SEG_GREY_TOLERANCE=10`).
-        - Detects fused digits (where `width + 2 > height`) and recursively re-segments them with incrementally stricter thresholds until they split.
-        - **4-Connectivity Fallback**: If digits remain merged at the maximum threshold limit, a final attempt is made using 4-connectivity (ignoring diagonals), which is highly effective for digits touching only at a single pixel corner.
-    - **Optimization**: This avoids the need for complex morphological operations or deep learning, relying on the game's consistent font spacing.
+    - **Recursive Segmentation (Split/Shrink/Stall Logic)**: 
+        - Uses `cv2.connectedComponentsWithStats` on a strictly thresholded mask (`SEG_GREY_TOLERANCE=20`).
+        - **Isolation Masking**: Every detected component is immediately masked (non-member pixels zeroed out) before recursion. This ensures detached noise or neighboring digits don't cause overlapping extractions or infinite loops.
+        - **Split Path**: If >1 blobs are found, recurse into each masked ROI.
+        - **Shrink Path**: If 1 blob is found but it's smaller than the ROI, recurse to see if the tighter crop reveals a cleaner split.
+        - **Stall Path**: If 1 blob found is same size as ROI and too wide (`w + 2 > h`), it tightens thresholds (`grey_tol`, then `brightness_thresh`, then `connectivity=4`) to force a split.
 
 3.  **Stage 3: Canvas Preparation (`prepare_canvas`)**:
     - **Logic**: Each extracted digit is:
@@ -115,11 +120,41 @@ We benchmarked the pipeline to identify bottlenecks for real-time application:
 
 In `extractor_regular.py`:
 ```python
-SEG_GREY_TOLERANCE = 10     # Starting tolerance for finding gaps
-OUT_GREY_TOLERANCE = 12     # Tolerance for the final visual output
+SEG_GREY_TOLERANCE = 20     # Starting tolerance for finding gaps
+OUT_GREY_TOLERANCE = 20     # Tolerance for the final visual output
 SEG_BRIGHTNESS_THRESHOLD = 100 # Minimum brightness for segmentation seeds
 OUT_BRIGHTNESS_THRESHOLD = 5   # Minimum brightness for final output detail
 ```
+
+## Video Analysis (poc_video.py)
+
+The video POC allows you to extract trends over time from recorded matches.
+
+### Usage
+```bash
+python research/poc_video.py --video <path> --interval 1.0 --output results.csv [--save-frames]
+```
+
+- **`--interval`**: Sampling frequency in seconds (default `1.0`).
+- **`--save-frames`**: Dumps the processed frames to `output/frames/` for verification.
+- **`--output`**: CSV filename (saved in `research/output/`).
+- **`test_video.py`**: Unit test for video analysis.
+    - **Usage**: `python research/test_video.py`
+    - **Purpose**: Runs `poc_video.py` on `test_bench/extract.mp4` and compares results against `test_bench/expected_extract_results.csv`.
+
+## Debugging Features
+
+Both `extractor_regular.py` and `poc_video.py` (via sampling) support a **Debug Mode** to visualize the extraction process.
+
+### Usage
+```bash
+python research/extractor_regular.py <image_path> --debug
+```
+
+### Debug Artifacts (`output/extractions/<name>/`)
+- **`_debug.png`**: The original frame with green bounding boxes drawn around every detected UI element.
+- **`boxes/`**: Individual crops of each UI element (Wood, Food, etc.) before segmentation.
+- **`digits/`**: The final surgically separated digit images sent to the matcher.
 
 ## UI Calibration
 
