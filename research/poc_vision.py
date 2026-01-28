@@ -22,7 +22,7 @@ OUT_BRIGHTNESS_THRESHOLD = 5
 # --- Segmentation ---
 SEG_GREY_TOLERANCE = 10
 SEG_BRIGHTNESS_THRESHOLD = 100
-BASELINE_MIN_AREA = 20
+BASELINE_MIN_AREA = 15
 
 # --- Matching ---
 WORKING_HEIGHT = 36
@@ -96,10 +96,10 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
     """
     min_area = int(BASELINE_MIN_AREA * (ui_scale ** 2))
     
-    def get_components_recursive(roi_bgr, grey_tol, brightness_thresh, offset_x=0, offset_y=0):
+    def get_components_recursive(roi_bgr, grey_tol, brightness_thresh, offset_x=0, offset_y=0, connectivity=8):
         seg = apply_base_filter(roi_bgr, grey_tol, brightness_thresh)
         _, binary = cv2.threshold(seg, 1, 255, cv2.THRESH_BINARY)
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
         valid_indices = [i for i in range(1, num_labels) if stats[i, cv2.CC_STAT_AREA] >= min_area]
         
@@ -111,19 +111,22 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
             res = []
             for i in valid_indices:
                 x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-                res.extend(get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y))
+                res.extend(get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y, connectivity))
             return res
             
         # If single blob, check if it's too wide (merged digits)
         i = valid_indices[0]
         x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
         
-        if w > h:
+        if w + 2 > h:
             # Try stricter filters to split fused digits
             if grey_tol > 2:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol - 2, brightness_thresh, offset_x + x, offset_y + y)
+                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol - 2, brightness_thresh, offset_x + x, offset_y + y, connectivity)
             if brightness_thresh < 160:
-                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh + 10, offset_x + x, offset_y + y)
+                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh + 10, offset_x + x, offset_y + y, connectivity)
+            if connectivity == 8:
+                # Try one more time with 4-connectivity when thresholds are exhausted
+                return get_components_recursive(roi_bgr[y:y+h, x:x+w], grey_tol, brightness_thresh, offset_x + x, offset_y + y, 4)
         
         # Base case: Final segment found
         return [{'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h}]

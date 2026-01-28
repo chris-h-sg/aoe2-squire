@@ -58,7 +58,8 @@ The extraction process follows an optimized 4-stage pipeline:
     - **Cleanup**: Applies a soft filter (`OUT_GREY_TOLERANCE=12`, `OUT_BRIGHTNESS_THRESHOLD=5`) to remove colored backgrounds while preserving anti-aliased text edges.
     - **Recursive Segmentation**: 
         - Uses `cv2.connectedComponentsWithStats` on a strictly thresholded mask (`SEG_GREY_TOLERANCE=10`).
-        - Detects fused digits (where `width > height`) and recursively re-segments them with incrementally stricter thresholds until they split.
+        - Detects fused digits (where `width + 2 > height`) and recursively re-segments them with incrementally stricter thresholds until they split.
+        - **4-Connectivity Fallback**: If digits remain merged at the maximum threshold limit, a final attempt is made using 4-connectivity (ignoring diagonals), which is highly effective for digits touching only at a single pixel corner.
     - **Optimization**: This avoids the need for complex morphological operations or deep learning, relying on the game's consistent font spacing.
 
 3.  **Stage 3: Canvas Preparation (`prepare_canvas`)**:
@@ -89,10 +90,11 @@ A single threshold is insufficient for low-resolution images. We implemented a d
 *   **Segmentation Mask**: Uses a strict filter (High brightness 100, strict gray tolerance) to find clear gaps between characters.
 *   **Soft Output**: Uses a lean filter (Low brightness 5, loose gray tolerance) to preserve the original antialiasing and edge detail, which is critical for future OCR accuracy.
 ### 3. Iterative Refinement
-When digits touch (visually merging into one blob), the system detects that a component's `width > height` and enters a multi-stage recursive refinement loop:
+When digits touch (visually merging into one blob), the system detects that a component's `width + 2 > height` and enters a multi-stage recursive refinement loop:
 1.  **Reduce Grey Tolerance**: It first attempts to tighten the grayscale tolerance (down to a minimum of 2) to find clear gaps.
-2.  **Increase Brightness Threshold**: If tightening the grey tolerance fails, it incrementally increases the brightness threshold (up to 160) to "erode" the connection between the digits.
-3.  **Boundary Transfer**: The boundaries found by this strict "seed" search are then applied to the "soft" output image, resulting in surgically separated digits that still have their high-quality antialiased edges.
+2.  **Increase Brightness Threshold**: If tightening the grey tolerance fails, it incrementally increases the brightness threshold (up to 100) to "erode" the connection between the digits.
+3.  **Ignore Diagonal Connectivity**: If the digits are still fused at the 100 brightness limit, the system switches from 8-connectivity to **4-connectivity**. This ignores diagonal pixels, successfully splitting characters that are only "corner-touching" due to anti-aliasing.
+4.  **Boundary Transfer**: The boundaries found by this strict "seed" search are then applied to the "soft" output image, resulting in surgically separated digits that still have their high-quality antialiased edges.
 
 ## Extraction Performance Conclusions
 
