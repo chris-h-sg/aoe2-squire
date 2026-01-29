@@ -22,6 +22,7 @@ OUT_BRIGHTNESS_THRESHOLD = 5
 # --- Segmentation ---
 SEG_GREY_TOLERANCE = 20
 SEG_BRIGHTNESS_THRESHOLD = 100
+SEG_REQUIRED_BRIGHTNESS = 230
 BASELINE_MIN_AREA = 15
 
 # --- Matching ---
@@ -180,8 +181,15 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
         binary = (seg > 0).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
-        # Filter components by minimum area
-        valid_indices = [i for i in range(1, num_labels) if stats[i, cv2.CC_STAT_AREA] >= min_area]
+        # Filter components by minimum area and brightness
+        valid_indices = []
+        for i in range(1, num_labels):
+            if stats[i, cv2.CC_STAT_AREA] >= min_area:
+                # Check if component has at least one bright pixel
+                x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
+                if np.max(seg[y:y+h, x:x+w][labels[y:y+h, x:x+w] == i]) >= SEG_REQUIRED_BRIGHTNESS:
+                    valid_indices.append(i)
+
         if not valid_indices:
             return []
 
@@ -193,10 +201,10 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
             w, h = stats[idx, cv2.CC_STAT_WIDTH], stats[idx, cv2.CC_STAT_HEIGHT]
             
             if w == img_w and h == img_h and (w + 2 > h):
-                if grey_tolerance > 2:
-                    return get_components_recursive(roi_bgr, grey_tolerance - 2, brightness_threshold, offset_x, offset_y, connectivity)
                 if brightness_threshold < 160:
                     return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold + 10, offset_x, offset_y, connectivity)
+                if grey_tolerance > 2:
+                    return get_components_recursive(roi_bgr, grey_tolerance - 2, brightness_threshold, offset_x, offset_y, connectivity)
                 if connectivity == 8:
                     return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x, offset_y, 4)
                 return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]

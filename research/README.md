@@ -72,12 +72,10 @@ The extraction process follows an optimized 4-stage pipeline:
         - If no yellow is found (grey icon), the value is immediately returned as "0".
         - This provides a **100-400x speedup** for this common case and prevents mismatched noise.
     - **Final Cleanup**: Applies a soft filter (`OUT_BRIGHTNESS_THRESHOLD=5`) to remove background noise while preserving anti-aliased text edges.
-    - **Recursive Segmentation (Split/Shrink/Stall Logic)**: 
-        - Uses `cv2.connectedComponentsWithStats` on a strictly thresholded mask (`SEG_GREY_TOLERANCE=20`).
-        - **Isolation Masking**: Every detected component is immediately masked (non-member pixels zeroed out) before recursion. This ensures detached noise or neighboring digits don't cause overlapping extractions or infinite loops.
+        - **Brightness Filter**: Discards any detected component that does not contain at least one pixel above `SEG_REQUIRED_BRIGHTNESS` (230). This prevents dim background artifacts from being identified as digits.
         - **Split Path**: If >1 blobs are found, recurse into each masked ROI.
         - **Shrink Path**: If 1 blob is found but it's smaller than the ROI, recurse to see if the tighter crop reveals a cleaner split.
-        - **Stall Path**: If 1 blob found is same size as ROI and too wide (`w + 2 > h`), it tightens thresholds (`grey_tol`, then `brightness_thresh`, then `connectivity=4`) to force a split.
+        - **Stall Path**: If 1 blob found is same size as ROI and too wide (`w + 2 > h`), it tightens thresholds (**brightness_thresh**, then **grey_tol**, then **connectivity=4**) to force a split.
 
 3.  **Stage 3: Canvas Preparation (`prepare_canvas`)**:
     - **Logic**: Each extracted digit is:
@@ -108,10 +106,10 @@ A single threshold is insufficient for low-resolution images. We implemented a d
 *   **Soft Output**: Uses a lean filter (Low brightness 5, loose gray tolerance) to preserve the original antialiasing and edge detail, which is critical for future OCR accuracy.
 ### 3. Iterative Refinement
 When digits touch (visually merging into one blob), the system detects that a component's `width + 2 > height` and enters a multi-stage recursive refinement loop:
-1.  **Reduce Grey Tolerance**: It first attempts to tighten the grayscale tolerance (down to a minimum of 2) to find clear gaps.
-2.  **Increase Brightness Threshold**: If tightening the grey tolerance fails, it incrementally increases the brightness threshold (up to 100) to "erode" the connection between the digits.
-3.  **Ignore Diagonal Connectivity**: If the digits are still fused at the 100 brightness limit, the system switches from 8-connectivity to **4-connectivity**. This ignores diagonal pixels, successfully splitting characters that are only "corner-touching" due to anti-aliasing.
-4.  **Boundary Transfer**: The boundaries found by this strict "seed" search are then applied to the "soft" output image, resulting in surgically separated digits that still have their high-quality antialiased edges.
+1.  **Increase Brightness Threshold**: The system first attempts to "erode" connections by incrementally increasing the brightness threshold (up to 160). This is prioritised as it more effectively separates digits that share anti-aliasing bleeds.
+2.  **Reduce Grey Tolerance**: If brightness adjustment fails, it tightens the grayscale tolerance (down to 2) to identify sharp color discontinuities.
+3.  **Ignore Diagonal Connectivity**: If the digits remain fused, it switches from 8-connectivity to **4-connectivity**. This ignores diagonal neighbors, successfully splitting characters that only touch at corners.
+4.  **Boundary Transfer**: The boundaries found by this strict "seed" search are applied to the "soft" output image, preserving high-quality edge detail.
 
 ## Extraction Performance Conclusions
 
@@ -136,6 +134,7 @@ SEG_GREY_TOLERANCE = 20     # Starting tolerance for finding gaps
 OUT_GREY_TOLERANCE = 20     # Tolerance for the final visual output
 SEG_BRIGHTNESS_THRESHOLD = 100 # Minimum brightness for segmentation seeds
 OUT_BRIGHTNESS_THRESHOLD = 5   # Minimum brightness for final output detail
+SEG_REQUIRED_BRIGHTNESS = 230  # Discard segments without at least one 230+ pixel
 ```
 
 ## Video Analysis (poc_video.py)
@@ -150,9 +149,11 @@ python research/poc_video.py --video <path> --interval 1.0 --output results.csv 
 - **`--interval`**: Sampling frequency in seconds (default `1.0`).
 - **`--save-frames`**: Dumps the processed frames to `output/frames/` for verification.
 - **`--output`**: CSV filename (saved in `research/output/`).
-- **`test_video.py`**: Unit test for video analysis.
+- **`test_video.py`**: Parameterized test suite for validating video extraction.
     - **Usage**: `python research/test_video.py`
-    - **Purpose**: Runs `poc_video.py` on `test_bench/extract.mp4` and compares results against `test_bench/expected_extract_results.csv`.
+    - **Logic**: Iterates through multiple video files and intervals, comparing results against expected CSVs.
+    - **Expected File Pattern**: `<video_name>_expected_<interval>s.csv` (e.g., `extract2_expected_1s.csv`).
+    - **Status**: Currently identifies several edge-case mismatches (segmentation/matching) being used for further refinement.
 
 ## Debugging Features
 
@@ -160,8 +161,14 @@ Both `extractor_regular.py` and `poc_video.py` (via sampling) support a **Debug 
 
 ### Usage
 ```bash
-python research/extractor_regular.py <image_path> --debug
+python research/extractor_regular.py <image_path> [--debug] [--bright-thresh 230]
 ```
+
+| Argument | Description |
+| :--- | :--- |
+| `image_path` | Required. Path to the screenshot. |
+| `--debug` | Optional. Generates a debug visualization and saves crops to `output/`. |
+| `--bright-thresh`| Optional. The minimum brightness a segment must contain (default 230). |
 
 ### Debug Artifacts (`output/extractions/<name>/`)
 - **`_debug.png`**: The original frame with green bounding boxes drawn around every detected UI element.
