@@ -24,9 +24,10 @@ def detect_ui_scale(img, baseline_margin=263):
     if len(x_idxs) < 5: return 1.0
     return (w - np.max(x_idxs)) / baseline_margin
 
-def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False):
+def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allow_yellow=False):
     """Filter by greyness and brightness. If overlay_mode, use Blue channel normalization."""
     if overlay_mode:
+        print("Overlay mode enabled")
         # Housed overlay has bright Red/Green background, but low Blue.
         # Digits have higher Blue than the background.
         blue = img[:, :, 0]
@@ -45,12 +46,10 @@ def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False):
         # 1. Standard grey mask (keeps white/grey text)
         to_keep = (diff <= grey_tol)
         
-        # 2. Dynamic Yellow Font Detection:
-        # If no bright white pixels are found in the box, allow yellowish pixels.
-        bright_white_exists = np.any((max_val > 220) & (diff < 20))
-        if not bright_white_exists:
+        # 2. Dynamic Yellow Font Detection (Restricted to allow_yellow fields):
+        if allow_yellow:
             rg_diff = np.abs(r.astype(np.int16) - g.astype(np.int16))
-            is_yellow = (r > 100) & (g > 100) & (rg_diff < 50) & (b < max_val - 15)
+            is_yellow = (r > 150) & (g > 150) & (rg_diff < 50) & (b < max_val - 15)
             if np.any(is_yellow):
                 to_keep |= is_yellow
         
@@ -105,7 +104,7 @@ def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
     # Return True if any yellow pixels found
     return np.any(is_yellow)
 
-def step2_cleanup_box(box_img, overlay_mode=False):
+def step2_cleanup_box(box_img, overlay_mode=False, allow_yellow=False):
     """
     Step 2: Cleanup.
     - Implements static 'soft' filtering for final output.
@@ -114,9 +113,9 @@ def step2_cleanup_box(box_img, overlay_mode=False):
     OUT_GREY_TOLERANCE = 20
     OUT_BRIGHTNESS_THRESHOLD = 5 if not overlay_mode else 30 # Higher threshold for normalized Blue
     # ----------------------------
-    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, OUT_BRIGHTNESS_THRESHOLD, overlay_mode=overlay_mode)
+    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, OUT_BRIGHTNESS_THRESHOLD, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
 
-def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False, bright_threshold=230):
+def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False, bright_threshold=230, allow_yellow=False):
     """
     Step 3: Segmentation into digits.
     - Uses iterative strict filtering on original BGR image to find 'seeds'.
@@ -133,7 +132,7 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
     
     def get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x=0, offset_y=0, connectivity=8):
         # Step 1: Filter and find connected components
-        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode=overlay_mode)
+        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
         binary = (seg > 0).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
@@ -260,13 +259,19 @@ def run_pipeline(image_path, ui_map, debug=False, bright_threshold=230):
 
         print(f"Processing box: {name}...")
         
-        # Step 1.5: Overlay Detection
-        overlay_mode = detect_housed_overlay(box_img)
-        if overlay_mode:
-            print(f"  Housed overlay detected for {name}!")
+        # Select processing modes
+        overlay_mode = False
+        allow_yellow = False
+
+        # Population Total Shortcut: Check for Housed overlay and enable Yellow Font detection
+        if name == "population_total":
+            overlay_mode = detect_housed_overlay(box_img)
+            allow_yellow = True
+            if overlay_mode:
+                print(f"  Housed overlay detected for {name}!")
 
         # Step 2: Cleanup (Produces high-quality soft-filtered output image)
-        out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode)
+        out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
         
         # Idle Villager Shortcut: If no yellow pixels, return no digits
         if name == "idle_vils" and not contains_yellow(box_img):
@@ -274,7 +279,7 @@ def run_pipeline(image_path, ui_map, debug=False, bright_threshold=230):
             digits = []
         else:
             # Step 3: Segmentation (Uses original BGR for seeds, then crops from out_img)
-            digits = step3_segment_into_digits(box_img, out_img, ui_scale, overlay_mode=overlay_mode, bright_threshold=bright_threshold)
+            digits = step3_segment_into_digits(box_img, out_img, ui_scale, overlay_mode=overlay_mode, bright_threshold=bright_threshold, allow_yellow=allow_yellow)
         
         core_logic_time += time.time() - proc_start
         

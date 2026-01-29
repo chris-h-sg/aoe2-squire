@@ -3,6 +3,7 @@ import subprocess
 import csv
 import os
 import sys
+import cv2
 from pathlib import Path
 
 class TestVideoPOC(unittest.TestCase):
@@ -80,21 +81,63 @@ class TestVideoPOC(unittest.TestCase):
                                      f"Row count mismatch for {video_filename}: expected {len(reader_exp)}, got {len(reader_act)}")
 
                     mismatches = []
+                    saved_frames = set()
+                    
                     for i, (row_exp, row_act) in enumerate(zip(reader_exp, reader_act)):
+                        row_mismatches = []
                         for key in row_exp.keys():
                             val_exp = row_exp[key].strip()
                             val_act = row_act.get(key, "").strip()
                             
                             if val_act != val_exp:
-                                mismatches.append(f"Row {i} ({row_exp['timestamp_sec']}s), Column '{key}': Expected '{val_exp}', Got '{val_act}'")
+                                row_mismatches.append(f"Col '{key}': Exp '{val_exp}', Got '{val_act}'")
+                        
+                        if row_mismatches:
+                            timestamp_str = row_exp['timestamp_sec']
+                            try:
+                                timestamp = float(timestamp_str)
+                            except ValueError:
+                                timestamp = 0.0
+                            
+                            frame_idx = int(row_act.get('frame_idx', 0))
+                            
+                            mismatches.append(f"Row {i} ({timestamp_str}s): {', '.join(row_mismatches)}")
+                            
+                            if timestamp_str not in saved_frames:
+                                frame_path = self.save_error_frame(video_path, frame_idx, timestamp, video_stem)
+                                if frame_path:
+                                    mismatches.append(f"  [Frame saved: {frame_path.name}]")
+                                saved_frames.add(timestamp_str)
 
                     if mismatches:
                         error_msg = "\n".join(mismatches)
-                        self.fail(f"Found {len(mismatches)} mismatches in {video_filename}:\n{error_msg}")
+                        self.fail(f"Found mismatches in {video_filename}:\n{error_msg}")
 
                 # Clean up between subtests
                 if self.output_csv.exists():
                     os.remove(self.output_csv)
+
+    def save_error_frame(self, video_path, frame_idx, timestamp, video_stem):
+        """Saves the frame at frame_idx to research/output/error_frames/."""
+        error_frames_dir = self.research_dir / "output" / "error_frames"
+        error_frames_dir.mkdir(parents=True, exist_ok=True)
+        
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            return None
+        
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = cap.read()
+        if ret:
+            filename = f"{video_stem}_err_{timestamp:.2f}s_f{frame_idx}.png"
+            filepath = error_frames_dir / filename
+            cv2.imwrite(str(filepath), frame)
+            cap.release()
+            # Return relative path for cleaner output
+            return filepath
+        
+        cap.release()
+        return None
 
     def tearDown(self):
         # Final cleanup
