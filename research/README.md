@@ -59,6 +59,10 @@ The extraction process follows an optimized 4-stage pipeline:
     - **Purpose**: Ensures coordinates from `ui_map.json` are perfectly adapted to any resolution (720p - 4k).
 
 2.  **Stage 2: Special Condition & Segmentation (`extract_digits`)**:
+    - **Housed Overlay Handling**:
+        - Detects if the box has the bright yellow "at-pop-limit" overlay background (`mean(G) > 150`, `mean(R) > 150`).
+        - **Blue Channel Fallback**: Automatically switches to the Blue channel for extraction, bypassing the yellow overlay which makes standard greyscale filtering impossible.
+        - **Normalization**: Auto-scales the low-contrast Blue channel to full brightness (`[0, 255]`) for accurate matching.
     - **Idle Villager Short-Circuit**: 
         - Before full extraction, `idle_vils` box is checked for **Yellow Pixels** (`contains_yellow`).
         - If no yellow is found (grey icon), the value is immediately returned as "0".

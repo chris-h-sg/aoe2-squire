@@ -67,6 +67,56 @@
             "population": {
                 "total": "64/75"
             }
+        },
+        "housed_overlay": {
+            "wood": {
+                "vils": "31",
+                "total": "348"
+            },
+            "food": {
+                "vils": "34",
+                "total": "181"
+            },
+            "gold": {
+                "vils": "23",
+                "total": "50"
+            },
+            "stone": {
+                "vils": "13",
+                "total": "749"
+            },
+            "population": {
+                "vils": "107",
+                "total": "136/140"
+            },
+            "idle": {
+                "vils": "0"
+            }
+        },
+        "housed_no_overlay": {
+            "wood": {
+                "vils": "31",
+                "total": "348"
+            },
+            "food": {
+                "vils": "35",
+                "total": "181"
+            },
+            "gold": {
+                "vils": "23",
+                "total": "51"
+            },
+            "stone": {
+                "vils": "13",
+                "total": "749"
+            },
+            "population": {
+                "vils": "107",
+                "total": "136/140"
+            },
+            "idle": {
+                "vils": "1"
+            }
         }
     },
     "images": {
@@ -93,6 +143,12 @@
         },
         "enormous.png": {
             "use_value_set": "enormous_font_test"
+        },
+        "housed_overlay.png": {
+            "use_value_set": "housed_overlay"
+        },
+        "housed_no_overlay.png": {
+            "use_value_set": "housed_no_overlay"
         }
     }
 }

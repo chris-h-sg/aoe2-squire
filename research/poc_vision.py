@@ -67,10 +67,20 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
 # 2. EXTRACTION & SEGMENTATION
 # ==========================================
 
-def apply_base_filter(img, grey_tol, brightness_thresh):
+def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False):
     """
     Filter by greyness and brightness to isolate white text.
+    If overlay_mode is True, uses Blue channel normalization to bypass yellow overlay.
     """
+    if overlay_mode:
+        # Housed overlay has bright Red/Green background, but low Blue.
+        # Digits have higher Blue than the background.
+        blue = img[:, :, 0]
+        # Normalize Blue channel to [0, 255] to make digits bright
+        normalized = cv2.normalize(blue, None, 0, 255, cv2.NORM_MINMAX)
+        _, cleaned = cv2.threshold(normalized, brightness_thresh, 255, cv2.THRESH_TOZERO)
+        return cleaned
+
     filtered = img.copy()
     if len(filtered.shape) == 3:
         # Check for color deviation (non-grey pixels)
@@ -82,6 +92,17 @@ def apply_base_filter(img, grey_tol, brightness_thresh):
         
     _, cleaned = cv2.threshold(filtered, brightness_thresh, 255, cv2.THRESH_TOZERO)
     return cleaned
+
+def detect_housed_overlay(img):
+    """Detects the bright yellow background overlay used when a player is housed."""
+    if img is None or len(img.shape) < 3:
+        return False
+    # The overlay background is very bright in Green and Red (mean > 150)
+    # and significantly darker in Blue (mean < 100).
+    mean_g = np.mean(img[:, :, 1])
+    mean_r = np.mean(img[:, :, 2])
+    mean_b = np.mean(img[:, :, 0])
+    return mean_g > 150 and mean_r > 150 and mean_b < 100
 
 def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
     """
@@ -122,13 +143,15 @@ def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
     # Return True if any yellow pixels found
     return np.any(is_yellow)
 
-def step2_cleanup_box(box_img):
+def step2_cleanup_box(box_img, overlay_mode=False):
     """
     Produces a high-quality soft-filtered output image for the matcher.
     """
-    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, OUT_BRIGHTNESS_THRESHOLD)
+    # Higher threshold for normalized Blue (30) to avoid background noise
+    threshold = OUT_BRIGHTNESS_THRESHOLD if not overlay_mode else 30
+    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, threshold, overlay_mode=overlay_mode)
 
-def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
+def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False):
     """
     Finds digit bounding boxes using strict iterative filtering on the original BGR,
     then crops the final digits from the cleaner 'out_img'.
@@ -137,7 +160,7 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
     
     def get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x=0, offset_y=0, connectivity=8):
         # Step 1: Filter and find connected components
-        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold)
+        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode=overlay_mode)
         binary = (seg > 0).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
@@ -189,13 +212,13 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0):
         
     return digits, digit_boxes
 
-def extract_digits(box_img, ui_scale=1.0):
+def extract_digits(box_img, ui_scale=1.0, overlay_mode=False):
     """
     Wrapper that performs cleanup and segmentation.
     Returns list of cleaned digit images.
     """
-    out_img = step2_cleanup_box(box_img)
-    digits, _ = step3_segment_into_digits(box_img, out_img, ui_scale)
+    out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode)
+    digits, _ = step3_segment_into_digits(box_img, out_img, ui_scale, overlay_mode=overlay_mode)
     return digits
 
 # ==========================================
@@ -369,6 +392,11 @@ def process_frame(img, ui_map, templates, verbose=True):
             
         box_img = img[y:y+h, x:x+w].copy()
         
+        # Step 1.5: Overlay Detection
+        overlay_mode = detect_housed_overlay(box_img)
+        if overlay_mode and verbose:
+            print(f"    Housed overlay detected for {name}!")
+
         # Special Case: Idle Villagers are 0 if the icon is grey (not yellow)
         if name == "idle_vils":
             if not contains_yellow(box_img):
@@ -377,7 +405,7 @@ def process_frame(img, ui_map, templates, verbose=True):
                 debug_details = ["YellowCheck:0"]
             else:
                 # Extract digits
-                digits = extract_digits(box_img, ui_scale)
+                digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode)
                 
                 # Match digits
                 value_str = ""
@@ -388,7 +416,7 @@ def process_frame(img, ui_map, templates, verbose=True):
                     debug_details.append(f"{char}({ssd:.1f}{info})")
         else:
             # Extract digits
-            digits = extract_digits(box_img, ui_scale)
+            digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode)
             
             # Match digits
             value_str = ""
