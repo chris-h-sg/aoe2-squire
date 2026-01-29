@@ -170,6 +170,8 @@ def main():
     closest_margin = float('inf')
     closest_info = ""
 
+    resource_results = {}
+    
     for f in files:
         img = cv2.imread(str(f), cv2.IMREAD_GRAYSCALE)
         if img is None: continue
@@ -179,6 +181,13 @@ def main():
         
         best_score, best_char = all_matches[0]
         second_score, second_char = all_matches[1] if len(all_matches) > 1 else (float('inf'), "?")
+        
+        # Track resource-level results
+        # Filename example: wood_total_pos_00_val_5.png
+        res_name = "_".join(f.stem.split("_")[:2])
+        if res_name not in resource_results:
+            resource_results[res_name] = []
+        resource_results[res_name].append(best_char)
         
         margin = second_score - best_score
         if margin < closest_margin:
@@ -197,8 +206,20 @@ def main():
         print(f"{f.name[:35]:<35} | {expected:<3} | {best_char:<4} | {best_score:<7.2f} | {second_char:<4} | {second_score:<7.2f} | {status}")
 
     print("-" * 90)
+    
+    # Reconstructed Strings Summary
+    print("\nReconstructed Value Summary:")
+    
+    # Special Case: If idle_vils was not in the segments at all, it was likely skipped as "0"
+    if "idle_vils" not in resource_results:
+        print(f"  {'idle_vils':<20}: 0 (Short-circuited / No segments found)")
+        
+    for res, chars in sorted(resource_results.items()):
+        val_str = "".join(chars)
+        print(f"  {res:<20}: {val_str}")
+    
     if total > 0:
-        print(f"Results: {matches}/{total} matched ({100*matches/total:.1f}%)")
+        print(f"\nMatch Accuracy: {matches}/{total} ({100*matches/total:.1f}%)")
         print(f"Closest Second Place: {closest_info}")
     
     if mismatches:

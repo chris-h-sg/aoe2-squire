@@ -66,40 +66,21 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
                     frame_filename = os.path.join(frames_dir, f"frame_{timestamp:07.2f}s.png")
                     cv2.imwrite(frame_filename, frame)
 
-                # 1. Detect UI Scale for this specific frame
-                ui_scale = poc_vision.detect_ui_scale(frame)
+                # Process the frame using poc_vision
+                results = poc_vision.process_frame(frame, ui_map, templates, verbose=False)
                 
+                # Convert results to CSV row format
                 row_data = {
                     'timestamp_sec': round(timestamp, 2),
                     'frame_idx': frame_idx
                 }
                 
-                # 2. Extract and Match each element
-                for name, coords in ui_map.get('elements', {}).items():
-                    # Calculate coordinates based on scale
-                    x = int(coords['x_px'] * ui_scale)
-                    y = int(coords['y_px'] * ui_scale)
-                    w = int(coords['w_px'] * ui_scale)
-                    h = int(coords['h_px'] * ui_scale)
-                    
-                    # Safety check for image bounds
-                    if y+h > frame.shape[0] or x+w > frame.shape[1] or x < 0 or y < 0:
-                        row_data[name] = ""
-                        continue
-                        
-                    # Crop the region of interest
-                    box_img = frame[y:y+h, x:x+w].copy()
-                    
-                    # Extract individual digits
-                    digits = poc_vision.extract_digits(box_img, ui_scale)
-                    
-                    # Match each digit to templates
-                    value_str = ""
-                    for d_img in digits:
-                        char, ssd, info = poc_vision.match_digit_to_template(d_img, templates)
-                        value_str += char
-                    
-                    row_data[name] = value_str
+                # Flatten the nested results dict to match CSV headers
+                for name in element_names:
+                    parts = name.split('_')
+                    category = parts[0]
+                    sub_key = parts[1] if len(parts) > 1 else "value"
+                    row_data[name] = results.get(category, {}).get(sub_key, "")
 
                 # Save and print summary
                 writer.writerow(row_data)

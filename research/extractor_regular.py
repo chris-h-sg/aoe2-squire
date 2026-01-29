@@ -36,6 +36,37 @@ def apply_base_filter(img, grey_tol, brightness_thresh):
     _, cleaned = cv2.threshold(filtered, brightness_thresh, 255, cv2.THRESH_TOZERO)
     return cleaned
 
+def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
+    """
+    Checks if the box contains yellow pixels (indicating active idle villagers icon).
+    Yellow is detected by: high R and G values, low B value, R and G similar.
+    """
+    if img is None or len(img.shape) < 3:
+        return False
+    
+    # Extract BGR channels
+    b_channel = img[:, :, 0]
+    g_channel = img[:, :, 1]
+    r_channel = img[:, :, 2]
+    
+    # Yellow detection criteria
+    # 1. G and R must be bright
+    bright_g = g_channel > min_brightness
+    bright_r = r_channel > min_brightness
+    
+    # 2. B must be significantly lower than both G and R
+    b_lower_than_g = b_channel < (g_channel - blue_margin)
+    b_lower_than_r = b_channel < (r_channel - blue_margin)
+    
+    # 3. R and G should be similar (both high for yellow)
+    rg_similar = np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)) < rg_similarity
+    
+    # Combine all criteria
+    is_yellow = bright_g & bright_r & b_lower_than_g & b_lower_than_r & rg_similar
+    
+    # Return True if any yellow pixels found
+    return np.any(is_yellow)
+
 def step2_cleanup_box(box_img):
     """
     Step 2: Cleanup.
@@ -185,8 +216,14 @@ def run_pipeline(image_path, ui_map, debug=False):
         # Step 2: Cleanup (Produces high-quality soft-filtered output image)
         out_img = step2_cleanup_box(box_img)
         
-        # Step 3: Segmentation (Uses original BGR for seeds, then crops from out_img)
-        digits = step3_segment_into_digits(box_img, out_img, ui_scale)
+        # Idle Villager Shortcut: If no yellow pixels, return no digits
+        if name == "idle_vils" and not contains_yellow(box_img):
+            print("  Idle Villager shortcut: No yellow found, returning 0 segments.")
+            digits = []
+        else:
+            # Step 3: Segmentation (Uses original BGR for seeds, then crops from out_img)
+            digits = step3_segment_into_digits(box_img, out_img, ui_scale)
+        
         core_logic_time += time.time() - proc_start
         
         resource_type = name.split('_')[0]

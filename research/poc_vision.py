@@ -83,6 +83,45 @@ def apply_base_filter(img, grey_tol, brightness_thresh):
     _, cleaned = cv2.threshold(filtered, brightness_thresh, 255, cv2.THRESH_TOZERO)
     return cleaned
 
+def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
+    """
+    Checks if the box contains yellow pixels (indicating active idle villagers icon).
+    Yellow is detected by: high R and G values, low B value, R and G similar.
+    
+    Args:
+        min_brightness: Minimum value for R and G channels (default 100)
+        blue_margin: How much lower B must be than R and G (default 30)
+        rg_similarity: Maximum difference between R and G (default 50)
+    
+    Returns:
+        True if any yellow pixels found, False otherwise (grey icon = 0 idle vils)
+    """
+    if img is None or len(img.shape) < 3:
+        return False
+    
+    # Extract BGR channels
+    b_channel = img[:, :, 0]
+    g_channel = img[:, :, 1]
+    r_channel = img[:, :, 2]
+    
+    # Yellow detection criteria
+    # 1. G and R must be bright
+    bright_g = g_channel > min_brightness
+    bright_r = r_channel > min_brightness
+    
+    # 2. B must be significantly lower than both G and R
+    b_lower_than_g = b_channel < (g_channel - blue_margin)
+    b_lower_than_r = b_channel < (r_channel - blue_margin)
+    
+    # 3. R and G should be similar (both high for yellow)
+    rg_similar = np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)) < rg_similarity
+    
+    # Combine all criteria
+    is_yellow = bright_g & bright_r & b_lower_than_g & b_lower_than_r & rg_similar
+    
+    # Return True if any yellow pixels found
+    return np.any(is_yellow)
+
 def step2_cleanup_box(box_img):
     """
     Produces a high-quality soft-filtered output image for the matcher.
@@ -301,6 +340,78 @@ def match_digit_to_template(digit_img, processed_templates):
 # 4. MAIN PIPELINE
 # ==========================================
 
+def process_frame(img, ui_map, templates, verbose=True):
+    """
+    Process a single frame (numpy array) and extract all UI elements.
+    Returns a dictionary with extracted values.
+    """
+    if img is None:
+        return {}
+    
+    # 1. Detect Scale
+    ui_scale = detect_ui_scale(img)
+    
+    results = {}
+    
+    # 2. Process each element
+    for name, coords in ui_map.get('elements', {}).items():
+        value_str = ""
+        x = int(coords['x_px'] * ui_scale)
+        y = int(coords['y_px'] * ui_scale)
+        w = int(coords['w_px'] * ui_scale)
+        h = int(coords['h_px'] * ui_scale)
+        
+        # Valid crop check
+        if x+w > img.shape[1] or y+h > img.shape[0]:
+            if verbose:
+                print(f"Skipping {name}: Coordinates out of bounds")
+            continue
+            
+        box_img = img[y:y+h, x:x+w].copy()
+        
+        # Special Case: Idle Villagers are 0 if the icon is grey (not yellow)
+        if name == "idle_vils":
+            if not contains_yellow(box_img):
+                value_str = "0"
+                digits = []
+                debug_details = ["YellowCheck:0"]
+            else:
+                # Extract digits
+                digits = extract_digits(box_img, ui_scale)
+                
+                # Match digits
+                value_str = ""
+                debug_details = []
+                for d_img in digits:
+                    char, ssd, info = match_digit_to_template(d_img, templates)
+                    value_str += char
+                    debug_details.append(f"{char}({ssd:.1f}{info})")
+        else:
+            # Extract digits
+            digits = extract_digits(box_img, ui_scale)
+            
+            # Match digits
+            value_str = ""
+            debug_details = []
+            for d_img in digits:
+                char, ssd, info = match_digit_to_template(d_img, templates)
+                value_str += char
+                debug_details.append(f"{char}({ssd:.1f}{info})")
+        
+        if verbose:
+            print(f"  {name:<20}: {value_str:<10} | Raw: {', '.join(debug_details)}")
+        
+        # Structure output to match expected_values.json (category -> sub_key)
+        parts = name.split('_')
+        category = parts[0]
+        sub_key = parts[1] if len(parts) > 1 else "value"
+        
+        if category not in results:
+            results[category] = {}
+        results[category][sub_key] = value_str
+    
+    return results
+
 def process_image(image_path, ui_map, templates):
     start_time = time.time()
     
@@ -318,49 +429,11 @@ def process_image(image_path, ui_map, templates):
     time_scale = time.time() - t0
     print(f"Detected UI Scale: {ui_scale:.4f} (took {time_scale*1000:.2f}ms)")
 
-    results = {}
     time_extract = 0
     time_match = 0
 
-    # 2. Process each element
-    for name, coords in ui_map.get('elements', {}).items():
-        x = int(coords['x_px'] * ui_scale)
-        y = int(coords['y_px'] * ui_scale)
-        w = int(coords['w_px'] * ui_scale)
-        h = int(coords['h_px'] * ui_scale)
-        
-        # Valid crop check
-        if x+w > img.shape[1] or y+h > img.shape[0]:
-            print(f"Skipping {name}: Coordinates out of bounds")
-            continue
-            
-        box_img = img[y:y+h, x:x+w].copy()
-        
-        # Extract digits
-        t0 = time.time()
-        digits = extract_digits(box_img, ui_scale)
-        time_extract += (time.time() - t0)
-        
-        # Match digits
-        t0 = time.time()
-        value_str = ""
-        debug_details = []
-        for d_img in digits:
-            char, ssd, info = match_digit_to_template(d_img, templates)
-            value_str += char
-            debug_details.append(f"{char}({ssd:.1f}{info})")
-        time_match += (time.time() - t0)
-            
-        print(f"  {name:<20}: {value_str:<10} | Raw: {', '.join(debug_details)}")
-        
-        # Structure output to match expected_values.json (category -> sub_key)
-        parts = name.split('_')
-        category = parts[0]
-        sub_key = parts[1] if len(parts) > 1 else "value"
-        
-        if category not in results:
-            results[category] = {}
-        results[category][sub_key] = value_str
+    # 2. Process frame
+    results = process_frame(img, ui_map, templates, verbose=True)
 
     proc_time = time.time() - proc_start
     total_time = time.time() - start_time
