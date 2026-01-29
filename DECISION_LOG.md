@@ -69,3 +69,16 @@
 *   **Decision**: Consolidated all resource lookups to follow the `{main_type}_{sub_type}` pattern.
 *   **Fix**: Renamed `idle_vils` to `idle` (main) and `vils` (sub) in `expected_values.json` to match the extractor's parsing logic (`name.split('_')`).
 *   **Reasoning**: Prevents special-case hardcoding and ensures the extractor can dynamically look up ground truth for any UI element.
+
+## Vision Pipeline (Jan 29, 2026)
+
+### 1. Dynamic Color Handling (Yellow Font & Overlay)
+*   **Decision**: Implemented a **Dynamic Mode Switcher** in the base filter that detects and adapts to yellow font/background.
+*   **Logic**:
+    1.  **Overlay Mode**: If a bright yellow background is detected (`mean(G) > 150, mean(R) > 150`), switch to **Blue Channel Normalization**. This bypasses the yellow noise entirely.
+    2.  **Yellow Font Mode**: If no "bright white" pixels exist in a box (indicating colored text), the filter allows "Yellowish" pixels (`R,G > 100, B < max-15`).
+    3.  **Luminance Normalization**: Used `max(R, G, B)` for final grayscale conversion.
+*   **Reasoning**:
+    *   Previously, the population count would disappear when turning yellow (near cap) because it violated the "Grey Tolerance" check.
+    *   Housed players needed a way to see digits buried in a bright yellow overlay.
+    *   Normalizing colored text to white via the max channel allows 1:1 matching against standard white templates without needing extra colored templates.

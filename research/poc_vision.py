@@ -81,15 +81,31 @@ def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False):
         _, cleaned = cv2.threshold(normalized, brightness_thresh, 255, cv2.THRESH_TOZERO)
         return cleaned
 
-    filtered = img.copy()
-    if len(filtered.shape) == 3:
-        # Check for color deviation (non-grey pixels)
-        max_val = np.max(filtered, axis=2).astype(np.int16)
-        min_val = np.min(filtered, axis=2).astype(np.int16)
-        too_colored_mask = (max_val - min_val) > grey_tol
-        filtered[too_colored_mask] = 0
-        filtered = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
+    if len(img.shape) == 3:
+        # BGR Channels
+        b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+        max_val = np.max(img, axis=2).astype(np.int16)
+        min_val = np.min(img, axis=2).astype(np.int16)
+        diff = max_val - min_val
         
+        # 1. Standard grey mask (keeps white/grey text)
+        to_keep = (diff <= grey_tol)
+        
+        # 2. Dynamic Yellow Font Detection:
+        # If no bright white pixels are found in the box, allow yellowish pixels.
+        bright_white_exists = np.any((max_val > 220) & (diff < 20))
+        if not bright_white_exists:
+            rg_diff = np.abs(r.astype(np.int16) - g.astype(np.int16))
+            is_yellow = (r > 100) & (g > 100) & (rg_diff < 50) & (b < max_val - 15)
+            if np.any(is_yellow):
+                to_keep |= is_yellow
+        
+        # Use max_val for grayscale to ensure colored text matches white templates
+        filtered = np.zeros(max_val.shape, dtype=np.uint8)
+        filtered[to_keep] = max_val.astype(np.uint8)[to_keep]
+    else:
+        filtered = img
+
     _, cleaned = cv2.threshold(filtered, brightness_thresh, 255, cv2.THRESH_TOZERO)
     return cleaned
 

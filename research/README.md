@@ -58,16 +58,20 @@ The extraction process follows an optimized 4-stage pipeline:
     - **Logic**: Slices the top 20% of the image, finds the rightmost red pixel, and calculates `ui_scale` against a baseline.
     - **Purpose**: Ensures coordinates from `ui_map.json` are perfectly adapted to any resolution (720p - 4k).
 
-2.  **Stage 2: Special Condition & Segmentation (`extract_digits`)**:
-    - **Housed Overlay Handling**:
-        - Detects if the box has the bright yellow "at-pop-limit" overlay background (`mean(G) > 150`, `mean(R) > 150`).
-        - **Blue Channel Fallback**: Automatically switches to the Blue channel for extraction, bypassing the yellow overlay which makes standard greyscale filtering impossible.
+2.  **Stage 2: Dynamic Color Handling & Segmentation (`extract_digits`)**:
+    - **Housed Overlay Background**:
+        - Detects if the box has a full-box bright yellow background (`mean(G) > 150`, `mean(R) > 150`, `mean(B) < 100`).
+        - **Blue Channel Fallback**: Automatically switches to the Blue channel for extraction, bypassing the yellow background which makes standard greyscale filtering impossible.
         - **Normalization**: Auto-scales the low-contrast Blue channel to full brightness (`[0, 255]`) for accurate matching.
+    - **Yellow Font (Dynamic Detection)**:
+        - Detects when digits themselves turn yellow (e.g. at/near population cap).
+        - **Mode Switch**: If no bright white pixels are present in a box, the filter automatically allows "Yellowish" pixels (`R>100, G>100, B < max-15`).
+        - **Max-Channel Grayscale**: Instead of standard conversion, the system uses `max(R,G,B)` for the final grayscale image. This ensures bright yellow digits become pure white, matching standard templates perfectly.
     - **Idle Villager Short-Circuit**: 
         - Before full extraction, `idle_vils` box is checked for **Yellow Pixels** (`contains_yellow`).
         - If no yellow is found (grey icon), the value is immediately returned as "0".
         - This provides a **100-400x speedup** for this common case and prevents mismatched noise.
-    - **Cleanup**: Applies a soft filter (`OUT_GREY_TOLERANCE=20`, `OUT_BRIGHTNESS_THRESHOLD=5`) to remove colored backgrounds while preserving anti-aliased text edges.
+    - **Final Cleanup**: Applies a soft filter (`OUT_BRIGHTNESS_THRESHOLD=5`) to remove background noise while preserving anti-aliased text edges.
     - **Recursive Segmentation (Split/Shrink/Stall Logic)**: 
         - Uses `cv2.connectedComponentsWithStats` on a strictly thresholded mask (`SEG_GREY_TOLERANCE=20`).
         - **Isolation Masking**: Every detected component is immediately masked (non-member pixels zeroed out) before recursion. This ensures detached noise or neighboring digits don't cause overlapping extractions or infinite loops.
