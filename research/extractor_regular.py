@@ -203,8 +203,9 @@ def run_pipeline(image_path, ui_map, debug=False):
         h = int(coords['h_px'] * ui_scale)
 
         if debug_img is not None:
-            cv2.rectangle(debug_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(debug_img, name, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            # Draw border 1px outside the box with 1px thickness
+            cv2.rectangle(debug_img, (x-1, y-1), (x+w, y+h), (0, 255, 0), 1)
+            cv2.putText(debug_img, name, (x, y-6), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
         box_img = img[y:y+h, x:x+w].copy()
         

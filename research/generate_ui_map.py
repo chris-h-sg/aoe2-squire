@@ -1,8 +1,5 @@
 
-import cv2
-import os
 import json
-import numpy as np
 
 # ==========================================
 # CALIBRATION SETTINGS (Adjust these)
@@ -12,19 +9,20 @@ BOX_DISTANCE = 125        # Variable distance between Resource/Vil groups
 
 # Resource Total Box dimensions & Wood start
 RES_W = 65
-RES_H = 18
+RES_H = 22
 RES_Y = 25
 WOOD_TOTAL_X = 64
+POP_TOTAL_EXTRA_W = 10  # Extra width for population total box
 
 # Villager Box dimensions & Wood start
-VIL_W = 25
-VIL_H = 14
+VIL_W = 37
+VIL_H = 16
 VIL_Y = 47
-WOOD_VIL_X = 32
+WOOD_VIL_X = 22
 
 # Idle Villager Box settings
-IDLE_Y = 38
-IDLE_OFFSET = 102  # Distance from the population total box
+IDLE_Y = 37
+IDLE_OFFSET = 92  # Distance from the population total box
 
 def calculate_ui_map():
     resources = ["wood", "food", "gold", "stone", "population"]
@@ -34,11 +32,14 @@ def calculate_ui_map():
         # 1. Total Count Box
         # Each box starts another BOX_DISTANCE further to the right of Wood
         t_x = WOOD_TOTAL_X + i * BOX_DISTANCE
+        t_w = RES_W
+        if name == "population":
+            t_w += POP_TOTAL_EXTRA_W
             
         elements[f"{name}_total"] = {
             "x_px": t_x,
             "y_px": RES_Y,
-            "w_px": RES_W,
+            "w_px": t_w,
             "h_px": RES_H,
             "split_pct": 1.0
         }
@@ -73,17 +74,10 @@ def calculate_ui_map():
     }
 
 def main():
-    # 1. Load the target image
-    image_path = os.path.join("test_bench", "aoe2_16x9_max.png")
-    img = cv2.imread(image_path)
-    if img is None:
-        print(f"Error: Could not find {image_path}")
-        return
-
-    # 2. Calculate the UI Map
+    # 1. Calculate the UI Map
     ui_map = calculate_ui_map()
     
-    # 3. Store the calibration in ui_map.json
+    # 2. Store the calibration in ui_map.json
     with open("ui_map.json", "w") as f:
         json.dump(ui_map, f, indent=4)
     print("Updated ui_map.json with new calibrated coordinates.")

@@ -162,14 +162,11 @@ python research/extractor_regular.py <image_path> --debug
 
 ## UI Calibration
 
-If the game's UI layout changes or you need to adjust the bounding boxes for resources, use `research/calibrate_ui.py`.
-
-### Prerequisite
-*   Ensure `test_bench/aoe2_16x9_max.png` exists. This is the reference image used for calibration.
+If the game's UI layout changes or you need to adjust the bounding boxes for resources, use `research/generate_ui_map.py`.
 
 ### Usage
 ```bash
-python research/calibrate_ui.py
+python research/generate_ui_map.py
 ```
 
 ### Output

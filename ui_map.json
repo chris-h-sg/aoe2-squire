@@ -10,9 +10,9 @@
             "split_pct": 1.0
         },
         "wood_vils": {
-            "x_px": 32,
+            "x_px": 22,
             "y_px": 47,
-            "w_px": 27,
+            "w_px": 37,
             "h_px": 16,
             "split_pct": 1.0
         },
@@ -24,9 +24,9 @@
             "split_pct": 1.0
         },
         "food_vils": {
-            "x_px": 157,
+            "x_px": 147,
             "y_px": 47,
-            "w_px": 27,
+            "w_px": 37,
             "h_px": 16,
             "split_pct": 1.0
         },
@@ -38,9 +38,9 @@
             "split_pct": 1.0
         },
         "gold_vils": {
-            "x_px": 282,
+            "x_px": 272,
             "y_px": 47,
-            "w_px": 27,
+            "w_px": 37,
             "h_px": 16,
             "split_pct": 1.0
         },
@@ -52,30 +52,30 @@
             "split_pct": 1.0
         },
         "stone_vils": {
-            "x_px": 407,
+            "x_px": 397,
             "y_px": 47,
-            "w_px": 27,
+            "w_px": 37,
             "h_px": 16,
             "split_pct": 1.0
         },
         "population_total": {
             "x_px": 564,
             "y_px": 25,
-            "w_px": 65,
+            "w_px": 75,
             "h_px": 22,
             "split_pct": 1.0
         },
         "population_vils": {
-            "x_px": 532,
+            "x_px": 522,
             "y_px": 47,
-            "w_px": 27,
+            "w_px": 37,
             "h_px": 16,
             "split_pct": 1.0
         },
         "idle_vils": {
-            "x_px": 666,
+            "x_px": 656,
             "y_px": 37,
-            "w_px": 27,
+            "w_px": 37,
             "h_px": 16,
             "split_pct": 1.0
         }
