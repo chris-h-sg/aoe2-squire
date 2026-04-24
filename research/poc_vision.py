@@ -71,14 +71,21 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
 def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allow_yellow=False):
     """
     Filter by greyness and brightness to isolate white text.
-    If overlay_mode is True, uses Blue channel normalization to bypass yellow overlay.
+    If overlay_mode is True, uses background color subtraction to bypass yellow overlay.
     """
     if overlay_mode:
-        # Housed overlay has bright Red/Green background, but low Blue.
-        # Digits have higher Blue than the background.
-        blue = img[:, :, 0]
-        # Normalize Blue channel to [0, 255] to make digits bright
-        normalized = cv2.normalize(blue, None, 0, 255, cv2.NORM_MINMAX)
+        # Detect overlay color from a near-black background pixel (top-left)
+        bg_color = img[2, 2].astype(np.int16)
+        
+        # Undo the overlay by subtracting the background color
+        subtracted = np.clip(img.astype(np.int16) - bg_color, 0, 255).astype(np.uint8)
+        
+        # Convert to grayscale to avoid grey_tol issues with the remaining tint
+        gray_sub = cv2.cvtColor(subtracted, cv2.COLOR_BGR2GRAY)
+        
+        # Normalize to bring the text to full brightness
+        normalized = cv2.normalize(gray_sub, None, 0, 255, cv2.NORM_MINMAX)
+        
         _, cleaned = cv2.threshold(normalized, brightness_thresh, 255, cv2.THRESH_TOZERO)
         return cleaned
 

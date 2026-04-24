@@ -61,8 +61,8 @@ The extraction process follows an optimized 4-stage pipeline:
 2.  **Stage 2: Dynamic Color Handling & Segmentation (`extract_digits`)**:
     - **Housed Overlay Background**:
         - Detects if the box has a full-box bright yellow background (`mean(G) > 150`, `mean(R) > 150`, `mean(B) < 100`).
-        - **Blue Channel Fallback**: Automatically switches to the Blue channel for extraction, bypassing the yellow background which makes standard greyscale filtering impossible.
-        - **Normalization**: Auto-scales the low-contrast Blue channel to full brightness (`[0, 255]`) for accurate matching.
+        - **Background Subtraction**: Automatically samples the background color (at pixel 2,2) and subtracts it from the entire box to "undo" the overlay.
+        - **Normalization**: Converts the subtracted image to grayscale and normalizes it to full brightness (`[0, 255]`) for accurate matching.
     - **Yellow Font (Dynamic Detection)**:
         - Detects when digits themselves turn yellow (e.g. at/near population cap).
         - **Mode Switch**: If no bright white pixels are present in a box, the filter automatically allows "Yellowish" pixels (`R>100, G>100, B < max-15`).
