@@ -39,6 +39,29 @@
     *   The top panel borders (lines) varied too much in thickness and color across resolutions/settings.
     *   The "Age/Idle/Menu" cluster in the top right contains consistent bright red pixels that move proportionally with the UI scale.
 
+## Production Tech Stack (Apr 28, 2026)
+
+### 1. Language: Rust for production, Python for R&D only
+*   **Decision**: Ship the production app as a native Rust binary. All Python code is R&D/validation only and will not ship.
+*   **Rejected alternatives**:
+    *   **PyInstaller**: 150–300MB exe, slow startup — effectively still bundling a runtime.
+    *   **C# / .NET 8 self-contained**: viable (~60–80MB single-file exe, good OpenCV bindings via OpenCvSharp), but permanently trades away performance headroom and binary size.
+*   **Reasoning**:
+    *   Truly minimal native binary (~5MB), no runtime for users to manage.
+    *   Lowest CPU overhead — TECHNICAL_SPEC.md flags <1% CPU as a hard requirement due to AoE2's single-threaded nature.
+    *   `windows-rs` has first-class DXGI support for screen capture.
+
+### 2. No OpenCV in the Rust port
+*   **Decision**: Use the `image` + `imageproc` crates instead of OpenCV bindings.
+*   **Reasoning**:
+    *   All OpenCV operations in the Python POC map directly: trivial ops (threshold, cvtColor, inRange) become raw array ops; connected components, Gaussian blur, and resize have direct `imageproc` equivalents.
+    *   The "wiggle SSD" matcher uses `warpAffine` only for ±1px translation shifts — simple array shifts in Rust, no affine math needed.
+    *   `opencv-rs` bindings are notoriously painful to set up on Windows.
+
+### 3. No Python non-OpenCV prototype
+*   **Decision**: Port directly from Python+OpenCV to Rust+imageproc. No intermediate Python non-OpenCV step.
+*   **Reasoning**: The algorithm is proven and stable (all tests pass). A Python non-OpenCV version costs time without de-risking anything specific to the Rust port.
+
 ## OCR Engine: Tesseract Evaluation (Jan 25, 2026)
 *   **Decision**: Tesseract is **not reliable enough** for out-of-the-box production use without custom font training.
 *   **Reasoning**:

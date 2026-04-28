@@ -49,7 +49,7 @@ class TestVisionSystem(unittest.TestCase):
         return {
             "aoe2_16x9.png", 
             "aoe2_16x9_min.png", 
-            "aoe2_16x9_max.png"
+            "aoe2_16x9_max.png",
             "aoe2_4k.png",
             "aoe2_16x10.png",
             "aoe2_21x9.png", 
