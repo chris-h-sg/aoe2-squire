@@ -4,10 +4,12 @@
 A native Windows background tool that scrapes AoE2:DE resource/villager counts from the screen in real time and combines them with replay data to produce post-game efficiency coaching. Target: minimal CPU footprint (<1% to avoid impacting the game), no memory hooking, no anti-cheat risk.
 
 ## Current Status
-**Phase 2 complete. Starting Rust port.**
+**Phase 3 in progress — Rust port scaffolded, pipeline partially implemented.**
 
 - Python R&D (`research/`) is finished and all tests pass. Do not modify it unless fixing a bug that needs to be carried into Rust.
-- The Rust production binary is the current work. It lives at the repo root (not inside `research/`).
+- The Rust production binary is the current work (`Cargo.toml` + `src/` at the repo root).
+- **Stages done in Rust:** 1 (anchor detection) and 4 (color filter) — fully implemented in `src/pipeline/anchor.rs` and `src/pipeline/filter.rs`.
+- **Stubs remaining:** Stage 5 (segment), Stage 6 (canvas), Stage 7 (matcher) — each returns a placeholder. See the TODO comments at the top of each file.
 
 ## Repo Layout
 ```
@@ -15,7 +17,20 @@ rts-analyzer/
 ├── CLAUDE.md               ← you are here
 ├── DECISION_LOG.md         ← all architectural decisions with rationale — read this
 ├── TECHNICAL_SPEC.md       ← product-level requirements
+├── Cargo.toml              ← Rust manifest (image 0.25, imageproc 0.25, windows 0.58, serde 1.0)
 ├── ui_map.json             ← element coordinates (baseline 1080p, scaled at runtime)
+├── src/
+│   ├── main.rs             ← entry point: load ui_map.json + templates, run process_frame
+│   ├── constants.rs        ← all pipeline constants (mirrors poc_vision.py constants)
+│   ├── types.rs            ← UiMap, UiElement, Templates, Results
+│   ├── pipeline/
+│   │   ├── mod.rs          ← process_frame orchestration
+│   │   ├── anchor.rs       ← Stage 1: detect_ui_scale (DONE)
+│   │   ├── filter.rs       ← Stage 4: apply_base_filter, cleanup_box, contains_yellow, detect_housed_overlay (DONE)
+│   │   ├── segment.rs      ← Stage 5: segment_into_digits (STUB)
+│   │   ├── canvas.rs       ← Stage 6: prepare_canvas (STUB)
+│   │   └── matcher.rs      ← Stage 7: load_templates, match_digit (STUB)
+│   └── capture/mod.rs      ← DXGI screen capture (STUB)
 ├── test_bench/             ← reference screenshots + expected_values.json
 │   ├── aoe2_16x9.png       ← 1080p baseline
 │   ├── aoe2_16x9_min.png   ← 75% UI scale
@@ -104,10 +119,11 @@ WIGGLE_OFFSETS      = [-1, 0, 1]
 ```
 
 ## Rust Decisions (already locked — see DECISION_LOG)
-- **Crates**: `image` + `imageproc` for pixel ops. No `opencv-rs` (painful Windows setup).
-- **Screen capture**: `windows-rs` DXGI Desktop Duplication API. No `mss` equivalent needed.
+- **Crates**: `image = "0.25"` + `imageproc = "0.25"` for pixel ops. No `opencv-rs` (painful Windows setup).
+- **Screen capture**: `windows = "0.58"` with DXGI Desktop Duplication API features.
 - **No OpenCV**: every OpenCV call in the Python code maps to a simple array op or has a direct `imageproc` equivalent. The wiggle SSD uses only ±1px array shifts — no `warpAffine` needed.
 - **Single binary**, no runtime, target ~5MB exe.
+- **Channel ordering**: the `image` crate uses **RGB** (not BGR like OpenCV). All channel-order-sensitive code in `filter.rs` and `anchor.rs` accounts for this — R=index 0, G=1, B=2.
 
 ## Validating the Port
 Run the Python tests to get ground-truth output for the same inputs:

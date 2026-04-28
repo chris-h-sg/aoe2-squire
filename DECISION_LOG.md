@@ -62,6 +62,16 @@
 *   **Decision**: Port directly from Python+OpenCV to Rust+imageproc. No intermediate Python non-OpenCV step.
 *   **Reasoning**: The algorithm is proven and stable (all tests pass). A Python non-OpenCV version costs time without de-risking anything specific to the Rust port.
 
+## Rust Port Scaffold (Apr 28, 2026)
+
+### 1. Crate versions locked
+*   **`image = "0.25"`**, **`imageproc = "0.25"`**, **`windows = "0.58"`**, **`serde/serde_json = "1.0"`**.
+*   Chosen as the latest stable at scaffold time. `windows 0.58` includes all required DXGI/D3D11 features under `Win32_Graphics_Dxgi`, `Win32_Graphics_Direct3D11`, etc.
+
+### 2. `image` crate channel ordering
+*   The `image` crate loads pixels as **RGB** (index 0=R, 1=G, 2=B), opposite of OpenCV's BGR.
+*   All channel-sensitive logic in `filter.rs` and `anchor.rs` uses RGB indices — do not copy Python's `img[:,:,0]` = B assumption into Rust.
+
 ## OCR Engine: Tesseract Evaluation (Jan 25, 2026)
 *   **Decision**: Tesseract is **not reliable enough** for out-of-the-box production use without custom font training.
 *   **Reasoning**:
