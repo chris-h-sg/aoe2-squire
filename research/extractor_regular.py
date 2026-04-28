@@ -128,7 +128,7 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
     - Crops final digits from pre-cleaned 'out_img'.
     """
     # --- ADJUSTABLE THRESHOLDS ---
-    SEG_GREY_TOLERANCE = 20
+    SEG_GREY_TOLERANCE = 30
     SEG_BRIGHTNESS_THRESHOLD = 100
     SEG_REQUIRED_BRIGHTNESS = bright_threshold
     BASELINE_MIN_AREA = 15
