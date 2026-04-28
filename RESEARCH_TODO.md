@@ -24,8 +24,8 @@
 ## Phase 2: Python Validation (Pre-Rust Port)
 **Goal:** Validate the full live pipeline in Python before porting to Rust, so we're not porting a moving target.
 
-- [ ] **Live Screen Capture:** Write a short script (replacing `poc_video.py`'s file loop with `mss` or `dxcam` grabs) that runs the existing `poc_vision.process_frame()` against the actual running game. Validates anchor detection on real frames and catches any DPI/HDR surprises not present in recordings.
-- [ ] **Performance Baseline:** While running live capture, measure per-frame processing time to confirm the pipeline stays within budget at the target sampling rate (2–4 frames/sec).
+- [x] **Live Screen Capture:** `poc_capture.py` — uses `mss` to grab the primary monitor and pipes frames into `poc_vision.process_frame()`. Anchor detection confirmed working on live frames.
+- [x] **Performance Baseline:** 200–300ms per frame on a gaming PC with the game running. Comfortably within the 2 fps budget (500ms); tight for 4 fps. Decision: port to Rust rather than optimise Python — see DECISION_LOG.
 
 ## Phase 3: Future Research (Post-Core-Tool)
 - [ ] **Anti-Cheat Deep Dive:** Verify legal safety of background scraping for StarCraft 2 and AoM:R.

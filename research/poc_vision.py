@@ -47,18 +47,18 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
     Detects the UI scale based on the right-side margin of red UI elements.
     """
     if img is None:
-        return 1.0
-        
+        return None
+
     h, w, _ = img.shape
-    top_h = int(h * 0.2)
+    top_h = int(h * 0.05)
     crop = img[0:top_h, :]
-    
+
     # Mask for red pixels
     mask = cv2.inRange(crop, RED_MASK_LOWER, RED_MASK_UPPER)
     y_idxs, x_idxs = np.nonzero(mask)
-    
-    if len(x_idxs) < 5: 
-        return 1.0
+
+    if len(x_idxs) < 5:
+        return None
         
     # Distance from right edge to the rightmost red pixel
     margin_px = w - np.max(x_idxs)
@@ -398,11 +398,15 @@ def process_frame(img, ui_map, templates, verbose=True):
     Returns a dictionary with extracted values.
     """
     if img is None:
-        return {}
-    
+        return None
+
     # 1. Detect Scale
     ui_scale = detect_ui_scale(img)
-    
+    if ui_scale is None:
+        if verbose:
+            print("[no anchor] Red UI reference not found — game not visible or UI changed.")
+        return None
+
     results = {}
     
     # 2. Process each element
@@ -490,6 +494,9 @@ def process_image(image_path, ui_map, templates):
     t0 = time.time()
     ui_scale = detect_ui_scale(img)
     time_scale = time.time() - t0
+    if ui_scale is None:
+        print(f"[no anchor] Red UI reference not found (took {time_scale*1000:.2f}ms)")
+        return {}
     print(f"Detected UI Scale: {ui_scale:.4f} (took {time_scale*1000:.2f}ms)")
 
     time_extract = 0

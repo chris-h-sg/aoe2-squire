@@ -68,26 +68,29 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
 
                 # Process the frame using poc_vision
                 results = poc_vision.process_frame(frame, ui_map, templates, verbose=False)
-                
-                # Convert results to CSV row format
-                row_data = {
-                    'timestamp_sec': round(timestamp, 2),
-                    'frame_idx': frame_idx
-                }
-                
-                # Flatten the nested results dict to match CSV headers
-                for name in element_names:
-                    parts = name.split('_')
-                    category = parts[0]
-                    sub_key = parts[1] if len(parts) > 1 else "value"
-                    row_data[name] = results.get(category, {}).get(sub_key, "")
 
-                # Save and print summary
-                writer.writerow(row_data)
-                csvfile.flush() # Ensure it's written in case of crash
-                
-                t_frame_end = time.time()
-                print(f" Done ({ (t_frame_end - t_frame_start)*1000:.0f}ms)")
+                if results is None:
+                    t_frame_end = time.time()
+                    print(f" [no anchor] ({(t_frame_end - t_frame_start)*1000:.0f}ms)")
+                else:
+                    # Convert results to CSV row format
+                    row_data = {
+                        'timestamp_sec': round(timestamp, 2),
+                        'frame_idx': frame_idx
+                    }
+
+                    # Flatten the nested results dict to match CSV headers
+                    for name in element_names:
+                        parts = name.split('_')
+                        category = parts[0]
+                        sub_key = parts[1] if len(parts) > 1 else "value"
+                        row_data[name] = results.get(category, {}).get(sub_key, "")
+
+                    writer.writerow(row_data)
+                    csvfile.flush()
+
+                    t_frame_end = time.time()
+                    print(f" Done ({(t_frame_end - t_frame_start)*1000:.0f}ms)")
                 
                 # Advance to next scheduled timestamp
                 next_process_time += interval_sec

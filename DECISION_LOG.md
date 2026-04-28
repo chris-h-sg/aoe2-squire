@@ -93,6 +93,23 @@
 *   **Fix**: Renamed `idle_vils` to `idle` (main) and `vils` (sub) in `expected_values.json` to match the extractor's parsing logic (`name.split('_')`).
 *   **Reasoning**: Prevents special-case hardcoding and ensures the extractor can dynamically look up ground truth for any UI element.
 
+## Live Capture Validation (Apr 28, 2026)
+
+### 1. Anchor detection scan area: top 5% of frame
+*   **Decision**: Reduced the red-pixel scan area from the top 20% to the top 5% of the frame.
+*   **Reasoning**: The 20% crop captured stray red pixels from other applications (taskbar icons, notification badges), causing `detect_ui_scale` to produce a plausible but wrong scale when the game was not the foreground window. Restricting to 5% targets only the HUD strip where the AoE2 anchor actually lives.
+
+### 2. No fallback scale on anchor miss
+*   **Decision**: `detect_ui_scale` returns `None` when fewer than 5 red pixels are found. `process_frame` returns `None` immediately; callers log `[no anchor]` and skip the frame.
+*   **Rejected**: Silently defaulting to scale `1.0` and processing whatever is on screen.
+*   **Reasoning**: A missed anchor means the game is not visible or the UI has changed. Processing with a default scale produces garbage values with no indication anything is wrong.
+
+### 3. Python performance baseline & decision to port
+*   **Measured**: 200–300ms per frame on a gaming PC running AoE2:DE (1080p, windowed).
+*   **Budget**: 500ms at 2 fps; ~250ms at 4 fps. The pipeline is comfortably within the 2 fps budget.
+*   **Decision**: Port to Rust rather than optimise the Python pipeline.
+*   **Reasoning**: The bottlenecks (connected components, 9-shift × 11-template SSD matching) are inner loops that will be 10–50× faster in Rust with no special effort. Optimising Python would be throwaway work; the R&D goal was to prove the algorithm, not tune its Python implementation.
+
 ## Vision Pipeline (Jan 29, 2026)
 
 ### 1. Dynamic Color Handling (Yellow Font & Overlay)
