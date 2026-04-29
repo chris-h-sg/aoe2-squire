@@ -27,7 +27,14 @@
 - [x] **Live Screen Capture:** `poc_capture.py` — confirmed working in Python; now fully implemented in Rust using DXGI for sub-40ms latency.
 - [x] **Performance Baseline:** Rust implementation achieves ~30ms per frame (<1% CPU impact), comfortably exceeding the 2 FPS target.
 
-## Phase 3: Future Research (Post-Core-Tool)
+## Phase 3: Telemetry & Replay Sync (Validation)
+**Goal:** Prove accuracy by meshing live telemetry CSV with absolute ground truth from replay files.
+
+- [ ] **CSV Export:** Update Rust capture loop to log to `telemetry.csv`.
+- [ ] **Replay Parser:** Implement a tool to extract build/unit/tech events from `.aoe2record`.
+- [ ] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops.
+
+## Future Research (Post-Core-Tool)
 - [ ] **Anti-Cheat Deep Dive:** Verify legal safety of background scraping for StarCraft 2 and AoM:R.
 - [ ] **Gather Rate Database:** Compile a master JSON of base gather rates and tech multipliers.
 - [ ] **Trust Bench:** Research and price-match EV Certificate providers (Sectigo, DigiCert, GlobalSign).
