@@ -1,18 +1,8 @@
 use std::path::Path;
 use image::GrayImage;
 use crate::types::Templates;
+use crate::constants::*;
 use super::canvas;
-
-// TODO: implement wiggle SSD matching (stage 7).
-// Algorithm:
-// 1. prepare_canvas(digit_img) → input canvas (64×64 f32).
-// 2. Pre-shift input 9 times (dx, dy in WIGGLE_OFFSETS × WIGGLE_OFFSETS) — simple array roll,
-//    fill vacated edge with 0 (equivalent to warpAffine translate).
-// 3. For each template: min SSD across the 9 shifts.
-// 4. Sort by SSD ascending.
-// 5. Tie-breaker: if winner/runner-up are {0} vs {3,6,9} and margin < 20% of winner SSD:
-//    compute horizontal symmetry score = sum((canvas - hflip(canvas))²).
-//    0 is symmetric (score < 40); 3/6/9 are asymmetric (score > 60). Swap if contradicted.
 
 /// Loads and pre-processes all digit templates from `dir`.
 /// Each PNG is named "0.png" … "9.png" and "slash.png" (mapped to '/').
@@ -55,8 +45,93 @@ pub fn load_templates(dir: &Path) -> Templates {
     templates
 }
 
-/// Stage 7: match a single digit image against all templates, return the best character.
-/// Stub: always returns '?' until the SSD matcher is implemented.
-pub fn match_digit(_digit: &GrayImage, _templates: &Templates) -> char {
-    '?'
+/// Stage 7: match a single digit image against all templates via wiggle SSD.
+/// Returns the best-matching character, or '?' if no templates are loaded.
+pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
+    if templates.is_empty() {
+        return '?';
+    }
+
+    let input_canvas = canvas::prepare_canvas(digit);
+    let size = CANVAS_SIZE as usize;
+
+    // Pre-compute 9 shifted versions of the input canvas.
+    // shifted[y][x] = input[y+dy][x+dx] (out-of-bounds filled with 0).
+    // This is equivalent to Python's warpAffine with M=[[1,0,-dx],[0,1,-dy]],
+    // which maps dst(x,y) ← src(x-dx, y-dy) → same result set over all ±1 offsets.
+    let shifted_inputs: Vec<Vec<f32>> = WIGGLE_OFFSETS
+        .iter()
+        .flat_map(|&dy| WIGGLE_OFFSETS.iter().map(move |&dx| (dy, dx)))
+        .map(|(dy, dx)| {
+            let mut shifted = vec![0.0f32; size * size];
+            for y in 0..size {
+                for x in 0..size {
+                    let sx = x as i32 + dx;
+                    let sy = y as i32 + dy;
+                    if sx >= 0 && sx < size as i32 && sy >= 0 && sy < size as i32 {
+                        shifted[y * size + x] =
+                            input_canvas[sy as usize * size + sx as usize];
+                    }
+                }
+            }
+            shifted
+        })
+        .collect();
+
+    // Compute minimum SSD across all 9 shifts for each template.
+    let mut matches: Vec<(f32, char)> = templates
+        .iter()
+        .map(|(&ch, template)| {
+            let best_ssd = shifted_inputs
+                .iter()
+                .map(|shifted| {
+                    shifted
+                        .iter()
+                        .zip(template.iter())
+                        .map(|(&a, &b)| { let d = a - b; d * d })
+                        .sum::<f32>()
+                })
+                .fold(f32::INFINITY, f32::min);
+            (best_ssd, ch)
+        })
+        .collect();
+
+    matches.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Symmetry tie-breaker: if winner is '0' vs '3'/'6'/'9' (or vice versa)
+    // and margin < 20% of winner SSD, use horizontal symmetry to decide.
+    if matches.len() > 1 {
+        let (best_ssd, best_char) = matches[0];
+        let (second_ssd, second_char) = matches[1];
+
+        let asym = ['3', '6', '9'];
+        let is_conflict = (best_char == '0' && asym.contains(&second_char))
+            || (asym.contains(&best_char) && second_char == '0');
+
+        if is_conflict && second_ssd - best_ssd < best_ssd * 0.20 {
+            let sym_score = h_symmetry_score(&input_canvas, size);
+            // '0' is symmetric (score < 40); '3'/'6'/'9' are asymmetric (score > 60).
+            if best_char == '0' && sym_score > 60.0 {
+                matches.swap(0, 1);
+            } else if asym.contains(&best_char) && sym_score < 40.0 {
+                matches.swap(0, 1);
+            }
+        }
+    }
+
+    matches[0].1
+}
+
+/// sum((canvas - hflip(canvas))²) — lower means more horizontally symmetric.
+fn h_symmetry_score(canvas: &[f32], size: usize) -> f32 {
+    let mut sum = 0.0f32;
+    for y in 0..size {
+        for x in 0..size {
+            let a = canvas[y * size + x];
+            let b = canvas[y * size + (size - 1 - x)];
+            let d = a - b;
+            sum += d * d;
+        }
+    }
+    sum
 }

@@ -11,7 +11,7 @@ use crate::types::{Results, Templates, UiMap};
 /// Returns None if the AoE2 UI anchor is not found in the frame.
 pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) -> Option<Results> {
     // Stage 1
-    let ui_scale = anchor::detect_ui_scale(img)?;
+    let ui_scale = anchor::detect_ui_scale(img, ui_map.baseline_margin)?;
     eprintln!("UI scale: {:.4}", ui_scale);
 
     let (img_w, img_h) = (img.width(), img.height());

@@ -69,7 +69,6 @@ def calculate_ui_map():
         
     return {
         "baseline_margin": RED_MARGIN_BASELINE,
-        "box_distance_variable": BOX_DISTANCE,
         "elements": elements
     }
 

@@ -1,8 +1,4 @@
-mod capture;
-mod constants;
-mod pipeline;
-mod types;
-
+use rts_analyzer::{pipeline, types};
 use std::path::Path;
 
 fn main() {

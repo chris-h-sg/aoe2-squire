@@ -3,9 +3,9 @@ use crate::constants::*;
 
 /// Stage 1: detect UI scale from the rightmost red pixel in the top 5% of the frame.
 /// Returns None if fewer than RED_PIXEL_MIN_COUNT red pixels are found (game not visible).
-pub fn detect_ui_scale(img: &DynamicImage) -> Option<f64> {
+pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> {
     let (width, height) = (img.width(), img.height());
-    let top_h = ((height as f64 * 0.05) as u32).max(1);
+    let top_h = ((height as f64 * ANCHOR_SCAN_FRACTION) as u32).max(1);
     let rgb = img.to_rgb8();
 
     let mut rightmost_x: Option<u32> = None;
@@ -26,5 +26,5 @@ pub fn detect_ui_scale(img: &DynamicImage) -> Option<f64> {
     }
 
     let margin_px = (width - rightmost_x?) as f64;
-    Some(margin_px / BASELINE_MARGIN)
+    Some(margin_px / baseline_margin)
 }

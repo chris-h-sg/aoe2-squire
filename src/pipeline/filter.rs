@@ -3,7 +3,7 @@ use crate::constants::*;
 
 /// Stage 3 helper: true if mean(R)>150, mean(G)>150, mean(B)<100 (housed overlay detected).
 /// Python uses BGR ordering; we use RGB — channel semantics are re-mapped accordingly.
-pub fn detect_housed_overlay(img: &RgbImage) -> bool {
+pub(super) fn detect_housed_overlay(img: &RgbImage) -> bool {
     let npx = (img.width() * img.height()) as u64;
     if npx == 0 {
         return false;
@@ -19,7 +19,7 @@ pub fn detect_housed_overlay(img: &RgbImage) -> bool {
 
 /// Stage 3 helper: true if any pixel satisfies yellow criteria (idle vils icon is active).
 /// Criteria: R>100, G>100, B < min(R,G)-30, |R-G| < 50.
-pub fn contains_yellow(img: &RgbImage) -> bool {
+pub(super) fn contains_yellow(img: &RgbImage) -> bool {
     img.pixels().any(|p| {
         let [r, g, b] = p.0;
         let r16 = r as i16;

@@ -2,8 +2,10 @@
 pub const RED_R_MIN: u8 = 201;
 pub const RED_G_MAX: u8 = 60;
 pub const RED_B_MAX: u8 = 60;
-pub const BASELINE_MARGIN: f64 = 263.0;
 pub const RED_PIXEL_MIN_COUNT: usize = 5;
+/// Fraction of frame height to scan for the red anchor pixels.
+/// Restricted to the top 5% to avoid stray red pixels from taskbar icons.
+pub const ANCHOR_SCAN_FRACTION: f64 = 0.05;
 
 // --- Output / cleanup filter ---
 pub const OUT_GREY_TOLERANCE: i16 = 20;
