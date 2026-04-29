@@ -28,15 +28,28 @@ cargo test -- --nocapture
 ```
 
 ### Running the Extractor
-You can pass the path to an image file as an argument to process it through the pipeline:
-```powershell
-cargo run -- <path_to_image>
 
+By default, the application runs in **Live Capture Mode**. It uses Windows DXGI (Desktop Duplication) to capture your primary monitor every 500ms and stream real-time telemetry to the console:
+
+```powershell
+# Run the live capture loop (highly recommended to use --release for performance)
+cargo run --release
+```
+
+#### Static Image Mode
+You can still process a specific static image file by passing its path as an argument:
+
+```powershell
 # Example:
 cargo run -- test_bench/aoe2_4k.png
 ```
 
-If no argument is provided, the application defaults to processing the 1080p baseline image (`test_bench/aoe2_16x9.png`):
+To explicitly force live mode via flag:
 ```powershell
-cargo run
+cargo run -- --live
 ```
+
+### System Requirements (Live Capture)
+*   **Operating System**: Windows 10/11
+*   **Display**: Primary monitor must be active (DXGI does not support headless sessions).
+*   **Performance**: The capture loop is throttled to ~2 FPS to maintain <1% CPU impact during gameplay.

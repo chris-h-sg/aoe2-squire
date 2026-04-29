@@ -46,8 +46,8 @@ pub fn prepare_canvas(img: &GrayImage) -> Vec<f32> {
     let mut ch = crop.height();
     if cw > CANVAS_SIZE || ch > CANVAS_SIZE {
         let scale_fit = (CANVAS_SIZE as f64 / ch as f64).min(CANVAS_SIZE as f64 / cw as f64);
-        let fw = ((cw as f64 * scale_fit) as u32).max(1).min(CANVAS_SIZE);
-        let fh = ((ch as f64 * scale_fit) as u32).max(1).min(CANVAS_SIZE);
+        let fw = ((cw as f64 * scale_fit) as u32).clamp(1, CANVAS_SIZE);
+        let fh = ((ch as f64 * scale_fit) as u32).clamp(1, CANVAS_SIZE);
         crop = image::imageops::resize(&crop, fw, fh, FilterType::Triangle);
         cw = crop.width();
         ch = crop.height();

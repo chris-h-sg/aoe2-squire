@@ -111,9 +111,7 @@ pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
         if is_conflict && second_ssd - best_ssd < best_ssd * 0.20 {
             let sym_score = h_symmetry_score(&input_canvas, size);
             // '0' is symmetric (score < 40); '3'/'6'/'9' are asymmetric (score > 60).
-            if best_char == '0' && sym_score > 60.0 {
-                matches.swap(0, 1);
-            } else if asym.contains(&best_char) && sym_score < 40.0 {
+            if (best_char == '0' && sym_score > 60.0) || (asym.contains(&best_char) && sym_score < 40.0) {
                 matches.swap(0, 1);
             }
         }
@@ -134,4 +132,31 @@ fn h_symmetry_score(canvas: &[f32], size: usize) -> f32 {
         }
     }
     sum
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_h_symmetry_score() {
+        let size = 10;
+        let mut canvas = vec![0.0f32; size * size];
+        
+        // Perfectly symmetric pattern: vertical line in middle
+        for y in 0..size {
+            canvas[y * size + 4] = 1.0;
+            canvas[y * size + 5] = 1.0;
+        }
+        let score_sym = h_symmetry_score(&canvas, size);
+        assert!(score_sym < 1.0);
+        
+        // Asymmetric pattern: line on one side
+        let mut canvas_asym = vec![0.0f32; size * size];
+        for y in 0..size {
+            canvas_asym[y * size + 2] = 1.0;
+        }
+        let score_asym = h_symmetry_score(&canvas_asym, size);
+        assert!(score_asym > 5.0);
+    }
 }

@@ -72,23 +72,34 @@ fn binarize(seg: &GrayImage) -> GrayImage {
     })
 }
 
+#[derive(Clone, Copy)]
+struct SegmentationParams {
+    grey_tol: i16,
+    brightness_thresh: u8,
+    use_eight: bool,
+    min_area: u32,
+    overlay_mode: bool,
+    allow_yellow: bool,
+}
+
 /// Recursive connected-components segmentation.
 /// Returns bounding boxes in the coordinate space of the *original* box_img
 /// (offsets accumulate via offset_x / offset_y).
 fn get_components_recursive(
     roi: &RgbImage,
-    grey_tol: i16,
-    brightness_thresh: u8,
-    use_eight: bool,
+    params: SegmentationParams,
     offset_x: u32,
     offset_y: u32,
-    min_area: u32,
-    overlay_mode: bool,
-    allow_yellow: bool,
 ) -> Vec<BoundingBox> {
-    let seg = apply_base_filter(roi, grey_tol, brightness_thresh, overlay_mode, allow_yellow);
+    let seg = apply_base_filter(
+        roi,
+        params.grey_tol,
+        params.brightness_thresh,
+        params.overlay_mode,
+        params.allow_yellow,
+    );
     let binary = binarize(&seg);
-    let conn = if use_eight { Connectivity::Eight } else { Connectivity::Four };
+    let conn = if params.use_eight { Connectivity::Eight } else { Connectivity::Four };
     let labeled = connected_components(&binary, conn, Luma([0u8]));
 
     let max_label = labeled.pixels().map(|p| p.0[0]).max().unwrap_or(0);
@@ -99,7 +110,7 @@ fn get_components_recursive(
     let all_stats = compute_stats(&labeled, &seg, max_label);
     let valid: Vec<(usize, CompStats)> = all_stats
         .into_iter()
-        .filter(|(_, s)| s.area >= min_area && s.max_brightness >= SEG_REQUIRED_BRIGHTNESS)
+        .filter(|(_, s)| s.area >= params.min_area && s.max_brightness >= SEG_REQUIRED_BRIGHTNESS)
         .collect();
 
     if valid.is_empty() {
@@ -112,23 +123,20 @@ fn get_components_recursive(
     if valid.len() == 1 {
         let (_, ref s) = valid[0];
         if s.width == roi_w && s.height == roi_h && s.width + 2 > s.height {
-            if brightness_thresh < 160 {
-                return get_components_recursive(
-                    roi, grey_tol, brightness_thresh + 10, use_eight,
-                    offset_x, offset_y, min_area, overlay_mode, allow_yellow,
-                );
+            if params.brightness_thresh < 160 {
+                let mut p = params;
+                p.brightness_thresh += 10;
+                return get_components_recursive(roi, p, offset_x, offset_y);
             }
-            if grey_tol > 2 {
-                return get_components_recursive(
-                    roi, grey_tol - 2, brightness_thresh, use_eight,
-                    offset_x, offset_y, min_area, overlay_mode, allow_yellow,
-                );
+            if params.grey_tol > 2 {
+                let mut p = params;
+                p.grey_tol -= 2;
+                return get_components_recursive(roi, p, offset_x, offset_y);
             }
-            if use_eight {
-                return get_components_recursive(
-                    roi, grey_tol, brightness_thresh, false,
-                    offset_x, offset_y, min_area, overlay_mode, allow_yellow,
-                );
+            if params.use_eight {
+                let mut p = params;
+                p.use_eight = false;
+                return get_components_recursive(roi, p, offset_x, offset_y);
             }
             // All strategies exhausted: return as a single digit.
             return vec![BoundingBox { x: offset_x, y: offset_y, w: s.width, h: s.height }];
@@ -153,9 +161,8 @@ fn get_components_recursive(
                 }
             }
             let sub_boxes = get_components_recursive(
-                &sub, grey_tol, brightness_thresh, use_eight,
+                &sub, params,
                 offset_x + s.left, offset_y + s.top,
-                min_area, overlay_mode, allow_yellow,
             );
             results.extend(sub_boxes);
         } else {
@@ -181,16 +188,16 @@ pub fn segment_into_digits(
 ) -> Vec<GrayImage> {
     let min_area = ((BASELINE_MIN_AREA * ui_scale * ui_scale) as u32).max(1);
 
-    let mut digit_boxes = get_components_recursive(
-        box_img,
-        SEG_GREY_TOLERANCE,
-        SEG_BRIGHTNESS_THRESHOLD,
-        true,
-        0, 0,
+    let params = SegmentationParams {
+        grey_tol: SEG_GREY_TOLERANCE,
+        brightness_thresh: SEG_BRIGHTNESS_THRESHOLD,
+        use_eight: true,
         min_area,
         overlay_mode,
         allow_yellow,
-    );
+    };
+
+    let mut digit_boxes = get_components_recursive(box_img, params, 0, 0);
 
     digit_boxes.sort_by_key(|d| d.x);
 
@@ -208,4 +215,60 @@ pub fn segment_into_digits(
             Some(image::imageops::crop_imm(out_img, x, y, w, h).to_image())
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::Rgb;
+
+    #[test]
+    fn test_binarize() {
+        let mut img = GrayImage::new(2, 2);
+        img.put_pixel(0, 0, Luma([100]));
+        img.put_pixel(1, 1, Luma([0]));
+        
+        let b = binarize(&img);
+        assert_eq!(b.get_pixel(0, 0).0[0], 255);
+        assert_eq!(b.get_pixel(1, 1).0[0], 0);
+    }
+
+    #[test]
+    fn test_segmentation_simple() {
+        // Create an image with two separate white boxes on a black background
+        let mut img = RgbImage::new(20, 10);
+        
+        // Box 1: (2,2) to (4,4)
+        for y in 2..5 {
+            for x in 2..5 {
+                img.put_pixel(x, y, Rgb([255, 255, 255]));
+            }
+        }
+        
+        // Box 2: (10,2) to (12,4)
+        for y in 2..5 {
+            for x in 10..13 {
+                img.put_pixel(x, y, Rgb([255, 255, 255]));
+            }
+        }
+        
+        let params = SegmentationParams {
+            grey_tol: 10,
+            brightness_thresh: 128,
+            use_eight: true,
+            min_area: 1,
+            overlay_mode: false,
+            allow_yellow: false,
+        };
+        let boxes = get_components_recursive(&img, params, 0, 0);
+        
+        assert_eq!(boxes.len(), 2);
+        
+        // Sort by x to verify positions
+        let mut b = boxes;
+        b.sort_by_key(|r| r.x);
+        
+        assert_eq!(b[0].x, 2);
+        assert_eq!(b[1].x, 10);
+    }
 }

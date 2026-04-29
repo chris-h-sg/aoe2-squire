@@ -28,3 +28,32 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
     let margin_px = (width - rightmost_x?) as f64;
     Some(margin_px / baseline_margin)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::{Rgb, RgbImage};
+
+    #[test]
+    fn test_detect_ui_scale() {
+        let width = 100;
+        let height = 100;
+        let mut img = RgbImage::new(width, height);
+        
+        // Place some red pixels at x=80
+        // (x=80 is 20 pixels from the right edge)
+        for y in 0..5 {
+            img.put_pixel(80, y, Rgb([255, 0, 0]));
+        }
+        
+        let dyn_img = DynamicImage::ImageRgb8(img);
+        
+        // If baseline_margin is 10, then 20 / 10 = 2.0 scale
+        let scale = detect_ui_scale(&dyn_img, 10.0).unwrap();
+        assert!((scale - 2.0).abs() < 1e-6);
+        
+        // If no red pixels, should return None
+        let empty_img = DynamicImage::ImageRgb8(RgbImage::new(100, 100));
+        assert!(detect_ui_scale(&empty_img, 10.0).is_none());
+    }
+}
