@@ -52,7 +52,21 @@ To explicitly force live mode via flag:
 cargo run -- --live
 ```
 
+### Replay Parsing
+
+The analyzer can parse Age of Empires II: DE replay files (`.aoe2record`) to extract ground-truth gameplay events. This is used to validate the vision pipeline's accuracy.
+
+```powershell
+# Extract all technologies researched in a replay
+cargo run -- --extract-techs "path/to/your/match.aoe2record"
+```
+
+The tool currently extracts:
+*   **Player Metadata**: Names, civilizations, and color assignments.
+*   **Technology Research**: Accurate `mm:ss.sss` timestamps for every technology started (Loom, Age ups, Eco upgrades, etc.).
+
 ### System Requirements (Live Capture)
 *   **Operating System**: Windows 10/11
 *   **Display**: Primary monitor must be active (DXGI does not support headless sessions).
-*   **Performance**: The capture loop is throttled to ~2 FPS to maintain <1% CPU impact during gameplay.
+*   **Performance**: The capture loop is throttled to ~2 FPS to maintain <1% CPU impact during gameplay.
+

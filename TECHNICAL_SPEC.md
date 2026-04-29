@@ -9,8 +9,13 @@
     - *Formula:* Efficiency = (Vils_Scraped * BaseRate_ParsedTech) / DeltaResource_Scraped.
 
 ## 6. Replay Parsing
-- Trigger: File watcher monitors the game's `/SaveGame` directory for new `.aoe2record` files.
-- Library: Target a Rust parser (`aoe2-parser` or similar) to extract tech research timestamps and unit production commands.
+- **Trigger**: File watcher (future) or manual CLI command.
+- **Library**: Custom integration with the **liouh/aoe2rec** Rust fork.
+- **Capabilities**:
+    - **Re-sync Logic**: Handles modern DE replay binary formats with checksum validation.
+    - **Event Extraction**: Maps raw binary actions to a universal `ReplayEvent` stream (Techs, Units, Build commands).
+    - **ID Translation**: Uses a community-standard JSON mapping (from `aoe2techtree`) for accurate engine-to-English translation.
+
 
 ## Unified Telemetry Architecture
 - **Goal:** Create a "Universal RTS Telemetry Layer."

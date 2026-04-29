@@ -1,4 +1,4 @@
-use rts_analyzer::{capture, pipeline, types};
+use rts_analyzer::{capture, pipeline, types, replay};
 use std::path::Path;
 
 fn main() {
@@ -13,6 +13,20 @@ fn main() {
     let templates_dir = Path::new("research/templates/enormous_numbers");
     let templates = pipeline::matcher::load_templates(templates_dir);
     println!("Loaded {} templates", templates.len());
+
+    if args.len() > 1 && args[1] == "--parse-replay" {
+        let replay_path = Path::new(&args[2]);
+        println!("Parsing replay: {}", replay_path.display());
+        replay::extract_events(replay_path).expect("Failed to parse replay");
+        return;
+    }
+
+    if args.len() > 1 && args[1] == "--extract-techs" {
+        let replay_path = Path::new(&args[2]);
+        replay::extract_events(replay_path).expect("Failed to extract techs");
+        return;
+    }
+
 
     if args.len() > 1 && args[1] != "--live" {
         let image_path = &args[1];

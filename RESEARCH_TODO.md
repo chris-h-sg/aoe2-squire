@@ -30,9 +30,10 @@
 ## Phase 3: Telemetry & Replay Sync (Validation)
 **Goal:** Prove accuracy by meshing live telemetry CSV with absolute ground truth from replay files.
 
-- [ ] **CSV Export:** Update Rust capture loop to log to `telemetry.csv`.
-- [ ] **Replay Parser:** Implement a tool to extract build/unit/tech events from `.aoe2record`.
+- [x] **CSV Export:** Rust capture loop now logs high-performance telemetry to CSV.
+- [/] **Replay Parser:** Tool implemented to extract tech events with accurate mm:ss.sss timestamps (Unit/Build events pending).
 - [ ] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops.
+
 
 ## Future Research (Post-Core-Tool)
 - [ ] **Anti-Cheat Deep Dive:** Verify legal safety of background scraping for StarCraft 2 and AoM:R.

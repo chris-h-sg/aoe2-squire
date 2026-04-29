@@ -62,6 +62,28 @@
 *   **Decision**: Port directly from Python+OpenCV to Rust+imageproc. No intermediate Python non-OpenCV step.
 *   **Reasoning**: The algorithm is proven and stable (all tests pass). A Python non-OpenCV version costs time without de-risking anything specific to the Rust port.
 
+## Replay Parsing (Apr 29, 2026)
+
+### 1. Robust Parser Library: liouh Fork
+*   **Decision**: Adopted the **liouh/aoe2rec** fork over the original `aoe2rec` crate.
+*   **Reasoning**:
+    *   The original crate (and other forks) crashed on modern DE replays due to binary misalignment in AI actions and `Sync` operations.
+    *   The `liouh` fork implements a sophisticated re-sync loop that correctly handles the DE-specific checksums and varying action lengths.
+    *   Successfully processed over 175,000 operations in a single match without a "bad magic" panic.
+
+### 2. ID Mapping Strategy: Community Standard JSON
+*   **Decision**: Use a local `aoe2_data.json` generated from the **hszemi/aoe2techtree** project.
+*   **Reasoning**:
+    *   Mapping thousands of unit/tech/building IDs manually is error-prone and unmaintainable.
+    *   Using the `aoe2techtree` data ensures compatibility with the latest DE balance patches and civilization additions (e.g., Romans, Armenians, Georgians).
+    *   Using internal engine names (e.g., `VMBAS`, `RTWC`) is more robust than localized display names.
+
+### 3. Timing Logic: Millisecond Accumulation
+*   **Decision**: Accumulate time via `Sync` operation increments and verify against the `world_time` field in `Action` packets.
+*   **Reasoning**:
+    *   Initial confusion regarding the "1.1s Loom" was resolved by ensuring the re-sync loop captures every single `Sync` operation.
+    *   Verified that game-time milliseconds are correctly recorded and provide sub-second precision for event tracking.
+
 ## Rust Port Scaffold (Apr 28, 2026)
 
 ### 1. Crate versions locked
@@ -132,3 +154,26 @@
     *   Previously, the population count would disappear when turning yellow (near cap) because it violated the "Grey Tolerance" check.
     *   Housed players needed a way to see digits buried in a bright yellow overlay.
     *   Normalizing colored text to white via the max channel allows 1:1 matching against standard white templates without needing extra colored templates.
+
+## Replay Parsing (Apr 29, 2026)
+
+### 1. Robust Parser Library: liouh Fork
+*   **Decision**: Adopted the **liouh/aoe2rec** fork over the original oe2rec crate.
+*   **Reasoning**:
+    *   The original crate (and other forks) crashed on modern DE replays due to binary misalignment in AI actions and Sync operations.
+    *   The liouh fork implements a sophisticated re-sync loop that correctly handles the DE-specific checksums and varying action lengths.
+    *   Successfully processed over 175,000 operations in a single match without a 'bad magic' panic.
+
+### 2. ID Mapping Strategy: Community Standard JSON
+*   **Decision**: Use a local \oe2_data.json\ generated from the **hszemi/aoe2techtree** project.
+*   **Reasoning**:
+    *   Mapping thousands of unit/tech/building IDs manually is error-prone and unmaintainable.
+    *   Using the \oe2techtree\ data ensures compatibility with the latest DE balance patches and civilization additions (e.g., Romans, Armenians, Georgians).
+    *   Using internal engine names (e.g., \VMBAS\, \RTWC\) is more robust than localized display names.
+
+### 3. Timing Logic: Millisecond Accumulation
+*   **Decision**: Accumulate time via \Sync\ operation increments and verify against the \world_time\ field in \Action\ packets.
+*   **Reasoning**:
+    *   Initial confusion regarding the '1.1s Loom' was resolved by ensuring the re-sync loop captures every single \Sync\ operation.
+    *   Verified that game-time milliseconds are correctly recorded and provide sub-second precision for event tracking.
+
