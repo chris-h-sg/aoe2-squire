@@ -1,5 +1,5 @@
-use image::DynamicImage;
 use crate::constants::*;
+use image::DynamicImage;
 
 /// Stage 1: detect UI scale from the rightmost red pixel in the top 5% of the frame.
 /// Returns None if fewer than RED_PIXEL_MIN_COUNT red pixels are found (game not visible).
@@ -39,19 +39,19 @@ mod tests {
         let width = 100;
         let height = 100;
         let mut img = RgbImage::new(width, height);
-        
+
         // Place some red pixels at x=80
         // (x=80 is 20 pixels from the right edge)
         for y in 0..5 {
             img.put_pixel(80, y, Rgb([255, 0, 0]));
         }
-        
+
         let dyn_img = DynamicImage::ImageRgb8(img);
-        
+
         // If baseline_margin is 10, then 20 / 10 = 2.0 scale
         let scale = detect_ui_scale(&dyn_img, 10.0).unwrap();
         assert!((scale - 2.0).abs() < 1e-6);
-        
+
         // If no red pixels, should return None
         let empty_img = DynamicImage::ImageRgb8(RgbImage::new(100, 100));
         assert!(detect_ui_scale(&empty_img, 10.0).is_none());

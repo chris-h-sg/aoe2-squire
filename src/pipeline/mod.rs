@@ -4,8 +4,8 @@ pub mod filter;
 pub mod matcher;
 pub mod segment;
 
-use image::DynamicImage;
 use crate::types::{Results, Templates, UiMap};
+use image::DynamicImage;
 
 /// Top-level pipeline: detect scale, crop each UI element, extract and match digits.
 /// Returns None if the AoE2 UI anchor is not found in the frame.
@@ -24,7 +24,10 @@ pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) 
         let h = (coords.h_px * ui_scale).max(1.0) as u32;
 
         if x + w > img_w || y + h > img_h {
-            eprintln!("Skipping {}: out of bounds ({}+{}>{}, {}+{}>{}", name, x, w, img_w, y, h, img_h);
+            eprintln!(
+                "Skipping {}: out of bounds ({}+{}>{}, {}+{}>{}",
+                name, x, w, img_w, y, h, img_h
+            );
             continue;
         }
 
@@ -55,7 +58,10 @@ pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) 
             _ => (name.clone(), "value".to_string()),
         };
 
-        results.entry(category).or_default().insert(sub_key, value_str);
+        results
+            .entry(category)
+            .or_default()
+            .insert(sub_key, value_str);
     }
 
     Some(results)

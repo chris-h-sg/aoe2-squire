@@ -1,4 +1,4 @@
-use rts_analyzer::{pipeline, types, capture};
+use rts_analyzer::{capture, pipeline, types};
 use std::path::Path;
 
 fn main() {
@@ -32,7 +32,9 @@ fn main() {
                     }
                 }
             }
-            None => eprintln!("[no anchor] Red UI reference not found — game not visible or UI changed."),
+            None => eprintln!(
+                "[no anchor] Red UI reference not found — game not visible or UI changed."
+            ),
         }
     } else {
         println!("Starting live screen capture...");

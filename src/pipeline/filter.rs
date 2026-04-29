@@ -1,5 +1,5 @@
-use image::{GrayImage, Luma, RgbImage};
 use crate::constants::*;
+use image::{GrayImage, Luma, RgbImage};
 
 /// Stage 3 helper: true if mean(R)>150, mean(G)>150, mean(B)<100 (housed overlay detected).
 /// Python uses BGR ordering; we use RGB — channel semantics are re-mapped accordingly.
@@ -73,7 +73,11 @@ pub fn apply_base_filter(
             } else {
                 0
             };
-            out.put_pixel(x, y, Luma([if norm >= brightness_thresh { norm } else { 0 }]));
+            out.put_pixel(
+                x,
+                y,
+                Luma([if norm >= brightness_thresh { norm } else { 0 }]),
+            );
         }
         return out;
     }

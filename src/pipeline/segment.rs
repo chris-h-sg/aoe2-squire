@@ -1,7 +1,7 @@
+use super::filter::apply_base_filter;
+use crate::constants::*;
 use image::{GrayImage, ImageBuffer, Luma, RgbImage};
 use imageproc::region_labelling::{connected_components, Connectivity};
-use crate::constants::*;
-use super::filter::apply_base_filter;
 
 struct CompStats {
     left: u32,
@@ -25,11 +25,11 @@ fn compute_stats(
     max_label: u32,
 ) -> Vec<(usize, CompStats)> {
     let n = max_label as usize + 1;
-    let mut left  = vec![u32::MAX; n];
-    let mut top   = vec![u32::MAX; n];
+    let mut left = vec![u32::MAX; n];
+    let mut top = vec![u32::MAX; n];
     let mut right = vec![0u32; n];
-    let mut bot   = vec![0u32; n];
-    let mut area  = vec![0u32; n];
+    let mut bot = vec![0u32; n];
+    let mut area = vec![0u32; n];
     let mut max_b = vec![0u8; n];
 
     for (x, y, p) in labeled.enumerate_pixels() {
@@ -38,12 +38,22 @@ fn compute_stats(
             continue;
         }
         let br = seg.get_pixel(x, y).0[0];
-        if x < left[label]  { left[label]  = x; }
-        if y < top[label]   { top[label]   = y; }
-        if x > right[label] { right[label] = x; }
-        if y > bot[label]   { bot[label]   = y; }
+        if x < left[label] {
+            left[label] = x;
+        }
+        if y < top[label] {
+            top[label] = y;
+        }
+        if x > right[label] {
+            right[label] = x;
+        }
+        if y > bot[label] {
+            bot[label] = y;
+        }
         area[label] += 1;
-        if br > max_b[label] { max_b[label] = br; }
+        if br > max_b[label] {
+            max_b[label] = br;
+        }
     }
 
     (1..n)
@@ -51,14 +61,17 @@ fn compute_stats(
             if area[i] == 0 {
                 return None;
             }
-            Some((i, CompStats {
-                left:           left[i],
-                top:            top[i],
-                width:          right[i] - left[i] + 1,
-                height:         bot[i]   - top[i]  + 1,
-                area:           area[i],
-                max_brightness: max_b[i],
-            }))
+            Some((
+                i,
+                CompStats {
+                    left: left[i],
+                    top: top[i],
+                    width: right[i] - left[i] + 1,
+                    height: bot[i] - top[i] + 1,
+                    area: area[i],
+                    max_brightness: max_b[i],
+                },
+            ))
         })
         .collect()
 }
@@ -68,7 +81,11 @@ fn compute_stats(
 /// collapse all foreground intensities to a single value before labeling.
 fn binarize(seg: &GrayImage) -> GrayImage {
     ImageBuffer::from_fn(seg.width(), seg.height(), |x, y| {
-        Luma([if seg.get_pixel(x, y).0[0] > 0 { 255u8 } else { 0u8 }])
+        Luma([if seg.get_pixel(x, y).0[0] > 0 {
+            255u8
+        } else {
+            0u8
+        }])
     })
 }
 
@@ -99,7 +116,11 @@ fn get_components_recursive(
         params.allow_yellow,
     );
     let binary = binarize(&seg);
-    let conn = if params.use_eight { Connectivity::Eight } else { Connectivity::Four };
+    let conn = if params.use_eight {
+        Connectivity::Eight
+    } else {
+        Connectivity::Four
+    };
     let labeled = connected_components(&binary, conn, Luma([0u8]));
 
     let max_label = labeled.pixels().map(|p| p.0[0]).max().unwrap_or(0);
@@ -139,7 +160,12 @@ fn get_components_recursive(
                 return get_components_recursive(roi, p, offset_x, offset_y);
             }
             // All strategies exhausted: return as a single digit.
-            return vec![BoundingBox { x: offset_x, y: offset_y, w: s.width, h: s.height }];
+            return vec![BoundingBox {
+                x: offset_x,
+                y: offset_y,
+                w: s.width,
+                h: s.height,
+            }];
         }
     }
 
@@ -153,17 +179,16 @@ fn get_components_recursive(
                 for px in 0..s.width {
                     let gx = s.left + px;
                     let gy = s.top + py;
-                    if gx < roi_w && gy < roi_h
+                    if gx < roi_w
+                        && gy < roi_h
                         && labeled.get_pixel(gx, gy).0[0] as usize == *label_idx
                     {
                         sub.put_pixel(px, py, *roi.get_pixel(gx, gy));
                     }
                 }
             }
-            let sub_boxes = get_components_recursive(
-                &sub, params,
-                offset_x + s.left, offset_y + s.top,
-            );
+            let sub_boxes =
+                get_components_recursive(&sub, params, offset_x + s.left, offset_y + s.top);
             results.extend(sub_boxes);
         } else {
             results.push(BoundingBox {
@@ -227,7 +252,7 @@ mod tests {
         let mut img = GrayImage::new(2, 2);
         img.put_pixel(0, 0, Luma([100]));
         img.put_pixel(1, 1, Luma([0]));
-        
+
         let b = binarize(&img);
         assert_eq!(b.get_pixel(0, 0).0[0], 255);
         assert_eq!(b.get_pixel(1, 1).0[0], 0);
@@ -237,21 +262,21 @@ mod tests {
     fn test_segmentation_simple() {
         // Create an image with two separate white boxes on a black background
         let mut img = RgbImage::new(20, 10);
-        
+
         // Box 1: (2,2) to (4,4)
         for y in 2..5 {
             for x in 2..5 {
                 img.put_pixel(x, y, Rgb([255, 255, 255]));
             }
         }
-        
+
         // Box 2: (10,2) to (12,4)
         for y in 2..5 {
             for x in 10..13 {
                 img.put_pixel(x, y, Rgb([255, 255, 255]));
             }
         }
-        
+
         let params = SegmentationParams {
             grey_tol: 10,
             brightness_thresh: 128,
@@ -261,13 +286,13 @@ mod tests {
             allow_yellow: false,
         };
         let boxes = get_components_recursive(&img, params, 0, 0);
-        
+
         assert_eq!(boxes.len(), 2);
-        
+
         // Sort by x to verify positions
         let mut b = boxes;
         b.sort_by_key(|r| r.x);
-        
+
         assert_eq!(b[0].x, 2);
         assert_eq!(b[1].x, 10);
     }

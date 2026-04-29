@@ -4,10 +4,10 @@
 
 ---
 
-## 1. Telemetry Data Export (Live Capture)
+## 1. Telemetry Data Export (Live Capture) [COMPLETED]
 Update the Rust capture loop to persist data for offline analysis.
 - **Action:** Modify `src/capture/mod.rs` to initialize a `csv::Writer` when `--live` is active.
-- **Output:** `telemetry_log.csv`
+- **Output:** `logs/telemetry_YYYYMMDD_HHMMSS.csv` (timestamped filenames)
 - **Columns:**
     - `timestamp_ms`: System wall-clock time.
     - `food_total`, `food_vils`
@@ -17,6 +17,7 @@ Update the Rust capture loop to persist data for offline analysis.
     - `pop_curr`, `pop_max`, `pop_vils`
     - `idle_vils`
 - **Rate:** Log every frame processed (~2 FPS).
+- **Validation:** Added unit tests for CSV row preparation and population splitting.
 
 ## 2. Replay Event Extraction
 Extract game-time events from the recording file.
@@ -40,6 +41,6 @@ Build a tool to align the two timelines and quantify error rates.
 ---
 
 ## Next Steps for New Session:
-1.  **Add Dependencies**: Add `csv` and `aoe2rec` to `Cargo.toml`.
-2.  **Implement Logger**: Update `run_capture_loop` in `src/capture/mod.rs` to write to CSV.
-3.  **Gather Test Data**: Record a short 5-minute AoE2 game while running the analyzer to generate a paired `.csv` and `.aoe2record` set.
+1.  **Gather Test Data**: Record a short 5-minute AoE2 game while running the analyzer to generate a paired `.csv` (in `logs/`) and `.aoe2record` set.
+2.  **Add Dependencies**: Add `aoe2rec` to `Cargo.toml`.
+3.  **Implement Replay Parser**: Create a utility to extract game events from the recording.

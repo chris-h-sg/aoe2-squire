@@ -1,8 +1,8 @@
+use rts_analyzer::{pipeline, types};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::OnceLock;
-use serde::Deserialize;
-use rts_analyzer::{pipeline, types};
 
 #[derive(Deserialize)]
 struct ExpectedJson {
@@ -25,23 +25,24 @@ fn get_fixtures() -> &'static Fixtures {
     FIXTURES.get_or_init(|| {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-        let ui_map_data = std::fs::read_to_string(root.join("ui_map.json"))
-            .expect("ui_map.json not found");
-        let ui_map: types::UiMap = serde_json::from_str(&ui_map_data)
-            .expect("failed to parse ui_map.json");
+        let ui_map_data =
+            std::fs::read_to_string(root.join("ui_map.json")).expect("ui_map.json not found");
+        let ui_map: types::UiMap =
+            serde_json::from_str(&ui_map_data).expect("failed to parse ui_map.json");
 
-        let templates = pipeline::matcher::load_templates(
-            &root.join("research/templates/enormous_numbers"),
-        );
+        let templates =
+            pipeline::matcher::load_templates(&root.join("research/templates/enormous_numbers"));
 
-        let expected_data = std::fs::read_to_string(
-            root.join("test_bench/expected_values.json"),
-        )
-        .expect("expected_values.json not found");
-        let expected: ExpectedJson = serde_json::from_str(&expected_data)
-            .expect("failed to parse expected_values.json");
+        let expected_data = std::fs::read_to_string(root.join("test_bench/expected_values.json"))
+            .expect("expected_values.json not found");
+        let expected: ExpectedJson =
+            serde_json::from_str(&expected_data).expect("failed to parse expected_values.json");
 
-        Fixtures { ui_map, templates, expected }
+        Fixtures {
+            ui_map,
+            templates,
+            expected,
+        }
     })
 }
 
@@ -55,7 +56,10 @@ fn run_image_test(img_name: &str, value_set_name: &str) {
     let results = pipeline::process_frame(&img, &f.ui_map, &f.templates)
         .unwrap_or_else(|| panic!("no UI anchor detected in {}", img_name));
 
-    let expected_values = f.expected.value_sets.get(value_set_name)
+    let expected_values = f
+        .expected
+        .value_sets
+        .get(value_set_name)
         .unwrap_or_else(|| panic!("value set '{}' not found", value_set_name));
 
     let mut failures = vec![];
@@ -92,12 +96,16 @@ macro_rules! image_test {
     };
 }
 
-image_test!(aoe2_16x9,         "aoe2_16x9.png",          "baseline_1080p");
-image_test!(aoe2_16x9_min,     "aoe2_16x9_min.png",      "baseline_1080p");
-image_test!(aoe2_16x9_max,     "aoe2_16x9_max.png",      "baseline_1080p");
-image_test!(aoe2_16x10,        "aoe2_16x10.png",         "baseline_other");
-image_test!(aoe2_21x9,         "aoe2_21x9.png",          "baseline_other");
-image_test!(aoe2_32x9,         "aoe2_32x9.png",          "baseline_other");
-image_test!(aoe2_4k,           "aoe2_4k.png",            "baseline_other");
-image_test!(housed_overlay,    "housed_overlay.png",     "housed_overlay");
-image_test!(housed_no_overlay, "housed_no_overlay.png",  "housed_no_overlay");
+image_test!(aoe2_16x9, "aoe2_16x9.png", "baseline_1080p");
+image_test!(aoe2_16x9_min, "aoe2_16x9_min.png", "baseline_1080p");
+image_test!(aoe2_16x9_max, "aoe2_16x9_max.png", "baseline_1080p");
+image_test!(aoe2_16x10, "aoe2_16x10.png", "baseline_other");
+image_test!(aoe2_21x9, "aoe2_21x9.png", "baseline_other");
+image_test!(aoe2_32x9, "aoe2_32x9.png", "baseline_other");
+image_test!(aoe2_4k, "aoe2_4k.png", "baseline_other");
+image_test!(housed_overlay, "housed_overlay.png", "housed_overlay");
+image_test!(
+    housed_no_overlay,
+    "housed_no_overlay.png",
+    "housed_no_overlay"
+);

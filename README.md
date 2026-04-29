@@ -29,7 +29,10 @@ cargo test -- --nocapture
 
 ### Running the Extractor
 
-By default, the application runs in **Live Capture Mode**. It uses Windows DXGI (Desktop Duplication) to capture your primary monitor every 500ms and stream real-time telemetry to the console:
+By default, the application runs in **Live Capture Mode**. It uses Windows DXGI (Desktop Duplication) to capture your primary monitor every 500ms and stream real-time telemetry to the console.
+
+### Telemetry Logging
+While running in live mode, the application automatically persists telemetry data to timestamped CSV files in the `logs/` directory (e.g., `logs/telemetry_20260429_150000.csv`). This data is used for offline analysis and validation against game replays.
 
 ```powershell
 # Run the live capture loop (highly recommended to use --release for performance)

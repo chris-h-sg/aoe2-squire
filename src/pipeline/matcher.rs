@@ -1,8 +1,8 @@
-use std::path::Path;
-use image::GrayImage;
-use crate::types::Templates;
-use crate::constants::*;
 use super::canvas;
+use crate::constants::*;
+use crate::types::Templates;
+use image::GrayImage;
+use std::path::Path;
 
 /// Loads and pre-processes all digit templates from `dir`.
 /// Each PNG is named "0.png" … "9.png" and "slash.png" (mapped to '/').
@@ -22,7 +22,11 @@ pub fn load_templates(dir: &Path) -> Templates {
         if path.extension().and_then(|e| e.to_str()) != Some("png") {
             continue;
         }
-        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_string();
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_string();
         let ch: char = if stem == "slash" {
             '/'
         } else if stem.len() == 1 {
@@ -69,8 +73,7 @@ pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
                     let sx = x as i32 + dx;
                     let sy = y as i32 + dy;
                     if sx >= 0 && sx < size as i32 && sy >= 0 && sy < size as i32 {
-                        shifted[y * size + x] =
-                            input_canvas[sy as usize * size + sx as usize];
+                        shifted[y * size + x] = input_canvas[sy as usize * size + sx as usize];
                     }
                 }
             }
@@ -88,7 +91,10 @@ pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
                     shifted
                         .iter()
                         .zip(template.iter())
-                        .map(|(&a, &b)| { let d = a - b; d * d })
+                        .map(|(&a, &b)| {
+                            let d = a - b;
+                            d * d
+                        })
                         .sum::<f32>()
                 })
                 .fold(f32::INFINITY, f32::min);
@@ -111,7 +117,9 @@ pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
         if is_conflict && second_ssd - best_ssd < best_ssd * 0.20 {
             let sym_score = h_symmetry_score(&input_canvas, size);
             // '0' is symmetric (score < 40); '3'/'6'/'9' are asymmetric (score > 60).
-            if (best_char == '0' && sym_score > 60.0) || (asym.contains(&best_char) && sym_score < 40.0) {
+            if (best_char == '0' && sym_score > 60.0)
+                || (asym.contains(&best_char) && sym_score < 40.0)
+            {
                 matches.swap(0, 1);
             }
         }
@@ -142,7 +150,7 @@ mod tests {
     fn test_h_symmetry_score() {
         let size = 10;
         let mut canvas = vec![0.0f32; size * size];
-        
+
         // Perfectly symmetric pattern: vertical line in middle
         for y in 0..size {
             canvas[y * size + 4] = 1.0;
@@ -150,7 +158,7 @@ mod tests {
         }
         let score_sym = h_symmetry_score(&canvas, size);
         assert!(score_sym < 1.0);
-        
+
         // Asymmetric pattern: line on one side
         let mut canvas_asym = vec![0.0f32; size * size];
         for y in 0..size {
