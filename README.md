@@ -69,4 +69,13 @@ The tool currently extracts:
 *   **Operating System**: Windows 10/11
 *   **Display**: Primary monitor must be active (DXGI does not support headless sessions).
 *   **Performance**: The capture loop is throttled to ~2 FPS to maintain <1% CPU impact during gameplay.
+
+## Data Acknowledgements
+
+This project utilizes community-standard data and mapping provided by the following projects:
+
+*   **Unit Statistics**: [unitstatistics.com](https://unitstatistics.com/age-of-empires2/)
+*   **Object & Tech Tables**: [airef.github.io](https://airef.github.io/tables/objects.html)
+*   **Halfon Data**: [halfon.aoe2.se](https://halfon.aoe2.se/) and [SiegeEngineers/halfon](https://github.com/SiegeEngineers/halfon)
+
 

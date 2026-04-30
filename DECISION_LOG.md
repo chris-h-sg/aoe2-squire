@@ -177,3 +177,14 @@
     *   Initial confusion regarding the '1.1s Loom' was resolved by ensuring the re-sync loop captures every single \Sync\ operation.
     *   Verified that game-time milliseconds are correctly recorded and provide sub-second precision for event tracking.
 
+## Data Sources (Apr 30, 2026)
+
+The project relies on several community-maintained resources for AoE2:DE unit, building, and technology metadata:
+
+*   **Unit Statistics**: [https://unitstatistics.com/age-of-empires2/](https://unitstatistics.com/age-of-empires2/) (Primary source for unit attributes)
+*   **Object Tables**: [https://airef.github.io/tables/objects.html](https://airef.github.io/tables/objects.html) (Detailed ID mapping for units and buildings)
+*   **Technology Tables**: [https://airef.github.io/tables/techs.html](https://airef.github.io/tables/techs.html) (Detailed ID mapping for technologies)
+*   **Halfon Reference**: [https://halfon.aoe2.se/](https://halfon.aoe2.se/) (Comprehensive unit, building, and tech data)
+*   **Halfon Data (JSON)**: [https://github.com/SiegeEngineers/halfon/blob/master/data/units_buildings_techs.de.json](https://github.com/SiegeEngineers/halfon/blob/master/data/units_buildings_techs.de.json) (The primary source for automated resource cost and ID lookups)
+
+

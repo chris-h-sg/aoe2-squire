@@ -1,0 +1,301 @@
+﻿ID,Display Name,Food,Wood,Gold,Stone,Building,Age,Civilization,Notes
+2,Elite Tarkan,1000,0,500,0,Castle,4,Huns,can use my-unique-unit-upgrade
+3,Yeomen,0,750,450,0,Castle,3,Britons,"can use my-second-unique-research, my-unique-research in UP/WK"
+4,El Dorado,750,0,450,0,Castle,4,Mayans,can use my-unique-research
+5,Furor Celtica,750,0,450,0,Castle,4,Celts,can use my-unique-research
+6,Drill,0,500,450,0,Castle,4,Mongols,can use my-unique-research
+7,Mahouts/Citadels,0,600,300,0,Castle,4,Persians,can use my-unique-research
+8,Town Watch,75,0,0,0,Town Center,2,,
+9,Zealotry,400,0,400,0,Castle,4,Saracens,"removed in DE, my-unique-research in UP/WK"
+10,Artillery,600,0,650,0,Castle,4,Turks,can use my-unique-research
+11,Crenellations,600,0,0,400,Castle,4,Teutons,can use my-unique-research
+12,Crop Rotation,250,250,0,0,Mill,4,,
+13,Heavy Plow,125,125,0,0,Mill,3,,
+14,Horse Collar,75,75,0,0,Mill,2,,
+15,Guilds,300,0,200,0,Market,4,,
+16,Anarchy,450,0,250,0,Castle,3,Goths,"can use my-second-unique-research, my-unique-research in UP/WK"
+17,Banking,300,0,200,0,Market,3,,Imperial Age in WK/DE
+21,Atheism,500,300,0,0,Castle,4,Huns,can use my-unique-research
+22,Loom,0,0,50,0,Town Center,1,,
+23,Coinage,200,0,100,0,Market,2,,Castle Age in WK/DE
+24,Garland Wars,450,0,750,0,Castle,4,Aztecs,can use my-unique-research
+27,Elite Plumed Archer,700,1000,0,0,Castle,4,Mayans,can use my-unique-unit-upgrade
+28,Bimaristan,0,300,200,0,Castle,3,Saracens,can use my-second-unique-research
+34,Medium Warships,0,150,100,0,Dock,3,,"In DE, upgrades Galleys, Fire Galleys, and Hulks"
+35,Heavy Warships,0,400,315,0,Dock,4,,"In DE, upgrades War Galleys, Fire Ships, and War Hulks"
+39,Husbandry,150,0,0,0,Stable,3,,
+45,Faith,550,0,750,0,Monastery,4,,
+46,Devotion,100,0,200,0,Monastery,3,,
+47,Chemistry,300,0,200,0,University,4,,
+48,Caravan,200,0,200,0,Market,3,,
+49,Bogsveigar,650,0,500,0,Castle,4,Vikings,"can use my-unique-research, previously called Berserkergang"
+50,Masonry,150,175,0,0,University,3,,
+51,Architecture,300,200,0,0,University,4,,
+52,Rocketry,1100,0,900,0,Castle,4,Chinese,can use my-unique-research
+54,Treadmill Crane,0,200,0,50,University,3,,
+55,Gold Mining,100,75,0,0,Mining Camp,2,,
+59,Kataparuto,0,550,300,0,Castle,4,Japanese,can use my-unique-research
+60,Elite Conquistador,900,0,600,0,Castle,4,Spanish,can use my-unique-unit-upgrade
+61,Logistica,800,0,600,0,Castle,4,Byzantines,can use my-unique-research
+63,Keep,500,350,0,0,University,4,,
+64,Bombard Tower,800,400,0,0,University,4,,
+65,Gillnets,100,125,0,0,Dock,3,,
+67,Forging,150,0,0,0,Blacksmith,2,,
+68,Iron Casting,220,0,120,0,Blacksmith,3,,
+74,Scale Mail Armor,100,0,0,0,Blacksmith,2,,
+75,Blast Furnace,275,0,225,0,Blacksmith,4,,
+76,Chain Mail Armor,200,0,100,0,Blacksmith,3,,
+77,Plate Mail Armor,300,0,150,0,Blacksmith,4,,
+80,Plate Barding Armor,350,0,200,0,Blacksmith,4,,
+81,Scale Barding Armor,150,0,0,0,Blacksmith,2,,
+82,Chain Barding Armor,250,0,150,0,Blacksmith,3,,
+83,Bearded Axe,300,0,300,0,Castle,3,Franks,"can use my-second-unique-research, my-unique-research in UP/WK"
+93,Ballistics,0,300,175,0,University,3,,
+96,Capped Ram,300,0,0,0,Siege Workshop,4,,Castle Age for Cuman civilization
+98,Elite Skirmisher,0,230,130,0,Archery Range,3,,
+100,Crossbowman,175,0,100,0,Archery Range,3,,
+101,Feudal Age,500,0,0,0,Town Center,1,,
+102,Castle Age,800,0,200,0,Town Center,2,,
+103,Imperial Age,1000,0,800,0,Town Center,3,,
+140,Guard Tower,100,250,0,0,University,3,,
+182,Gold Shaft Mining,175,75,0,0,Mining Camp,3,,
+194,Fortified Wall,200,100,0,0,University,3,,
+197,Pikeman,160,0,90,0,Barracks,3,,
+199,Fletching,100,0,50,0,Blacksmith,2,,
+200,Bodkin Arrow,200,0,100,0,Blacksmith,3,,
+201,Bracer,300,0,200,0,Blacksmith,4,,
+202,Double-Bit Axe,100,50,0,0,Lumber Camp,2,,
+203,Bow Saw,150,100,0,0,Lumber Camp,3,,
+207,Long Swordsman,150,0,65,0,Barracks,3,,
+209,Cavalier,300,0,300,0,Stable,4,,
+211,Padded Archer Armor,100,0,0,0,Blacksmith,2,,
+212,Leather Archer Armor,150,0,150,0,Blacksmith,3,,
+213,Wheelbarrow,175,50,0,0,Town Center,2,,
+215,Squires,100,0,0,0,Barracks,3,,
+217,Two-Handed Swordsman,200,0,100,0,Barracks,4,,
+218,Heavy Cavalry Archer,900,0,500,0,Archery Range,4,,
+219,Ring Archer Armor,250,0,250,0,Blacksmith,4,,
+221,Two-Man Saw,300,200,0,0,Lumber Camp,4,,
+222,Man-at-Arms,100,0,40,0,Barracks,2,,
+230,Block Printing,0,0,200,0,Monastery,4,,
+231,Sanctity,0,0,175,0,Monastery,3,,
+233,Illumination,0,0,120,0,Monastery,4,,
+236,Heavy Camel [Rider],325,0,360,0,Stable,4,,Renamed Heavy Camel Rider in DE
+237,Arbalest,450,0,350,0,Archery Range,4,,
+239,Heavy Scorpion,800,750,0,0,Siege Workshop,4,,
+244,Heavy Demolition Ship,0,250,300,0,Dock,4,,
+249,Hand Cart,300,200,0,0,Town Center,3,,
+252,Fervor,0,0,140,0,Monastery,3,,
+254,Light Cavalry,150,0,50,0,Stable,3,,
+255,Siege Ram,1000,0,0,0,Siege Workshop,4,,
+257,Onager,800,0,500,0,Siege Workshop,4,,
+264,Champion,650,0,350,0,Barracks,4,,
+265,Paladin,1300,0,750,0,Stable,4,,
+278,Stone Mining,100,75,0,0,Mining Camp,2,,
+279,Stone Shaft Mining,175,75,0,0,Mining Camp,3,,
+280,Town Patrol,300,0,100,0,Town Center,3,,
+315,Conscription,150,0,150,0,Castle,4,,
+316,Redemption,0,0,475,0,Monastery,3,,
+319,Atonement,0,0,325,0,Monastery,3,,
+320,Siege Onager,1450,0,1000,0,Siege Workshop,4,,
+321,Sappers,400,200,0,0,Castle,4,,
+322,Murder Holes,200,0,0,100,University,3,,
+360,Elite Longbowman,850,0,850,0,Castle,4,Britons,can use my-unique-unit-upgrade
+361,Elite Cataphract,1200,0,800,0,Castle,4,Byzantines,can use my-unique-unit-upgrade
+362,Elite Chu Ko Nu,1300,0,1300,0,Castle,4,Chinese,can use my-unique-unit-upgrade
+363,Elite Throwing Axeman,850,0,550,0,Castle,4,Franks,can use my-unique-unit-upgrade
+364,Elite Teutonic Knight,950,0,500,0,Castle,4,Teutons,can use my-unique-unit-upgrade
+365,Elite Huskarl,1200,0,550,0,Castle,4,Goths,can use my-unique-unit-upgrade
+366,Elite Samurai,750,0,650,0,Castle,4,Japanese,can use my-unique-unit-upgrade
+367,Elite War Elephant,1350,0,800,0,Castle,4,Persians,can use my-unique-unit-upgrade
+368,Elite Mameluke,600,0,500,0,Castle,4,Saracens,can use my-unique-unit-upgrade
+369,Elite Janissary,850,0,750,0,Castle,4,Turks,can use my-unique-unit-upgrade
+370,Elite Woad Raider,1000,0,800,0,Castle,4,Celts,can use my-unique-unit-upgrade
+371,Elite Mangudai,1100,0,675,0,Castle,4,Mongols,can use my-unique-unit-upgrade
+372,Elite Longboat,750,0,475,0,Dock,4,Vikings,
+373,Shipwright,1000,0,300,0,University,4,,Moved to the University in DE
+374,Careening,100,0,200,0,University,3,,Moved to the University in DE
+375,Dry Dock,200,0,400,0,University,4,,Moved to the University in DE
+376,Elite Cannon Galleon,0,525,500,0,Dock,4,,
+377,Siege Engineers,500,600,0,0,University,4,,
+379,Hoardings,400,400,0,0,Castle,4,,
+380,Heated Shot,350,0,100,0,University,3,,
+384,Eagle Warrior,200,0,200,0,Barracks,3,,
+398,Elite Berserk,1075,0,475,0,Castle,4,Vikings,can use my-unique-unit-upgrade
+408,Spies/Treason,0,0,200,0,Castle,4,,Use with spy command to research Treason
+428,Hussar,500,0,600,0,Stable,4,,
+429,Halberdier,300,0,600,0,Barracks,4,,
+432,Elite Jaguar Warrior,1000,0,500,0,Castle,4,Aztecs,can use my-unique-unit-upgrade
+434,Elite Eagle Warrior,800,0,500,0,Barracks,4,,
+435,Bloodlines,150,0,100,0,Stable,2,,
+436,Parthian Tactics,200,0,250,0,Archery Range,4,,
+437,Thumb Ring,300,250,0,0,Archery Range,3,,
+438,Theocracy,0,0,200,0,Monastery,4,,
+439,Heresy,0,0,1000,0,Monastery,3,,
+440,Supremacy,400,0,250,0,Castle,4,Spanish,can use my-unique-research
+441,Herbal Medicine,0,0,200,0,Monastery,3,,
+445,Shinkichon,1100,0,800,0,Castle,4,Koreans,can use my-unique-research
+448,Elite Turtle Ship,650,0,500,0,Dock,4,Koreans,
+450,Elite War Wagon,0,1000,800,0,Castle,4,Koreans,can use my-unique-unit-upgrade
+454,Counterweights,650,0,500,0,Castle,4,Saracens,can use my-unique-research
+455,Detinets,0,400,200,0,Castle,3,Slavs,can use my-second-unique-research
+457,Perfusion,0,400,600,0,Castle,4,Goths,can use my-unique-research (DE only)
+460,Atlatl,400,0,350,0,Castle,3,Aztecs,can use my-second-unique-research (DE only)
+461,Warwolf,0,800,400,0,Castle,4,Britons,can use my-unique-research (DE only)
+462,Great Wall,0,400,0,200,Castle,3,Chinese,can use my-second-unique-research (DE only)
+463,Chieftains,600,0,450,0,Castle,3,Vikings,can use my-second-unique-research (DE only)
+464,Greek Fire,250,0,300,0,Castle,3,Byzantines,can use my-second-unique-research (DE only)
+468,Elite Genoese Crossbowman,900,0,750,0,Castle,4,Italians,can use my-unique-unit-upgrade
+472,Elite Magyar Huszar,800,0,600,0,Castle,4,Magyars,can use my-unique-unit-upgrade
+481,Elite Elephant Archer,900,0,500,0,"Archery Range, Castle",4,,"DE only, same tech ID is used for unique unit upgrade for Indians civ in HD/WK; HD or WK only, can use my-unique-unit-upgrade, same tech ID is used for Archery Range upgrade in DE"
+482,Stronghold,250,0,200,0,Castle,3,Celts,can use my-second-unique-research (DE only)
+483,Marauders,0,300,200,0,Castle,3,Huns,can use my-second-unique-research (DE only)
+484,Yasama,300,300,0,0,Castle,3,Japanese,can use my-second-unique-research (DE only)
+485,Obsidian Arrows,300,0,300,0,Castle,3,Mayans,removed in DE; can use my-second-unique-research
+486,Eupseong/Panokseon,300,300,0,0,Castle,3,Koreans,can use my-second-unique-research (DE only)
+487,Nomads,0,300,150,0,Castle,3,Mongols,can use my-second-unique-research (DE only)
+488,Boiling Oil,400,0,300,0,Castle,3,Persians,removed in DE; can use my-second-unique-research
+489,Ironclad,0,400,350,0,Castle,3,Teutons,can use my-second-unique-research (DE only)
+490,Madrasah,200,0,100,0,Castle,3,Saracens,Removed in DE
+491,Sipahi,350,0,150,0,Castle,3,Turks,can use my-second-unique-research (DE only)
+492,Inquisition,100,0,300,0,Castle,3,Spanish,can use my-second-unique-research (DE only)
+493,Chivalry,0,600,500,0,Castle,4,Franks,can use my-unique-research (DE only)
+494,Pavise,0,200,150,0,Castle,3,Italians,can use my-second-unique-research (DE only)
+499,Silk Road,250,0,250,0,Castle,4,Italians,can use my-unique-research
+504,Elite Boyar,1000,0,600,0,Castle,4,Slavs,can use my-unique-unit-upgrade
+506,Grand Trunk Road,250,200,0,0,Castle,3,Hindustanis,"DE only, called Sultans in HD/WK for Indians civ, can use my-second-unique-research; HD or WK only, renamed to Grand Trunk Road in DE"
+507,Shatagni,500,0,650,0,Castle,4,Hindustanis,"can use my-unique-research, same tech ID is used for Indians tech in HD/WK; HD or WK only, same tech ID is used for Hindustanis Shatagni unique tech, can use my-unique-research"
+509,Elite Kamayuk,900,0,500,0,Castle,4,Incas,can use my-unique-unit-upgrade
+512,Orthodoxy,200,0,300,0,Castle,3,Slavs,Removed in DE
+513,Druzhina,900,0,500,0,Castle,4,Slavs,can use my-unique-research
+514,Corvinian Army/Mercenaries,200,0,300,0,Castle,3,Magyars,Renamed Corvinian Army in DE
+515,Recurve Bow,0,600,400,0,Castle,4,Magyars,can use my-unique-research
+516,Andean Sling,200,0,300,0,Castle,3,Incas,can use my-second-unique-research (DE only)
+517,Fabric Shields/Couriers,600,0,600,0,Castle,4,Incas,"Renamed Fabric Shields in DE, can use my-unique-research"
+521,Imperial Camel [Rider],1000,0,500,0,Stable,4,Hindustanis/Indians,Renamed Imperial Camel Rider in DE
+526,Savar,1200,0,600,0,Stable,4,Persians,
+563,Elite Organ Gun,1200,0,500,0,Castle,4,Portuguese,can use my-unique-unit-upgrade
+565,Elite Camel Archer,0,1000,500,0,Castle,4,Berbers,can use my-unique-unit-upgrade
+567,Elite Gbeto,900,0,600,0,Castle,4,Malians,can use my-unique-unit-upgrade
+569,Elite Shotel Warrior,900,0,450,0,Castle,4,Ethiopians,can use my-unique-unit-upgrade
+572,Carrack,0,200,300,0,Castle,3,Portuguese,Removed in DE
+573,Arquebus,700,0,400,0,Castle,4,Portuguese,can use my-unique-research
+574,Royal Heirs,300,0,300,0,Castle,3,Ethiopians,can use my-second-unique-research (DE only)
+575,Torsion Engines,1000,0,600,0,Castle,4,Ethiopians,can use my-unique-research
+576,Tigui,200,300,0,0,Castle,3,Malians,can use my-second-unique-research (DE only)
+577,Farimba,650,0,400,0,Castle,4,Malians,can use my-unique-research
+578,Kasbah,250,0,250,0,Castle,3,Berbers,can use my-second-unique-research (DE only)
+579,Maghrebi Camels,700,0,300,0,Castle,4,Berbers,can use my-unique-research
+597,Elite Caravel,700,0,525,0,Dock,4,Portuguese,
+599,Elite Genitour,500,450,0,0,Archery Range,4,Berbers,Available for Berber allies
+602,Arson,75,0,25,0,Barracks,3,,
+608,Arrowslits,250,250,0,0,University,4,,
+615,Elite Ballista Elephant,1000,0,500,0,Castle,4,Khmer,can use my-unique-unit-upgrade
+617,Elite Karambit Warrior,900,0,600,0,Castle,4,Malay,can use my-unique-unit-upgrade
+619,Elite Arambai,1000,0,750,0,Castle,4,Burmese,can use my-unique-unit-upgrade
+621,Elite Rattan Archer,1000,0,750,0,Castle,4,Vietnamese,can use my-unique-unit-upgrade
+622,Tusk Swords,0,300,450,0,Castle,3,Khmer,can use my-second-unique-research
+623,Double Crossbow,700,0,400,0,Castle,4,Khmer,can use my-unique-research
+624,Thalassocracy,300,0,300,0,Castle,3,Malay,can use my-second-unique-research (DE only)
+625,Forced Levy,850,0,500,0,Castle,4,Malay,can use my-unique-research
+626,Howdah,400,300,0,0,Castle,4,Burmese,can use my-unique-research in DE
+627,Manipur Cavalry,300,0,300,0,Castle,3,Burmese,"can use my-second-unique-research in DE, my-unique-research in WK"
+628,Chatras,250,0,250,0,Castle,3,Vietnamese,can use my-second-unique-research (DE only)
+629,Paper Money,550,200,0,0,Castle,4,Vietnamese,can use my-unique-research
+631,Elite Battle Elephant,1100,0,700,0,Stable,4,,
+655,Imperial Skirmisher,0,300,300,0,Archery Range,4,Vietnamese,Available for Vietnamese allies
+678,Elite Konnik,1000,0,750,0,Castle,4,Bulgarians,can use my-unique-unit-upgrade
+680,Elite Keshik,700,0,600,0,Castle,4,Tatars,can use my-unique-unit-upgrade
+682,Elite Kipchak,1100,1000,0,0,Castle,4,Cumans,can use my-unique-unit-upgrade
+684,Elite Leitis,750,0,750,0,Castle,4,Lithuanians,can use my-unique-unit-upgrade
+685,Stirrups,400,0,200,0,Castle,3,Bulgarians,can use my-second-unique-research
+686,Bagains,900,0,450,0,Castle,4,Bulgarians,can use my-unique-research
+687,Silk Armor,0,400,300,0,Castle,3,Tatars,can use my-second-unique-research
+688,Timurid Siegecraft,0,500,400,0,Castle,4,Tatars,can use my-unique-research
+689,Steppe Husbandry,200,300,0,0,Castle,3,Cumans,can use my-second-unique-research
+690,Cuman Mercenaries,650,0,400,0,Castle,4,Cumans,can use my-unique-research
+691,Hill Forts,250,0,250,0,Castle,3,Lithuanians,can use my-second-unique-research
+692,Tower Shields,500,0,200,0,Castle,4,Lithuanians,can use my-unique-research
+715,Elite Steppe Lancer,600,0,550,0,Stable,4,,
+716,Supplies,75,0,75,0,Barracks,2,,
+751,Elite Coustillier,1000,0,800,0,Castle,4,Burgundians,can use my-unique-unit-upgrade
+753,Elite Serjeant,800,0,675,0,Castle,4,Sicilians,can use my-unique-unit-upgrade
+754,Burgundian Vineyards,400,0,300,0,Castle,3,Burgundians,can use my-second-unique-research
+755,Flemish Revolution,200,0,150,0,Castle,4,Burgundians,can use my-unique-research
+756,First Crusade,400,0,300,0,Castle,3,Sicilians,can use my-second-unique-research
+757,Hauberk,700,0,600,0,Castle,4,Sicilians,can use my-unique-research
+779,Elite Obuch,800,0,600,0,Castle,4,Poles,can use my-unique-unit-upgrade
+781,Elite Hussite Wagon,0,800,600,0,Castle,4,Bohemians,can use my-unique-unit-upgrade
+782,Szlachta Privileges,500,0,300,0,Castle,3,Poles,can use my-second-unique-research
+783,Lechitic Legacy,750,0,550,0,Castle,4,Poles,can use my-unique-research
+784,Wagenburg Tactics,300,0,300,0,Castle,3,Bohemians,can use my-second-unique-research
+785,Hussite Reforms,500,0,450,0,Castle,4,Bohemians,can use my-unique-research
+786,Winged Hussar,600,0,800,0,Stable,4,,
+787,Houfnice,1100,0,800,0,Siege Workshop,4,Bohemians,
+826,Elite Urumi Swordsman,900,0,450,0,Castle,4,Dravidians,can use my-unique-unit-upgrade
+828,Elite Ratha,800,800,0,0,Castle,4,Bengalis,can use my-unique-unit-upgrade
+830,Elite Chakram Thrower,1000,0,650,0,Castle,4,Gurjaras,can use my-unique-unit-upgrade
+831,Medical Corps,300,0,200,0,Castle,3,Dravidians,can use my-second-unique-research
+832,Wootz Steel,650,0,550,0,Castle,4,Dravidians,can use my-unique-research
+833,Paiks,0,375,275,0,Castle,3,Bengalis,can use my-second-unique-research
+834,Mahayana,0,800,650,0,Castle,4,Bengalis,can use my-unique-research
+835,Kshatriyas,500,0,450,0,Castle,3,Gurjaras,can use my-second-unique-research
+836,Frontier Guards,800,0,700,0,Castle,4,Gurjaras,can use my-unique-research
+838,Siege Elephant,850,0,0,0,Siege Workshop,4,,
+840,Elite Ghulam,950,0,575,0,Castle,4,Hindustanis,can use my-unique-unit-upgrade
+843,Elite Shrivamsha Rider,850,0,500,0,Stable,4,Gurjaras,
+875,Gambesons,50,0,100,0,Barracks,3,,
+882,Elite Centurion,1100,0,900,0,Castle,4,Romans,can use my-unique-unit-upgrade
+883,Ballistas,0,400,300,0,Castle,3,Romans,can use my-second-unique-research
+884,Comitatenses,700,0,800,0,Castle,4,Romans,can use my-unique-research
+885,Legionary,800,0,400,0,Barracks,4,Romans,
+905,Demolition Ship,0,50,100,0,Dock,3,,
+906,Fishing Lines,50,100,0,0,Dock,2,,
+907,Carvel Hull,350,200,0,0,University,4,,
+908,Clinker Construction,150,100,0,0,University,3,,
+909,Siphons,100,0,175,0,University,3,,
+910,Incendiaries,200,0,325,0,University,4,,
+918,Elite Composite Bowman,0,600,500,0,Castle,4,Armenians,can use my-unique-unit-upgrade
+920,Elite Monaspa,1000,0,700,0,Castle,4,Georgians,can use my-unique-unit-upgrade
+921,Fereters,550,0,400,0,Castle,4,Armenians,can use my-unique-research
+922,Cilician Fleet,0,350,300,0,Castle,3,Armenians,can use my-second-unique-research
+923,Svan Towers,300,0,200,0,Castle,3,Georgians,can use my-second-unique-research
+924,Aznauri Cavalry,550,0,250,0,Castle,4,Georgians,can use my-unique-research
+980,Heavy Rocket Cart,0,800,600,0,Siege Workshop,4,,
+982,Elite Fire Lancer,750,0,400,0,Barracks,4,,
+991,Elite Iron Pagoda,950,0,550,0,Castle,4,Jurchens,can use my-unique-unit-upgrade
+996,Fortified Bastions,350,250,0,0,Castle,3,Jurchens,can use my-second-unique-research
+997,Thunderclap Bombs,900,0,600,0,Castle,4,Jurchens,can use my-unique-research
+1002,Elite Liao Dao,800,0,650,0,Castle,4,Khitans,can use my-unique-unit-upgrade
+1006,Lamellar Armor,450,0,300,0,Castle,3,Khitans,can use my-second-unique-research
+1007,Ordo Cavalry,600,0,300,0,Castle,4,Khitans,can use my-unique-research
+1012,Transhumance,175,325,0,0,Mill,4,Khitans,
+1013,Pastoralism,100,150,0,0,Mill,3,Khitans,
+1014,Domestication,50,100,0,0,Mill,2,Khitans,
+1033,Elite Hei Guang Cavalry,350,0,250,0,Stable,4,,
+1036,Elite Tiger Cavalry,1000,0,800,0,Castle,4,Wei,can use my-unique-unit-upgrade
+1061,Tuntian,250,300,0,0,Castle,3,Wei,can use my-second-unique-research
+1062,Ming Guang Armor,600,0,450,0,Castle,4,Wei,can use my-unique-research
+1064,Elite White Feather Guard,900,0,500,0,Castle,4,Shu,can use my-unique-unit-upgrade
+1069,Bolt Magazine,650,0,750,0,Castle,3,Shu,can use my-second-unique-research
+1070,Coiled Serpent Array,350,0,300,0,Castle,4,Shu,can use my-unique-research
+1074,Elite Fire Archer,800,0,800,0,Castle,4,Wu,can use my-unique-unit-upgrade
+1080,Red Cliffs Tactics,400,0,250,0,Castle,3,Wu,can use my-second-unique-research
+1081,Sitting Tiger,0,600,300,0,Castle,4,Wu,can use my-unique-research
+1351,Champi Warrior,200,0,175,0,Barracks,3,,
+1352,Elite Champi Warrior,650,0,450,0,Barracks,4,,
+1364,Elite Guecha Warrior,0,750,600,0,Castle,4,Muisca,can use my-unique-unit-upgrade
+1365,Herbalism,300,0,350,0,Castle,3,Muisca,can use my-second-unique-research (DE only)
+1366,Huaracas,0,450,350,0,Castle,4,Muisca,can use my-unique-research
+1376,Elite Kona,800,0,800,0,Castle,4,Mapuche,can use my-unique-unit-upgrade
+1378,Elite Bolas Rider,800,0,500,0,Archery Range,4,Mapuche,
+1379,Malon,300,0,350,0,Castle,3,Mapuche,can use my-second-unique-research (DE only)
+1380,Butalmapu,500,0,450,0,Castle,4,Mapuche,can use my-unique-research
+1387,Elite War Dog,450,0,300,0,Barracks,4,,Must be enabled by scenarios to be researched
+1389,Elite Blackwood Archer,600,0,500,0,Castle,4,Tupi,can use my-unique-unit-upgrade
+1391,Elite Ibirapema Warrior,1000,0,600,0,Barracks,4,Tupi,
+1392,Caciques,400,0,200,0,Castle,3,Tupi,can use my-second-unique-research (DE only)
+1393,Curare,650,0,600,0,Castle,4,Tupi,can use my-unique-research
+1401,Elite Temple Guard,500,0,650,0,Barracks,4,Muisca,
+1402,Champi Runner,120,0,60,0,Barracks,2,,
+1404,Circumnavigation,250,150,0,0,Castle,4,Portuguese,can use my-second-unique-research

@@ -1,0 +1,65 @@
+﻿ID,Name,Class,Cmd ID,Food,Wood,Gold,Stone,Age,Notes
+,,,,,,,,,
+109,Town Center (Dark Age),building-class (903),cmdid-civilian-building,0,275,0,100,1,"For TC foundations use town-center-foundation (ID 621), In DE dead unit is 1408"
+71,Town Center (Feudal Age),building-class (903),cmdid-civilian-building,0,275,0,100,2,"For TC foundations use town-center-foundation (ID 621), In DE dead unit is 1431"
+141,Town Center (Castle Age),building-class (903),cmdid-civilian-building,0,275,0,100,3,"For TC foundations use town-center-foundation (ID 621), In DE dead unit is 1432"
+142,Town Center (Imperial Age),building-class (903),cmdid-civilian-building,0,275,0,100,4,"For TC foundations use town-center-foundation (ID 621), In DE dead unit is 1433"
+621,Town Center (Foundation),building-class (903),cmdid-civilian-building,0,275,0,100,1,
+70,House (Dark Age),building-class (903),cmdid-civilian-building,0,25,0,0,1,
+463,House (Feudal Age),building-class (903),cmdid-civilian-building,0,25,0,0,2,
+464,House (Castle Age),building-class (903),cmdid-civilian-building,0,25,0,0,3,
+465,House (Imperial Age),building-class (903),cmdid-civilian-building,0,25,0,0,4,
+68,Mill (Dark Age),building-class (903),cmdid-civilian-building,0,100,0,0,1,
+129,Mill (Feudal Age),building-class (903),cmdid-civilian-building,0,100,0,0,2,
+130,Mill (Castle Age),building-class (903),cmdid-civilian-building,0,100,0,0,3,
+131,Mill (Imperial Age),building-class (903),cmdid-civilian-building,0,100,0,0,4,
+1734,Folwark (Dark Age),building-class (903),cmdid-civilian-building,0,100,0,0,1,Use 'mill' to build and count folwarks
+1711,Folwark (Feudal Age),building-class (903),cmdid-civilian-building,0,100,0,0,2,Use 'mill' to build and count folwarks
+1720,Folwark (Castle Age),building-class (903),cmdid-civilian-building,0,100,0,0,3,Use 'mill' to build and count folwarks
+584,Mining Camp (Dark Age),building-class (903),cmdid-civilian-building,0,100,0,0,1,
+585,Mining Camp (Feudal Age),building-class (903),cmdid-civilian-building,0,100,0,0,2,
+586,Mining Camp (Castle Age),building-class (903),cmdid-civilian-building,0,100,0,0,3,
+587,Mining Camp (Imperial Age),building-class (903),cmdid-civilian-building,0,100,0,0,4,
+562,Lumber Camp (Dark Age),building-class (903),cmdid-civilian-building,0,100,0,0,1,
+563,Lumber Camp (Feudal Age),building-class (903),cmdid-civilian-building,0,100,0,0,2,
+564,Lumber Camp (Castle Age),building-class (903),cmdid-civilian-building,0,100,0,0,3,
+565,Lumber Camp (Imperial Age),building-class (903),cmdid-civilian-building,0,100,0,0,4,
+1808,Mule Cart,building-class (903),cmdid-civilian-building,20,80,0,0,1,
+2556,Settlement (Dark Age),building-class (903),cmdid-civilian-building,0,125,0,0,1,
+2558,Settlement (Feudal Age),building-class (903),cmdid-civilian-building,0,125,0,0,2,
+2560,Settlement (Castle Age),building-class (903),cmdid-civilian-building,0,125,0,0,1,
+45,Dock (Dark Age),building-class (903),cmdid-civilian-building,0,150,0,0,1,
+133,Dock (Feudal Age),building-class (903),cmdid-civilian-building,0,150,0,0,2,
+47,Dock (Castle Age),building-class (903),cmdid-civilian-building,0,150,0,0,3,
+51,Dock (Imperial Age),building-class (903),cmdid-civilian-building,0,150,0,0,4,
+1189,Harbor,building-class (903),cmdid-civilian-building,0,150,0,0,3,Longboats also use projectiles 512 and 524
+103,Blacksmith (Feudal Age),building-class (903),cmdid-civilian-building,0,150,0,0,2,
+18,Blacksmith (Castle Age),building-class (903),cmdid-civilian-building,0,150,0,0,3,
+19,Blacksmith (Imperial Age),building-class (903),cmdid-civilian-building,0,150,0,0,4,
+84,Market (Feudal Age),building-class (903),cmdid-civilian-building,0,175,0,0,2,
+116,Market (Castle Age),building-class (903),cmdid-civilian-building,0,175,0,0,3,
+137,Market (Imperial Age),building-class (903),cmdid-civilian-building,0,175,0,0,4,
+104,"Monastery (Castle Age, Base)",building-class (903),cmdid-civilian-building,0,175,0,0,3,
+30,Monastery (Feudal Age),building-class (903),cmdid-civilian-building,0,175,0,0,3,"The Feudal Age tech upgrades the monastery to this unit, but it's not available unit Castle Age."
+31,"Monastery (Castle Age, Upgraded)",building-class (903),cmdid-civilian-building,0,175,0,0,3,The Castle Age tech upgrades the monastery to this unit.
+32,Monastery (Imperial Age),building-class (903),cmdid-civilian-building,0,175,0,0,4,
+209,University (Castle Age),building-class (903),cmdid-civilian-building,0,200,0,0,3,
+210,University (Imperial Age),building-class (903),cmdid-civilian-building,0,200,0,0,3,
+276,Wonder,building-class (903),cmdid-civilian-building,0,1000,1000,1000,4,
+1806,Fortified Church,building-class (903),cmdid-civilian-building,0,200,0,0,3,Use 'monastery' to build and count fortified churches
+1754,Caravanserai,building-class (903),cmdid-civilian-building,0,175,0,50,4,
+1021,Feitoria,building-class (903),cmdid-civilian-building,0,0,350,300,4,
+12,Barracks (Dark Age),building-class (903),cmdid-military-building,0,175,0,0,1,
+498,Barracks (Feudal Age),building-class (903),cmdid-military-building,0,175,0,0,2,
+132,Barracks (Castle Age),building-class (903),cmdid-military-building,0,175,0,0,3,
+20,Barracks (Imperial Age),building-class (903),cmdid-military-building,0,175,0,0,4,
+87,Archery Range (Feudal Age),building-class (903),cmdid-military-building,0,175,0,0,2,
+10,Archery Range (Castle Age),building-class (903),cmdid-military-building,0,175,0,0,3,
+14,Archery Range (Imperial Age),building-class (903),cmdid-military-building,0,175,0,0,4,
+101,Stable (Feudal Age),building-class (903),cmdid-military-building,0,175,0,0,2,
+86,Stable (Castle Age),building-class (903),cmdid-military-building,0,175,0,0,3,
+153,Stable (Imperial Age),building-class (903),cmdid-military-building,0,175,0,0,4,
+49,Siege Workshop,building-class (903),cmdid-military-building,0,200,0,0,3,
+598,Outpost,building-class (903),cmdid-military-building,0,25,0,5,1,
+82,Castle,building-class (903),cmdid-military-building,0,0,0,650,3,
+1251,Krepost,building-class (903),cmdid-military-building,0,0,0,350,3,
