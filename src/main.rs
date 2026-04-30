@@ -15,15 +15,13 @@ fn main() {
     println!("Loaded {} templates", templates.len());
 
     if args.len() > 1 && args[1] == "--parse-replay" {
+        if args.len() < 3 {
+            eprintln!("Usage: rts-analyzer --parse-replay <path/to/replay.aoe2record>");
+            std::process::exit(1);
+        }
         let replay_path = Path::new(&args[2]);
         println!("Parsing replay: {}", replay_path.display());
         replay::extract_events(replay_path).expect("Failed to parse replay");
-        return;
-    }
-
-    if args.len() > 1 && args[1] == "--extract-techs" {
-        let replay_path = Path::new(&args[2]);
-        replay::extract_events(replay_path).expect("Failed to extract techs");
         return;
     }
 

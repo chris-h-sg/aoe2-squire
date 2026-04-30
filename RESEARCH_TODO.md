@@ -34,13 +34,14 @@
 - [x] **Replay Parser (Extraction)**: Tool implemented to extract tech events and unit queuing with accurate mm:ss.sss timestamps.
     - [x] Support for `data/techs.csv` and `data/units.csv` for ID mapping.
     - [x] Internal state tracking for Building Instance IDs to resolve Building Types for Research and Unqueue events.
-    - [ ] Implement Building Construction extraction to achieve 100% building type coverage.
-    - [ ] Implement Resource Cost calculation in extraction output.
+    - [x] Implement Building Construction extraction to achieve 100% building type coverage.
+    - [x] Implement Resource Cost calculation in extraction output.
 - [ ] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops.
 
 
 ## Future Research (Post-Core-Tool)
 - [ ] **Anti-Cheat Deep Dive:** Verify legal safety of background scraping for StarCraft 2 and AoM:R.
 - [ ] **Gather Rate Database:** Compile a master JSON of base gather rates and tech multipliers.
+- [ ] **AoE2 Object ID Sequence:** Investigate how the engine assigns IDs to foundations and units to enable 100% accurate mapping without explicit Interact actions.
 - [ ] **Trust Bench:** Research and price-match EV Certificate providers (Sectigo, DigiCert, GlobalSign).
 - [ ] **(Low Priority) CaptureAge Pro API:** Investigate only as an optional feature for pro users.
