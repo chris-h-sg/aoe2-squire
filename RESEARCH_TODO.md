@@ -31,7 +31,7 @@
 **Goal:** Prove accuracy by meshing live telemetry CSV with absolute ground truth from replay files.
 
 - [x] **CSV Export:** Rust capture loop now logs high-performance telemetry to CSV.
-- [/] **Replay Parser:** Tool implemented to extract tech events with accurate mm:ss.sss timestamps (Unit/Build events pending).
+- [x] **Replay Parser (Techs)**: Tool implemented to extract tech events with accurate mm:ss.sss timestamps using `data/techs.csv`. (Unit/Build events pending).
 - [ ] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops.
 
 

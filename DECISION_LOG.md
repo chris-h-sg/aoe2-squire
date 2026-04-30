@@ -187,4 +187,15 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Halfon Reference**: [https://halfon.aoe2.se/](https://halfon.aoe2.se/) (Comprehensive unit, building, and tech data)
 *   **Halfon Data (JSON)**: [https://github.com/SiegeEngineers/halfon/blob/master/data/units_buildings_techs.de.json](https://github.com/SiegeEngineers/halfon/blob/master/data/units_buildings_techs.de.json) (The primary source for automated resource cost and ID lookups)
 
+## Technology Metadata (Apr 30, 2026)
 
+### 1. Source: techs.csv vs JSON
+*   **Decision**: Switched technology ID mapping from JSON to `data/techs.csv`.
+*   **Reasoning**:
+    *   `techs.csv` is more human-readable and allows for easier manual verification and updates.
+    *   Includes additional metadata like resource costs and ages, which are essential for future "Efficiency Gap" analysis.
+    *   Consolidates game data into the central `data/` directory.
+
+### 2. Output: Tabular Research Timeline
+*   **Decision**: Display technology research events in a formatted table in the CLI.
+*   **Reasoning**: Improves readability for users compared to raw log lines, making it easier to compare research timings between players at a glance.

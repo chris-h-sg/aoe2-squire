@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::collections::HashMap;
 use std::error::Error;
-// use aoe2rec::Savegame; // Removed as unused
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub struct ResourceCost {
@@ -14,73 +14,142 @@ pub struct ResourceCost {
 pub enum ReplayEvent {
     UnitTraining {
         timestamp_ms: u32,
+        player_id: u8,
         unit_type: String,
         cost: ResourceCost,
     },
     TechResearch {
         timestamp_ms: u32,
+        player_id: u8,
         tech_type: String,
         cost: ResourceCost,
     },
     BuildingConstruction {
         timestamp_ms: u32,
+        player_id: u8,
         building_type: String,
         cost: ResourceCost,
     },
     QueueCancellation {
         timestamp_ms: u32,
+        player_id: u8,
         refund: ResourceCost,
         cancelled_type: String,
+    },
+}
+
+fn load_tech_map() -> Result<HashMap<u32, String>, Box<dyn Error>> {
+    let mut data_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    data_path.push("data");
+    data_path.push("techs.csv");
+
+    let mut rdr = csv::Reader::from_path(data_path)?;
+    let mut map = HashMap::new();
+
+    for result in rdr.records() {
+        let record = result?;
+        let id: u32 = record[0].parse()?;
+        let name = record[1].to_string();
+        map.insert(id, name);
     }
+
+    Ok(map)
+}
+
+fn format_time(ms: u32) -> String {
+    let seconds = (ms / 1000) % 60;
+    let minutes = (ms / 1000) / 60;
+    let ms_part = ms % 1000;
+    format!("{:02}:{:02}.{:03}", minutes, seconds, ms_part)
 }
 
 pub fn extract_events(path: &Path) -> Result<Vec<ReplayEvent>, Box<dyn Error>> {
     let mut events = Vec::new();
-    
-    // Load ID mappings
-    let mut data_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    data_path.push("research");
-    data_path.push("aoe2_data.json");
-    let data_str = std::fs::read_to_string(data_path)?;
-    let id_map: serde_json::Value = serde_json::from_str(&data_str)?;
-    
+
+    // Load ID mappings from CSV
+    let tech_map = load_tech_map()?;
+
     let savegame = aoe2rec::Savegame::from_file(path)?;
-    
+
+    // Create player name map
+    let mut player_names = HashMap::new();
+    for (i, player) in savegame.zheader.game_settings.players.iter().enumerate() {
+        let name: String = player.name.clone().into();
+        let ai_name: String = player.ai_name.clone().into();
+        let display_name = if !name.trim().is_empty() {
+            name
+        } else if !ai_name.trim().is_empty() {
+            ai_name
+        } else {
+            format!("Player {}", i + 1)
+        };
+        player_names.insert((i + 1) as u8, display_name);
+    }
+
     let mut current_ms = 0;
-    
+
     for op in savegame.operations {
         match op {
             aoe2rec::Operation::Sync { time_increment, .. } => {
                 current_ms += time_increment;
             }
-            aoe2rec::Operation::Action { action_data, .. } => {
-                if let Some(aoe2rec::actions::ActionData::Research { player_id, technology_type, .. }) = action_data {
-                    let tech_name = id_map["technologies"][technology_type.to_string()]
-                        .as_str()
+            aoe2rec::Operation::Action { action_data, .. } => match action_data {
+                Some(aoe2rec::actions::ActionData::Research {
+                    player_id,
+                    technology_type,
+                    ..
+                }) => {
+                    let tech_name = tech_map
+                        .get(&(technology_type as u32))
+                        .map(|s| s.as_str())
                         .unwrap_or("Unknown Tech");
-                    
-                    let seconds = (current_ms / 1000) % 60;
-                    let minutes = (current_ms / 1000) / 60;
-                    let ms = current_ms % 1000;
-                    
-                    println!("[{:02}:{:02}.{:03}] Player {}: Researching {}", minutes, seconds, ms, player_id, tech_name);
-                    
+
                     events.push(ReplayEvent::TechResearch {
                         timestamp_ms: current_ms,
+                        player_id,
                         tech_type: tech_name.to_string(),
-                        cost: ResourceCost { food: 0, wood: 0, gold: 0, stone: 0 },
+                        cost: ResourceCost {
+                            food: 0,
+                            wood: 0,
+                            gold: 0,
+                            stone: 0,
+                        },
                     });
                 }
-            }
+                _ => {}
+            },
             _ => {}
         }
     }
 
+    // Display results in a table format
+    println!("\n{:<12} | {:<20} | {:<30}", "Time", "Player", "Technology");
+    println!("{:-<12}-+-{:-<20}-+-{:-<30}", "", "", "");
 
+    for event in &events {
+        if let ReplayEvent::TechResearch {
+            timestamp_ms,
+            player_id,
+            tech_type,
+            ..
+        } = event
+        {
+            let player_name = player_names
+                .get(player_id)
+                .map(|s| s.as_str())
+                .unwrap_or("Unknown");
+            println!(
+                "{:<12} | {:<20} | {:<30}",
+                format_time(*timestamp_ms),
+                player_name,
+                tech_type
+            );
+        }
+    }
+    println!();
 
     Ok(events)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -92,27 +161,30 @@ mod tests {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("test_bench");
         path.push("1v1-RM-sample.aoe2record");
-        
+
         let savegame = aoe2rec::Savegame::from_file(&path).expect("Failed to parse savegame");
-        println!("Successfully parsed savegame: {} operations found", savegame.operations.len());
-        
+        println!(
+            "Successfully parsed savegame: {} operations found",
+            savegame.operations.len()
+        );
+
         println!("\n--- Replay Metadata ---");
         println!("Build: {}", savegame.zheader.build);
         println!("Timestamp: {}", savegame.zheader.timestamp);
         println!("Num Players: {}", savegame.zheader.game_settings.n_players);
-        
+
         for (i, player) in savegame.zheader.game_settings.players.iter().enumerate() {
             let name: String = player.name.clone().into();
             let ai_name: String = player.ai_name.clone().into();
-            println!("Slot {}: Name='{}', AI='{}', Type={}, Civ={}, Color={}", 
-                i + 1, 
+            println!(
+                "Slot {}: Name='{}', AI='{}', Type={}, Civ={}, Color={}",
+                i + 1,
                 name,
                 ai_name,
                 player.player_type,
-                player.civ_id, 
+                player.civ_id,
                 player.color_id
             );
-
         }
 
         println!("-----------------------\n");
@@ -120,29 +192,28 @@ mod tests {
         extract_events(&path).expect("Failed to extract events");
     }
 
-
     #[test]
     fn test_metadata_validation() {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("test_bench");
         path.push("1v1-RM-sample.aoe2record");
-        
+
         let savegame = aoe2rec::Savegame::from_file(&path).expect("Failed to parse savegame");
-        
+
         // Validate Player 1 (Human)
         let p1 = &savegame.zheader.game_settings.players[0];
         let p1_name: String = p1.name.clone().into();
         assert_eq!(p1_name, "Thrar");
-        assert_eq!(p1.player_type, 2);    // Human
-        assert_eq!(p1.civ_id, 20);       // Hindustanis
-        assert_eq!(p1.color_id, 0);      // Blue (0-indexed)
-        
+        assert_eq!(p1.player_type, 2); // Human
+        assert_eq!(p1.civ_id, 20); // Hindustanis
+        assert_eq!(p1.color_id, 0); // Blue (0-indexed)
+
         // Validate Player 2 (AI)
         let p2 = &savegame.zheader.game_settings.players[1];
         let p2_ai_name: String = p2.ai_name.clone().into();
         assert_eq!(p2_ai_name, "Horka Bulcsú");
-        assert_eq!(p2.player_type, 4);    // AI
-        assert_eq!(p2.civ_id, 22);       // Magyars
-        assert_eq!(p2.color_id, 1);      // Red (0-indexed)
+        assert_eq!(p2.player_type, 4); // AI
+        assert_eq!(p2.civ_id, 22); // Magyars
+        assert_eq!(p2.color_id, 1); // Red (0-indexed)
     }
 }

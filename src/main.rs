@@ -1,4 +1,4 @@
-use rts_analyzer::{capture, pipeline, types, replay};
+use rts_analyzer::{capture, pipeline, replay, types};
 use std::path::Path;
 
 fn main() {
@@ -26,7 +26,6 @@ fn main() {
         replay::extract_events(replay_path).expect("Failed to extract techs");
         return;
     }
-
 
     if args.len() > 1 && args[1] != "--live" {
         let image_path = &args[1];
