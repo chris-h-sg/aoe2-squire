@@ -199,3 +199,25 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 ### 2. Output: Tabular Research Timeline
 *   **Decision**: Display technology research events in a formatted table in the CLI.
 *   **Reasoning**: Improves readability for users compared to raw log lines, making it easier to compare research timings between players at a glance.
+
+## Unit Queuing Extraction (Apr 30, 2026)
+
+### 1. Queuing Action: DeQueue
+*   **Decision**: Human player unit queuing is extracted using the `DeQueue` action packet from the replay parser.
+*   **Reasoning**: This reliably captures queued units including their count/amount, rather than the exact moment they finish training.
+
+### 2. Building Instance Tracking
+*   **Decision**: Implemented an internal `instance_map` that tracks Building Instance ID -> Building Type Name.
+*   **Reasoning**:
+    *   This map is populated during `DeQueue` events (which contain the building type) and used to resolve building names for `Research` and `Unqueue` events (which only contain instance IDs).
+    *   Ensures consistent identification of buildings across different event types.
+
+### 3. Villager Gender Mapping
+*   **Decision**: Maintain both ID 83 (Male Villager) and ID 293 (Female Villager) in the `data/units.csv` mapping.
+*   **Reasoning**: 
+    *   The `DeQueue` action primarily uses the base ID (83) regardless of the spawned gender, as the engine resolves the gender choice internally when the unit spawns.
+    *   Mapping both covers any unexpected variations in different replay builds or AI interactions.
+
+### 4. CLI Output
+*   **Decision**: Enhanced the unified timeline to include "Building Type(s)" and "Building ID(s)" columns for all queuing and cancellation events.
+*   **Reasoning**: Provides a highly detailed log of exactly *when* and *where* every queue, research, and cancellation event occurs, improving debuggability and game analysis. Comma-separated lists are used for multi-building selections.

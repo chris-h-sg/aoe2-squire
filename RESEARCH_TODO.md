@@ -31,7 +31,11 @@
 **Goal:** Prove accuracy by meshing live telemetry CSV with absolute ground truth from replay files.
 
 - [x] **CSV Export:** Rust capture loop now logs high-performance telemetry to CSV.
-- [x] **Replay Parser (Techs)**: Tool implemented to extract tech events with accurate mm:ss.sss timestamps using `data/techs.csv`. (Unit/Build events pending).
+- [x] **Replay Parser (Extraction)**: Tool implemented to extract tech events and unit queuing with accurate mm:ss.sss timestamps.
+    - [x] Support for `data/techs.csv` and `data/units.csv` for ID mapping.
+    - [x] Internal state tracking for Building Instance IDs to resolve Building Types for Research and Unqueue events.
+    - [ ] Implement Building Construction extraction to achieve 100% building type coverage.
+    - [ ] Implement Resource Cost calculation in extraction output.
 - [ ] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops.
 
 
