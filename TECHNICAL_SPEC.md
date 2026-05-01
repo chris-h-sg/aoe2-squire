@@ -8,7 +8,7 @@
 5. **Efficiency Logic:** Compare "Ground Truth" (scraped) vs "Theoretical Max" (parsed via tech logs).
     - *Formula:* Efficiency = (Vils_Scraped * BaseRate_ParsedTech) / DeltaResource_Scraped.
 
-## 6. Replay Parsing
+## Replay Parsing
 - **Trigger**: File watcher (future) or manual CLI command.
 - **Library**: Custom integration with the **liouh/aoe2rec** Rust fork.
 - **Capabilities**:

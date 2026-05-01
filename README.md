@@ -10,8 +10,9 @@ The "Hybrid Data Strategy":
 - **Analysis:** Combines both to identify "Efficiency Gaps" (e.g., "You had the tech for faster gathering but your resource intake didn't rise, implying poor lumber camp placement").
 
 ## Project Status
-- **Phase:** Implementation / MVP.
-- **Primary Goal:** Establish the Rust-based DXGI screen-scraping pipeline. The OCR pipeline (segmentation + matching) has been successfully ported from the Python proof-of-concept and validated against test fixtures.
+- **Phase:** Validation & Sync (Phase 4).
+- **Primary Goal:** Implement the "Mesher" to align and validate live vision telemetry against ground-truth data extracted from `.aoe2record` replay files.
+- **Completed:** The Rust-based DXGI screen-scraping pipeline is fully operational (<1% CPU footprint). The Replay Parser has been successfully implemented and extracts unit, building, and technology timelines.
 
 ## Development
 The production pipeline is written in Rust. The Python code in `/research` is strictly for rapid prototyping and validation, and is not part of the shipped product.
@@ -57,13 +58,15 @@ cargo run -- --live
 The analyzer can parse Age of Empires II: DE replay files (`.aoe2record`) to extract ground-truth gameplay events. This is used to validate the vision pipeline's accuracy.
 
 ```powershell
-# Extract all technologies researched in a replay
-cargo run -- --extract-techs "path/to/your/match.aoe2record"
+# Extract all game events (techs, units, buildings) from a replay
+cargo run -- --parse-replay "path/to/your/match.aoe2record"
 ```
 
 The tool currently extracts:
 *   **Player Metadata**: Names, civilizations, and color assignments.
-*   **Technology Research**: Accurate `mm:ss.sss` timestamps for every technology started (Loom, Age ups, Eco upgrades, etc.).
+*   **Technology Research**: Accurate `mm:ss.sss` timestamps and resource costs for every technology started.
+*   **Unit Training & Queuing**: Tracking of unit production, queuing, and cancellations with specific Building ID attribution.
+*   **Building Construction**: Complete timeline of building foundations and completions.
 
 ### System Requirements (Live Capture)
 *   **Operating System**: Windows 10/11

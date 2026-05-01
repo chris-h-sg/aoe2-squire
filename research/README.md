@@ -2,6 +2,8 @@
 
 This directory contains the Proof-of-Concept (PoC) vision system for extracting resource values and villager counts from Age of Empires 2 DE game screenshots.
 
+> **Note:** The Python PoC described here has been successfully ported to a native Rust application (located at the repository root). The `research/` directory remains for reference and algorithm validation purposes only.
+
 ## Key Scripts
 
 - **`extractor_enormous.py`**: Specialized extractor for high-resolution images with the "Enormous" HUD setting.

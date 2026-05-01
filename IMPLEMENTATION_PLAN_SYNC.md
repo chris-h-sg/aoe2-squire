@@ -42,5 +42,4 @@ Build a tool to align the two timelines and quantify error rates.
 
 ## Next Steps for New Session:
 1.  **Gather Test Data**: Record a short 5-minute AoE2 game while running the analyzer to generate a paired `.csv` (in `logs/`) and `.aoe2record` set.
-2.  **Add Dependencies**: Add `aoe2rec` to `Cargo.toml`.
-3.  **Implement Replay Parser**: Create a utility to extract game events from the recording.
+2.  **Implement Sync Tool**: Build a "Mesher" that aligns timestamps from the CSV with events in the `.aoe2record` to verify resource drops.

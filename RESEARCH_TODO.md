@@ -27,7 +27,14 @@
 - [x] **Live Screen Capture:** `poc_capture.py` — confirmed working in Python; now fully implemented in Rust using DXGI for sub-40ms latency.
 - [x] **Performance Baseline:** Rust implementation achieves ~30ms per frame (<1% CPU impact), comfortably exceeding the 2 FPS target.
 
-## Phase 3: Telemetry & Replay Sync (Validation)
+## Phase 3: Rust Port (Production Binary)
+**Goal:** Translate the Python PoC into a high-performance Rust application.
+
+- [x] **Core Vision Pipeline:** Port template matching and digit extraction to `image` and `imageproc` crates.
+- [x] **Optimization:** Ensure <1% CPU overhead to prevent game micro-stutters.
+- [x] **Release Build:** Verify stable execution with `cargo build --release`.
+
+## Phase 4: Telemetry & Replay Sync (Validation)
 **Goal:** Prove accuracy by meshing live telemetry CSV with absolute ground truth from replay files.
 
 - [x] **CSV Export:** Rust capture loop now logs high-performance telemetry to CSV.

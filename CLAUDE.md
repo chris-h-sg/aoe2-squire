@@ -4,12 +4,12 @@
 A native Windows background tool that scrapes AoE2:DE resource/villager counts from the screen in real time and combines them with replay data to produce post-game efficiency coaching. Target: minimal CPU footprint (<1% to avoid impacting the game), no memory hooking, no anti-cheat risk.
 
 ## Current Status
-**Phase 3 in progress — Rust port scaffolded, pipeline partially implemented.**
+**Phase 4 in progress — Validation & Sync Tool.**
 
 - Python R&D (`research/`) is finished and all tests pass. Do not modify it unless fixing a bug that needs to be carried into Rust.
-- The Rust production binary is the current work (`Cargo.toml` + `src/` at the repo root).
-- **Stages done in Rust:** 1 (anchor detection) and 4 (color filter) — fully implemented in `src/pipeline/anchor.rs` and `src/pipeline/filter.rs`.
-- **Stubs remaining:** Stage 5 (segment), Stage 6 (canvas), Stage 7 (matcher) — each returns a placeholder. See the TODO comments at the top of each file.
+- The Rust production binary is fully functional. The entire vision pipeline is complete and operating under 1% CPU overhead.
+- Telemetry CSV logging and a fully-featured Replay Parser (via the `liouh/aoe2rec` fork) are implemented.
+- **Current Task:** Implement the "Mesher" to align telemetry timestamps with replay data to validate pipeline accuracy.
 
 ## Repo Layout
 ```
