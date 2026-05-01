@@ -38,3 +38,14 @@ Once basic analysis is providing user value, development will shift toward autom
 *   **Delayed Economic Upgrades Analysis:** Track technology queue events and correlate them with Age Detection to penalize late essential upgrades (Double-Bit Axe, Horse Collar) fairly.
 *   **Poor Build Order Execution:** Compare player Age-up and construction sequences against a database of standard benchmarks.
 *   **Unit Counter Analysis:** Parse military queue events and use the Civ Tech Tree data to recommend available unit counters based on the opponent's composition.
+
+---
+
+## Technical Debt & Calibration Quirks
+
+As we bridge the gap between vision-based telemetry and binary replay data, we are maintaining a list of specific technical hurdles to resolve:
+
+*   **Investigate `aoe2rec` Player Stats Parsing**: The forked library currently has trouble reading the correct `PlayerInit` blocks sequentially for DE replays. We've bypassed this by using "First Frame Ground Truth" from telemetry to find starting resources, but we should eventually solve the binary extraction for cleaner logic.
+*   **Dynamic Civilization Bonuses**: Currently using a temporary workaround (46 food) for Hindustani villager costs. This needs to be moved to a dynamic lookup system once civilization tech tree data is integrated.
+*   **Sync Granularity Tuning**: Evaluate if 1-second snapshots are sufficient for high-level villager production analysis or if we need higher resolution for specific micro-gap detection.
+

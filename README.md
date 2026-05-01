@@ -11,8 +11,8 @@ The "Hybrid Data Strategy":
 
 ## Project Status
 - **Phase:** Validation & Sync (Phase 4).
-- **Primary Goal:** Implement the "Mesher" to align and validate live vision telemetry against ground-truth data extracted from `.aoe2record` replay files.
-- **Completed:** The Rust-based DXGI screen-scraping pipeline is fully operational (<1% CPU footprint). The Replay Parser has been successfully implemented and extracts unit, building, and technology timelines.
+- **Primary Goal:** Align live vision telemetry with ground-truth replay data to create a high-precision game analysis stream.
+- **Status:** The `mesher` tool is fully operational, providing sub-second temporal alignment using a two-point linear calibration model. The pipeline successfully extracts and merges unit production, tech research, and building events with live resource and population telemetry.
 
 ## Development
 The production pipeline is written in Rust. The Python code in `/research` is strictly for rapid prototyping and validation, and is not part of the shipped product.
@@ -67,6 +67,24 @@ The tool currently extracts:
 *   **Technology Research**: Accurate `mm:ss.sss` timestamps and resource costs for every technology started.
 *   **Unit Training & Queuing**: Tracking of unit production, queuing, and cancellations with specific Building ID attribution.
 *   **Building Construction**: Complete timeline of building foundations and completions.
+*   **Deletion Events**: Tracking of unit and building deletions/deaths for accurate population reconciliation.
+
+### Data Synchronization & Meshing
+
+The `mesher` utility is the heart of the validation pipeline. it aligns the "noisy" vision telemetry from a live game session with the "perfect" deterministic data from a replay file.
+
+```powershell
+# Merge a live telemetry CSV with its corresponding replay file
+cargo run --bin mesher "path/to/telemetry.csv" "path/to/match.aoe2record"
+```
+
+The Meshing process utilizes several key strategies to ensure precision:
+*   **Two-Point Linear Calibration**: Automatically detects game speed (e.g., 1.7x, 2.0x) and calculates the exact game-start offset by anchoring to the first resource drop and the completion of Feudal Age research.
+*   **First-Frame Ground Truth**: Dynamically extracts starting resources from the first telemetry frame, ensuring compatibility with all civilizations (including bonuses like Chinese or Hindustanis) and game modes.
+*   **Causal Ordering**: Events are sorted such that "Replay Actions" (e.g., clicking a button) always appear before the resulting "Telemetry Updates" (e.g., resources dropping) within the same millisecond.
+
+The output is a unified `output/merged_observations.csv` that serves as the foundation for Phase 5: State Snapshotting.
+
 
 ### System Requirements (Live Capture)
 *   **Operating System**: Windows 10/11

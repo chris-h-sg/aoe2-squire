@@ -154,3 +154,25 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 ### 4. CLI Output
 *   **Decision**: Enhanced the unified timeline to include "Building Type(s)" and "Building ID(s)" columns for all queuing and cancellation events.
 *   **Reasoning**: Provides a highly detailed log of exactly *when* and *where* every queue, research, and cancellation event occurs, improving debuggability and game analysis. Comma-separated lists are used for multi-building selections.
+
+## Replay/Telemetry Sync (May 1, 2026)
+
+### 1. Two-Point Temporal Calibration
+*   **Decision**: Synchronize replay events and screen telemetry using a two-point linear fit (Anchor 1: Start/First Drop, Anchor 2: Feudal Age Research).
+*   **Reasoning**: 
+    *   Hardcoding the "1.7x" speed factor is unreliable as game clock speed can drift slightly or be adjusted (1.0, 1.5, 2.0).
+    *   Using two distinct anchors allows calculating a precise local `speed_factor` and `RW_GameStart` offset, ensuring sub-second alignment throughout long games.
+    *   Linear interpolation across the two anchors handles initial "frozen" frames at game start and varied loading times.
+
+### 2. "First Frame" Ground Truth for Resources
+*   **Decision**: Extract starting resources (Food, Wood, Gold, Stone) from the first valid frame of screen telemetry rather than the replay header.
+*   **Reasoning**:
+    *   Binary extraction of starting resources from `.aoe2record` headers is fragile and version-dependent for DE (requires mapping individual `PlayerInit` blocks which vary by player count).
+    *   Using the vision pipeline's first reading is 100% accurate for the current civilization and game mode (e.g., Chinese starts, Hindustani bonuses, Empire Wars) because it is what the player actually saw.
+    *   Simplifies the synchronization logic and reduces dependency on unstable library-specific binary parsing.
+
+### 3. Causal Ordering (Event-before-Update)
+*   **Decision**: In the merged causal stream, sort `RecEvents` before `ScreenGrabs` when they occur in the same millisecond.
+*   **Reasoning**:
+    *   Ensures that an "Action" (e.g., clicking the 'Build House' button) is indexed before the resulting "State Update" (e.g., resource count dropping).
+    *   Simplifies downstream logic for determining if a player was "Out of Food" at the exact moment they failed to queue a villager.

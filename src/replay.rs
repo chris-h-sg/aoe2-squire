@@ -75,6 +75,7 @@ fn parse_csv_map(
     name_col: usize,
     cost_start_col: Option<usize>,
     building_col: Option<usize>,
+    num_costs: usize,
 ) -> Result<ReferenceData, Box<dyn std::error::Error>> {
     let mut name_map = HashMap::new();
     let mut cost_map = HashMap::new();
@@ -94,17 +95,20 @@ fn parse_csv_map(
                 }
 
                 if let Some(start) = cost_start_col {
-                    if record.len() >= start + 4 {
-                        cost_map.insert(
-                            id,
-                            ResourceCost {
-                                food: record[start].parse().unwrap_or(0),
-                                wood: record[start + 1].parse().unwrap_or(0),
-                                gold: record[start + 2].parse().unwrap_or(0),
-                                stone: record[start + 3].parse().unwrap_or(0),
-                            },
-                        );
-                    }
+                    let food = record.get(start).and_then(|v| v.parse().ok()).unwrap_or(0);
+                    let wood = if num_costs > 1 { record.get(start + 1).and_then(|v| v.parse().ok()).unwrap_or(0) } else { 0 };
+                    let gold = if num_costs > 2 { record.get(start + 2).and_then(|v| v.parse().ok()).unwrap_or(0) } else { 0 };
+                    let stone = if num_costs > 3 { record.get(start + 3).and_then(|v| v.parse().ok()).unwrap_or(0) } else { 0 };
+                    
+                    cost_map.insert(
+                        id,
+                        ResourceCost {
+                            food,
+                            wood,
+                            gold,
+                            stone,
+                        },
+                    );
                 }
 
                 if let Some(col) = building_col {
@@ -120,7 +124,7 @@ fn parse_csv_map(
     Ok((name_map, cost_map, building_map))
 }
 
-pub fn extract_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn extract_events(replay_path: &Path) -> Result<(u32, HashMap<u8, String>, Vec<ReplayEvent>), Box<dyn std::error::Error>> {
     let file = File::open(replay_path)?;
     let mut reader = BufReader::new(file);
     let mut buffer = Vec::new();
@@ -134,11 +138,11 @@ pub fn extract_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Erro
 
     // Load reference data
     let (unit_map, unit_cost_map, unit_to_b_raw) =
-        parse_csv_map("data/units.csv", 0, 1, Some(3), Some(7))?;
+        parse_csv_map("data/units.csv", 0, 1, Some(6), Some(7), 3)?;
     let (tech_map, tech_cost_map, tech_to_b_raw) =
-        parse_csv_map("data/techs.csv", 0, 1, Some(2), Some(6))?;
+        parse_csv_map("data/techs.csv", 0, 1, Some(2), Some(6), 4)?;
     let (building_map, building_cost_map, _) =
-        parse_csv_map("data/buildings.csv", 0, 1, Some(2), None)?;
+        parse_csv_map("data/buildings.csv", 0, 1, Some(4), None, 4)?;
 
     // Map building IDs to names for easier lookup
     let unit_to_b_map: HashMap<u32, String> = unit_to_b_raw
@@ -464,6 +468,13 @@ pub fn extract_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Erro
         }
     }
 
+    Ok((savegame.meta.rec_owner, player_names, events))
+}
+
+pub fn print_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let (rec_owner, player_names, events) = extract_events(replay_path)?;
+    println!("Recorded by player ID: {}", rec_owner);
+
     println!(
         "\n{:<12} | {:<20} | {:<10} | {:<28} | {:<28} | {:<22} | {:>5} | {:>5} | {:>5} | {:>5}",
         "Time",
@@ -542,3 +553,4 @@ pub fn extract_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Erro
     }
     Ok(())
 }
+

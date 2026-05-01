@@ -21,7 +21,7 @@ fn main() {
         }
         let replay_path = Path::new(&args[2]);
         println!("Parsing replay: {}", replay_path.display());
-        replay::extract_events(replay_path).expect("Failed to parse replay");
+        replay::print_events(replay_path).expect("Failed to parse replay");
         return;
     }
 
