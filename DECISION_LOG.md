@@ -176,3 +176,30 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Reasoning**:
     *   Ensures that an "Action" (e.g., clicking the 'Build House' button) is indexed before the resulting "State Update" (e.g., resource count dropping).
     *   Simplifies downstream logic for determining if a player was "Out of Food" at the exact moment they failed to queue a villager.
+
+## Idle Villager Metrics (May 1, 2026)
+
+### 1. Metric: Idle Villager Seconds (VS)
+*   **Decision**: Calculate "Idle Villager Seconds" as the primary productivity metric.
+*   **Logic**: 
+    *   Sum the product of `IdleCount * Duration` for every period of constant idle state.
+    *   Transitions are triggered by changes in the vision-detected idle count or game age clicks.
+*   **Reasoning**: Provides a single, objective number to quantify player inefficiency, comparable across different game lengths and civilizations.
+
+### 2. Breakdown: Per-Age Attribution
+*   **Decision**: Attribute idle time to specific game ages (Dark, Feudal, Castle, Imperial).
+*   **Method**: Use `RecEvent` research clicks as absolute temporal boundaries for the VS buckets.
+*   **Reasoning**: Helps players identify *when* their management fails (e.g., "I played a perfect Dark Age but lost 500 VS in early Castle Age").
+
+### 3. Code Quality: Structured Data Over Tuples
+*   **Decision**: Refactored `mesher` and `replay` modules to use structured structs (`MergedRow`, `ReplayData`) instead of deeply nested tuples.
+*   **Reasoning**: 
+    *   Resolved Clippy `type_complexity` warnings.
+    *   Improved maintainability and readability — named fields (e.g., `row.in_game_ms`) are much clearer than index-based access (e.g., `row.0`).
+    *   Ensures type safety when extending the merged stream with new columns (like `idle_vils` and `pop_curr`).
+
+### 4. Logic Extraction for Testability
+*   **Decision**: Extracted core temporal logic (Calibration, VS Segmentation) from binary entry points (`main`) into the library (`src/sync.rs`, `src/analysis.rs`).
+*   **Reasoning**: 
+    *   Binaries are difficult to test; moving logic to the library allowed for a 100% automated test suite for the complex calibration state machine.
+    *   Enables reusing the analysis logic in future UI components (e.g., a real-time efficiency dashboard) without code duplication.

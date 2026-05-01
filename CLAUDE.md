@@ -9,7 +9,7 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 - Python R&D (`research/`) is finished and all tests pass. Do not modify it unless fixing a bug that needs to be carried into Rust.
 - The Rust production binary is fully functional. The entire vision pipeline is complete and operating under 1% CPU overhead.
 - Telemetry CSV logging and a fully-featured Replay Parser (via the `liouh/aoe2rec` fork) are implemented.
-- **Current Task:** Implement the "Mesher" to align telemetry timestamps with replay data to validate pipeline accuracy.
+- **Current Task:** The "Mesher" and "Idle Analyzer" are fully functional. Phase 4 (Validation & Sync) is complete. Transitioning to Phase 5: State Snapshotting.
 
 ## Repo Layout
 ```
@@ -30,7 +30,10 @@ rts-analyzer/
 │   │   ├── segment.rs      ← Stage 5: segment_into_digits (STUB)
 │   │   ├── canvas.rs       ← Stage 6: prepare_canvas (STUB)
 │   │   └── matcher.rs      ← Stage 7: load_templates, match_digit (STUB)
-│   └── capture/mod.rs      ← DXGI screen capture (STUB)
+│   ├── bin/
+│   │   ├── mesher.rs       ← align telemetry CSV with .aoe2record ground truth
+│   │   └── idle_analyzer.rs ← calculate villager-seconds lost per age
+│   └── capture/mod.rs      ← DXGI screen capture
 ├── test_bench/             ← reference screenshots + expected_values.json
 │   ├── aoe2_16x9.png       ← 1080p baseline
 │   ├── aoe2_16x9_min.png   ← 75% UI scale

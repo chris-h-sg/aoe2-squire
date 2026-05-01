@@ -85,6 +85,20 @@ The Meshing process utilizes several key strategies to ensure precision:
 
 The output is a unified `output/merged_observations.csv` that serves as the foundation for Phase 5: State Snapshotting.
 
+### Post-Game Analysis & Metrics
+
+Once a merged observation stream is created, the analyzer can calculate high-level performance metrics. The first implemented metric is **Idle Villager Seconds (VS)**.
+
+```powershell
+# Run the idle villager analyzer on the merged observations
+cargo run --bin idle_analyzer
+```
+
+The tool calculates:
+*   **Idle Villager Seconds (VS)**: A comprehensive metric representing total lost productivity (Idle Villagers × Duration).
+*   **Per-Age Breakdown**: Idle time is automatically attributed to the specific game age (Dark, Feudal, Castle, or Imperial) in which it occurred, using replay research clicks as temporal boundaries.
+*   **Detailed Transitions**: A chronological log of every segment where villagers were idle, including the precise start and end times in `mm:ss.sss` format.
+
 
 ### System Requirements (Live Capture)
 *   **Operating System**: Windows 10/11

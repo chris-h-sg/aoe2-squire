@@ -23,3 +23,15 @@ pub type Templates = HashMap<char, Vec<f32>>;
 
 /// category (e.g. "wood") -> sub_key (e.g. "total") -> digit string (e.g. "423")
 pub type Results = HashMap<String, HashMap<String, String>>;
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CsvRow {
+    pub timestamp_ms: u64,
+    pub food: Option<u32>,
+    pub wood: Option<u32>,
+    pub gold: Option<u32>,
+    pub stone: Option<u32>,
+    pub pop_curr: Option<u32>,
+    pub pop_max: Option<u32>,
+    pub idle_vils: Option<u32>,
+}

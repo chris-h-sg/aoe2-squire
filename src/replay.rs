@@ -96,10 +96,31 @@ fn parse_csv_map(
 
                 if let Some(start) = cost_start_col {
                     let food = record.get(start).and_then(|v| v.parse().ok()).unwrap_or(0);
-                    let wood = if num_costs > 1 { record.get(start + 1).and_then(|v| v.parse().ok()).unwrap_or(0) } else { 0 };
-                    let gold = if num_costs > 2 { record.get(start + 2).and_then(|v| v.parse().ok()).unwrap_or(0) } else { 0 };
-                    let stone = if num_costs > 3 { record.get(start + 3).and_then(|v| v.parse().ok()).unwrap_or(0) } else { 0 };
-                    
+                    let wood = if num_costs > 1 {
+                        record
+                            .get(start + 1)
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(0)
+                    } else {
+                        0
+                    };
+                    let gold = if num_costs > 2 {
+                        record
+                            .get(start + 2)
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(0)
+                    } else {
+                        0
+                    };
+                    let stone = if num_costs > 3 {
+                        record
+                            .get(start + 3)
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(0)
+                    } else {
+                        0
+                    };
+
                     cost_map.insert(
                         id,
                         ResourceCost {
@@ -124,7 +145,13 @@ fn parse_csv_map(
     Ok((name_map, cost_map, building_map))
 }
 
-pub fn extract_events(replay_path: &Path) -> Result<(u32, HashMap<u8, String>, Vec<ReplayEvent>), Box<dyn std::error::Error>> {
+pub struct ReplayData {
+    pub rec_owner: u32,
+    pub player_names: HashMap<u8, String>,
+    pub events: Vec<ReplayEvent>,
+}
+
+pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::error::Error>> {
     let file = File::open(replay_path)?;
     let mut reader = BufReader::new(file);
     let mut buffer = Vec::new();
@@ -195,284 +222,289 @@ pub fn extract_events(replay_path: &Path) -> Result<(u32, HashMap<u8, String>, V
             aoe2rec::Operation::Sync { time_increment, .. } => {
                 current_ms += time_increment;
             }
-            aoe2rec::Operation::Action { action_data: Some(action), .. } => {
-                match action {
-                    aoe2rec::actions::ActionData::Research {
+            aoe2rec::Operation::Action {
+                action_data: Some(action),
+                ..
+            } => match action {
+                aoe2rec::actions::ActionData::Research {
+                    player_id,
+                    technology_type,
+                    building_id,
+                    ..
+                } => {
+                    let tech_name = tech_map
+                        .get(&(technology_type as u32))
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown Tech");
+
+                    if let Some(b_type) = tech_to_b_map.get(&(technology_type as u32)) {
+                        instance_map.insert(building_id, b_type.clone());
+                    }
+
+                    let b_type_name = instance_map
+                        .get(&building_id)
+                        .cloned()
+                        .unwrap_or_else(|| "Unknown Building".to_string());
+
+                    let cost = tech_cost_map
+                        .get(&(technology_type as u32))
+                        .cloned()
+                        .unwrap_or(ResourceCost {
+                            food: 0,
+                            wood: 0,
+                            gold: 0,
+                            stone: 0,
+                        });
+
+                    events.push(ReplayEvent::TechResearch {
+                        timestamp_ms: current_ms,
+                        player_id,
+                        tech_type: tech_name.to_string(),
+                        cost,
+                        building_id,
+                        building_type: b_type_name,
+                    });
+                }
+                aoe2rec::actions::ActionData::DeQueue {
+                    player_id,
+                    unit_id,
+                    amount,
+                    building_type,
+                    building_ids,
+                    ..
+                } => {
+                    let unit_id = unit_id as u32;
+                    let b_type_name = building_map
+                        .get(&(building_type as u32))
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown Building")
+                        .to_string();
+
+                    for b_id in &building_ids {
+                        instance_map.insert(*b_id, b_type_name.clone());
+                    }
+
+                    let base_cost = unit_cost_map
+                        .get(&unit_id)
+                        .cloned()
+                        .unwrap_or(ResourceCost {
+                            food: 0,
+                            wood: 0,
+                            gold: 0,
+                            stone: 0,
+                        });
+
+                    let buildings_count = building_ids.len() as u32;
+                    let total_cost = ResourceCost {
+                        food: base_cost.food * buildings_count,
+                        wood: base_cost.wood * buildings_count,
+                        gold: base_cost.gold * buildings_count,
+                        stone: base_cost.stone * buildings_count,
+                    };
+
+                    for _ in 0..amount {
+                        let unit_name = unit_map
+                            .get(&unit_id)
+                            .map(|s| s.as_str())
+                            .unwrap_or("Unknown Unit");
+
+                        events.push(ReplayEvent::UnitQueued {
+                            timestamp_ms: current_ms,
                             player_id,
-                            technology_type,
-                            building_id,
-                            ..
-                        } => {
-                            let tech_name = tech_map
-                                .get(&(technology_type as u32))
-                                .map(|s| s.as_str())
-                                .unwrap_or("Unknown Tech");
+                            unit_type: unit_name.to_string(),
+                            cost: total_cost.clone(),
+                            building_ids: building_ids.clone(),
+                            building_types: vec![b_type_name.clone(); building_ids.len()],
+                        });
+                    }
+                }
+                aoe2rec::actions::ActionData::Order {
+                    player_id,
+                    order_type,
+                    unknown4,
+                    object_ids,
+                    unknown5,
+                    ..
+                } => {
+                    let unit_id = unknown4 as u32;
+                    let building_ids = object_ids;
 
-                            if let Some(b_type) = tech_to_b_map.get(&(technology_type as u32)) {
-                                instance_map.insert(building_id, b_type.clone());
-                            }
-
-                            let b_type_name = instance_map
-                                .get(&building_id)
-                                .cloned()
-                                .unwrap_or_else(|| "Unknown Building".to_string());
-
-                            let cost = tech_cost_map
-                                .get(&(technology_type as u32))
-                                .cloned()
-                                .unwrap_or(ResourceCost {
-                                    food: 0,
-                                    wood: 0,
-                                    gold: 0,
-                                    stone: 0,
-                                });
-
-                            events.push(ReplayEvent::TechResearch {
-                                timestamp_ms: current_ms,
-                                player_id,
-                                tech_type: tech_name.to_string(),
-                                cost,
-                                building_id,
-                                building_type: b_type_name,
-                            });
+                    if let Some(b_type) = unit_to_b_map.get(&unit_id) {
+                        for b_id in &building_ids {
+                            instance_map.insert(*b_id, b_type.clone());
                         }
-                        aoe2rec::actions::ActionData::DeQueue {
-                            player_id,
-                            unit_id,
-                            amount,
-                            building_type,
-                            building_ids,
-                            ..
-                        } => {
-                            let unit_id = unit_id as u32;
-                            let b_type_name = building_map
-                                .get(&(building_type as u32))
-                                .map(|s| s.as_str())
-                                .unwrap_or("Unknown Building")
-                                .to_string();
+                    }
 
-                            for b_id in &building_ids {
-                                instance_map.insert(*b_id, b_type_name.clone());
-                            }
-
-                            let base_cost =
-                                unit_cost_map
-                                    .get(&unit_id)
-                                    .cloned()
-                                    .unwrap_or(ResourceCost {
-                                        food: 0,
-                                        wood: 0,
-                                        gold: 0,
-                                        stone: 0,
-                                    });
-
-                            let buildings_count = building_ids.len() as u32;
-                            let total_cost = ResourceCost {
-                                food: base_cost.food * buildings_count,
-                                wood: base_cost.wood * buildings_count,
-                                gold: base_cost.gold * buildings_count,
-                                stone: base_cost.stone * buildings_count,
-                            };
-
-                            for _ in 0..amount {
-                                let unit_name = unit_map
-                                    .get(&unit_id)
-                                    .map(|s| s.as_str())
-                                    .unwrap_or("Unknown Unit");
-
-                                events.push(ReplayEvent::UnitQueued {
-                                    timestamp_ms: current_ms,
-                                    player_id,
-                                    unit_type: unit_name.to_string(),
-                                    cost: total_cost.clone(),
-                                    building_ids: building_ids.clone(),
-                                    building_types: vec![b_type_name.clone(); building_ids.len()],
-                                });
-                            }
-                        }
-                        aoe2rec::actions::ActionData::Order {
-                            player_id,
-                            order_type,
-                            unknown4,
-                            object_ids,
-                            unknown5,
-                            ..
-                        } => {
-                            let unit_id = unknown4 as u32;
-                            let building_ids = object_ids;
-
-                            if let Some(b_type) = unit_to_b_map.get(&unit_id) {
-                                for b_id in &building_ids {
-                                    instance_map.insert(*b_id, b_type.clone());
-                                }
-                            }
-
-                            if order_type == aoe2rec::actions::OrderType::Unqueue {
-                                let building_types: Vec<String> = building_ids
-                                    .iter()
-                                    .map(|id| {
-                                        instance_map
-                                            .get(id)
-                                            .cloned()
-                                            .unwrap_or_else(|| "Unknown Building".to_string())
-                                    })
-                                    .collect();
-
-                                events.push(ReplayEvent::QueueCancellation {
-                                    timestamp_ms: current_ms,
-                                    player_id,
-                                    building_ids,
-                                    building_types,
-                                    queue_position: unknown5 as i32,
-                                });
-                            }
-                        }
-                        aoe2rec::actions::ActionData::Queue {
-                            player_id,
-                            unit_type,
-                            building_ids,
-                            count,
-                            ..
-                        } => {
-                            let unit_id = unit_type as u32;
-                            if let Some(b_type) = unit_to_b_map.get(&unit_id) {
-                                for b_id in &building_ids {
-                                    instance_map.insert(*b_id, b_type.clone());
-                                }
-                            }
-
-                            let b_type_name = if !building_ids.is_empty() {
+                    if order_type == aoe2rec::actions::OrderType::Unqueue {
+                        let building_types: Vec<String> = building_ids
+                            .iter()
+                            .map(|id| {
                                 instance_map
-                                    .get(&building_ids[0])
+                                    .get(id)
                                     .cloned()
                                     .unwrap_or_else(|| "Unknown Building".to_string())
-                            } else {
-                                "Unknown Building".to_string()
-                            };
+                            })
+                            .collect();
 
-                            let unit_name = unit_map
-                                .get(&unit_id)
-                                .map(|s| s.as_str())
-                                .unwrap_or("Unknown Unit");
-
-                            let base_cost =
-                                unit_cost_map
-                                    .get(&unit_id)
-                                    .cloned()
-                                    .unwrap_or(ResourceCost {
-                                        food: 0,
-                                        wood: 0,
-                                        gold: 0,
-                                        stone: 0,
-                                    });
-
-                            let buildings_count = building_ids.len() as u32;
-                            let total_cost = ResourceCost {
-                                food: base_cost.food * buildings_count,
-                                wood: base_cost.wood * buildings_count,
-                                gold: base_cost.gold * buildings_count,
-                                stone: base_cost.stone * buildings_count,
-                            };
-
-                            for _ in 0..count {
-                                events.push(ReplayEvent::UnitQueued {
-                                    timestamp_ms: current_ms,
-                                    player_id,
-                                    unit_type: unit_name.to_string(),
-                                    cost: total_cost.clone(),
-                                    building_ids: building_ids.clone(),
-                                    building_types: vec![b_type_name.clone(); building_ids.len()],
-                                });
-                            }
-                        }
-                        aoe2rec::actions::ActionData::Build {
+                        events.push(ReplayEvent::QueueCancellation {
+                            timestamp_ms: current_ms,
                             player_id,
-                            building_type_id,
-                            x,
-                            y,
-                            ..
-                        } => {
-                            let b_type_name = building_map
-                                .get(&building_type_id)
-                                .map(|s| s.as_str())
-                                .unwrap_or("Unknown Building")
-                                .to_string();
-
-                            let cost = building_cost_map.get(&building_type_id).cloned().unwrap_or(
-                                ResourceCost {
-                                    food: 0,
-                                    wood: 0,
-                                    gold: 0,
-                                    stone: 0,
-                                },
-                            );
-
-                            let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
-                            pending_builds.insert(pos_key, b_type_name.clone());
-
-                            events.push(ReplayEvent::BuildingConstruction {
-                                timestamp_ms: current_ms,
-                                player_id,
-                                building_type: b_type_name,
-                                building_type_id,
-                                x,
-                                y,
-                                cost,
-                            });
+                            building_ids,
+                            building_types,
+                            queue_position: unknown5 as i32,
+                        });
+                    }
+                }
+                aoe2rec::actions::ActionData::Queue {
+                    player_id,
+                    unit_type,
+                    building_ids,
+                    count,
+                    ..
+                } => {
+                    let unit_id = unit_type as u32;
+                    if let Some(b_type) = unit_to_b_map.get(&unit_id) {
+                        for b_id in &building_ids {
+                            instance_map.insert(*b_id, b_type.clone());
                         }
-                        aoe2rec::actions::ActionData::Interact {
-                            target_id, x, y, ..
-                        } => {
-                            let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
-                            if let Some(b_type_name) = pending_builds.get(&pos_key) {
-                                if target_id > 0 && !instance_map.contains_key(&target_id) {
-                                    instance_map.insert(target_id, b_type_name.clone());
-                                }
-                            } else {
-                                for dx in -1..=1 {
-                                    for dy in -1..=1 {
-                                        let neighbor_key = (pos_key.0 + dx, pos_key.1 + dy);
-                                        if let Some(b_type_name) = pending_builds.get(&neighbor_key)
-                                        {
-                                            if target_id > 0
-                                                && !instance_map.contains_key(&target_id)
-                                            {
-                                                instance_map.insert(target_id, b_type_name.clone());
-                                            }
-                                        }
+                    }
+
+                    let b_type_name = if !building_ids.is_empty() {
+                        instance_map
+                            .get(&building_ids[0])
+                            .cloned()
+                            .unwrap_or_else(|| "Unknown Building".to_string())
+                    } else {
+                        "Unknown Building".to_string()
+                    };
+
+                    let unit_name = unit_map
+                        .get(&unit_id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown Unit");
+
+                    let base_cost = unit_cost_map
+                        .get(&unit_id)
+                        .cloned()
+                        .unwrap_or(ResourceCost {
+                            food: 0,
+                            wood: 0,
+                            gold: 0,
+                            stone: 0,
+                        });
+
+                    let buildings_count = building_ids.len() as u32;
+                    let total_cost = ResourceCost {
+                        food: base_cost.food * buildings_count,
+                        wood: base_cost.wood * buildings_count,
+                        gold: base_cost.gold * buildings_count,
+                        stone: base_cost.stone * buildings_count,
+                    };
+
+                    for _ in 0..count {
+                        events.push(ReplayEvent::UnitQueued {
+                            timestamp_ms: current_ms,
+                            player_id,
+                            unit_type: unit_name.to_string(),
+                            cost: total_cost.clone(),
+                            building_ids: building_ids.clone(),
+                            building_types: vec![b_type_name.clone(); building_ids.len()],
+                        });
+                    }
+                }
+                aoe2rec::actions::ActionData::Build {
+                    player_id,
+                    building_type_id,
+                    x,
+                    y,
+                    ..
+                } => {
+                    let b_type_name = building_map
+                        .get(&building_type_id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("Unknown Building")
+                        .to_string();
+
+                    let cost =
+                        building_cost_map
+                            .get(&building_type_id)
+                            .cloned()
+                            .unwrap_or(ResourceCost {
+                                food: 0,
+                                wood: 0,
+                                gold: 0,
+                                stone: 0,
+                            });
+
+                    let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
+                    pending_builds.insert(pos_key, b_type_name.clone());
+
+                    events.push(ReplayEvent::BuildingConstruction {
+                        timestamp_ms: current_ms,
+                        player_id,
+                        building_type: b_type_name,
+                        building_type_id,
+                        x,
+                        y,
+                        cost,
+                    });
+                }
+                aoe2rec::actions::ActionData::Interact {
+                    target_id, x, y, ..
+                } => {
+                    let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
+                    if let Some(b_type_name) = pending_builds.get(&pos_key) {
+                        if target_id > 0 && !instance_map.contains_key(&target_id) {
+                            instance_map.insert(target_id, b_type_name.clone());
+                        }
+                    } else {
+                        for dx in -1..=1 {
+                            for dy in -1..=1 {
+                                let neighbor_key = (pos_key.0 + dx, pos_key.1 + dy);
+                                if let Some(b_type_name) = pending_builds.get(&neighbor_key) {
+                                    if target_id > 0 && !instance_map.contains_key(&target_id) {
+                                        instance_map.insert(target_id, b_type_name.clone());
                                     }
                                 }
                             }
                         }
-                        aoe2rec::actions::ActionData::Delete {
-                            player_id,
-                            object_id,
-                            ..
-                        } => {
-                            let name = instance_map
-                                .get(&object_id)
-                                .cloned()
-                                .unwrap_or_else(|| "Unknown".to_string());
-
-                            events.push(ReplayEvent::Deletion {
-                                timestamp_ms: current_ms,
-                                player_id,
-                                object_id,
-                                object_name: name,
-                            });
-                        }
-                    _ => {}
+                    }
                 }
-            }
+                aoe2rec::actions::ActionData::Delete {
+                    player_id,
+                    object_id,
+                    ..
+                } => {
+                    let name = instance_map
+                        .get(&object_id)
+                        .cloned()
+                        .unwrap_or_else(|| "Unknown".to_string());
+
+                    events.push(ReplayEvent::Deletion {
+                        timestamp_ms: current_ms,
+                        player_id,
+                        object_id,
+                        object_name: name,
+                    });
+                }
+                _ => {}
+            },
             _ => {}
         }
     }
 
-    Ok((savegame.meta.rec_owner, player_names, events))
+    Ok(ReplayData {
+        rec_owner: savegame.meta.rec_owner,
+        player_names,
+        events,
+    })
 }
 
 pub fn print_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_owner, player_names, events) = extract_events(replay_path)?;
+    let data = extract_events(replay_path)?;
+    let rec_owner = data.rec_owner;
+    let player_names = data.player_names;
+    let events = data.events;
     println!("Recorded by player ID: {}", rec_owner);
 
     println!(
@@ -553,4 +585,3 @@ pub fn print_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>
     }
     Ok(())
 }
-
