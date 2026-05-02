@@ -126,14 +126,14 @@ def detect_housed_overlay(img):
     mean_b = np.mean(img[:, :, 0])
     return mean_g > 150 and mean_r > 150 and mean_b < 100
 
-def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
+def contains_yellow(img, min_brightness=100, blue_margin=50, rg_similarity=50):
     """
     Checks if the box contains yellow pixels (indicating active idle villagers icon).
     Yellow is detected by: high R and G values, low B value, R and G similar.
     
     Args:
         min_brightness: Minimum value for R and G channels (default 100)
-        blue_margin: How much lower B must be than R and G (default 30)
+        blue_margin: How much lower B must be than R and G (default 50)
         rg_similarity: Maximum difference between R and G (default 50)
     
     Returns:
@@ -408,6 +408,7 @@ def process_frame(img, ui_map, templates, verbose=True):
         return None
 
     results = {}
+    pop_color = "white"
     
     # 2. Process each element
     for name, coords in ui_map.get('elements', {}).items():
@@ -433,8 +434,15 @@ def process_frame(img, ui_map, templates, verbose=True):
         if name == "population_total":
             overlay_mode = detect_housed_overlay(box_img)
             allow_yellow = True
-            if overlay_mode and verbose:
-                print(f"    Housed overlay detected for {name}!")
+            
+            if overlay_mode:
+                pop_color = "overlay"
+            elif contains_yellow(box_img):
+                pop_color = "yellow"
+                
+            if pop_color != "white" and verbose:
+                state_desc = "overlay" if pop_color == "overlay" else "yellow text"
+                print(f"    Housed state ({state_desc}) detected for {name}!")
 
         # Special Case: Idle Villagers are 0 if the icon is grey (not yellow)
         if name == "idle_vils":
@@ -476,6 +484,11 @@ def process_frame(img, ui_map, templates, verbose=True):
         if category not in results:
             results[category] = {}
         results[category][sub_key] = value_str
+    
+    if 'population' not in results:
+        results['population'] = {}
+    
+    results['population']['color'] = pop_color
     
     return results
 

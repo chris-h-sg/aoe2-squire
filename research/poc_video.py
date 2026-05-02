@@ -37,7 +37,7 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
     # Prepare CSV headers based on ui_map elements
     # We'll use the names exactly as they are in the JSON
     element_names = list(ui_map.get('elements', {}).keys())
-    headers = ['timestamp_sec', 'frame_idx'] + element_names
+    headers = ['timestamp_sec', 'frame_idx'] + element_names + ['pop_color']
 
     results = []
     
@@ -85,6 +85,8 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
                         category = parts[0]
                         sub_key = parts[1] if len(parts) > 1 else "value"
                         row_data[name] = results.get(category, {}).get(sub_key, "")
+
+                    row_data['pop_color'] = results.get('population', {}).get('color', 'white')
 
                     writer.writerow(row_data)
                     csvfile.flush()

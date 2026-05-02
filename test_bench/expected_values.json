@@ -20,7 +20,8 @@
             },
             "population": {
                 "vils": "64",
-                "total": "64/75"
+                "total": "64/75",
+                "color": "white"
             },
             "idle": {
                 "vils": "3"
@@ -45,7 +46,8 @@
             },
             "population": {
                 "vils": "10",
-                "total": "22/80"
+                "total": "22/80",
+                "color": "white"
             },
             "idle": {
                 "vils": "10"
@@ -87,7 +89,8 @@
             },
             "population": {
                 "vils": "107",
-                "total": "136/140"
+                "total": "136/140",
+                "color": "overlay"
             },
             "idle": {
                 "vils": "0"
@@ -112,7 +115,8 @@
             },
             "population": {
                 "vils": "107",
-                "total": "136/140"
+                "total": "136/140",
+                "color": "yellow"
             },
             "idle": {
                 "vils": "1"

@@ -79,7 +79,7 @@ def detect_housed_overlay(img):
     mean_b = np.mean(img[:, :, 0])
     return mean_g > 150 and mean_r > 150 and mean_b < 100
 
-def contains_yellow(img, min_brightness=100, blue_margin=30, rg_similarity=50):
+def contains_yellow(img, min_brightness=100, blue_margin=50, rg_similarity=50):
     """
     Checks if the box contains yellow pixels (indicating active idle villagers icon).
     Yellow is detected by: high R and G values, low B value, R and G similar.
@@ -273,8 +273,17 @@ def run_pipeline(image_path, ui_map, debug=False, bright_threshold=230):
         if name == "population_total":
             overlay_mode = detect_housed_overlay(box_img)
             allow_yellow = True
+            
             if overlay_mode:
-                print(f"  Housed overlay detected for {name}!")
+                pop_color = "overlay"
+            elif contains_yellow(box_img):
+                pop_color = "yellow"
+            else:
+                pop_color = "white"
+                
+            if pop_color != "white":
+                state_desc = "overlay" if pop_color == "overlay" else "yellow text"
+                print(f"  Housed state ({state_desc}) detected for {name}!")
 
         # Step 2: Cleanup (Produces high-quality soft-filtered output image)
         out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode, allow_yellow=allow_yellow)

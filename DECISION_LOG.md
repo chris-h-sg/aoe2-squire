@@ -203,3 +203,16 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Reasoning**: 
     *   Binaries are difficult to test; moving logic to the library allowed for a 100% automated test suite for the complex calibration state machine.
     *   Enables reusing the analysis logic in future UI components (e.g., a real-time efficiency dashboard) without code duplication.
+
+## Vision Pipeline (May 2, 2026)
+
+### 1. Separation of Concerns: Vision vs. Game State
+*   **Decision**: The image analyzer (`poc_vision.py`) strictly reports observed UI states (e.g., `pop_color: "white" | "yellow" | "overlay"`), deferring high-level state interpretation (e.g., "housed" vs. "queued") to the video/telemetry analyzer.
+*   **Reasoning**: 
+    *   The game UI flashes between an overlay and yellow text when fully housed, and stays solid yellow when units are "queued" beyond pop capacity.
+    *   Frame-by-frame analysis cannot distinguish the "off-frame" of a fully housed player from a merely "queued" player without temporal context.
+    *   Outputting raw visual states prevents flickering and data loss, allowing the downstream analyzer to apply a smoothing window or cross-reference with OCR numbers to determine the true state.
+
+### 2. "Queued" State Detection
+*   **Decision**: Maintained the simpler `np.any(is_yellow)` check in `contains_yellow` without a strict pixel count threshold.
+*   **Reasoning**: We initially thought yellow pixels on white population numbers were video compression artifacts, but discovered they are actual in-game warnings when queued unit capacity exceeds population limits. Tightening the blue margin to `50` perfectly balances ignoring actual compression artifacts while retaining sensitivity for these valid UI warnings.
