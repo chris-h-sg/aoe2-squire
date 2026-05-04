@@ -219,12 +219,11 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 
 ## Vision & State Analysis (May 4, 2026)
 
-### 1. Sampling Frequency & Aliasing
-*   **Decision**: Increase video sampling frequency to 3 FPS (333ms interval) instead of 2 FPS (500ms).
+### 1. Sampling Frequency & Timing
+*   **Decision**: Increase capture frequency to 4 FPS (250ms interval) and implement a self-correcting loop.
 *   **Reasoning**:
-    *   Based on our frame analysis (`test_bench/extract-housed-frames.csv`), the overlay transitions to a slow cycle of ~600ms off / ~400ms on.
-    *   A 500ms sampling interval hits the Nyquist frequency of the slow cycle, causing severe aliasing where the "on" phase can be missed for several consecutive cycles.
-    *   At 333ms (3 FPS), the interval is strictly less than the shortest "on" window (~400ms), mathematically guaranteeing every flash is detected at least once.
+    *   **Aliasing**: A 250ms interval ensures we catch the ~400ms "on" window of the housed overlay flash, avoiding Nyquist aliasing.
+    *   **Drift**: Using a deadline-based sleep compensates for the ~50ms of vision pipeline latency, preventing sample drift and ensuring tight 250ms gaps in the telemetry CSV.
 
 ### 2. Discrete Population Fields
 *   **Decision**: Split the `population_total` OCR result into discrete `total` (current) and `housing` (capacity) fields.
@@ -251,4 +250,3 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
     *   **Population Bounds**: Both bridge types enforce $diff(C) \leq \max(diff(A), diff(B))$, where $diff = housing - total$.
 *   **Reasoning**:
     *   **Dual-State Flickering**: The game UI flashes between "overlay" and "yellow" when housed. Treating `overlay` as a valid "queued" anchor ensures the queued bridge doesn't break during a housed flicker.
-    *   **The `max(diff)` Bound**: Elegantly handles complex edge cases like unit deaths ($diff$ increases) and house completions ($diff$ spikes, breaking the bridge) without needing explicit `max_pop` checks.

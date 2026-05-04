@@ -230,9 +230,13 @@ pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
 
     let mut engine = pipeline::interpolation::InterpolationEngine::new();
     let mut frame_idx = 0;
+    let capture_interval = Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS);
 
     loop {
-        std::thread::sleep(Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS));
+        // Record the deadline for the *next* tick before any work begins.
+        // This way the sleep at the bottom only covers the time we haven't
+        // already spent capturing and processing, keeping intervals tight.
+        let next_tick = std::time::Instant::now() + capture_interval;
 
         if let Some(dyn_image) = session.capture_frame()? {
             let start = std::time::Instant::now();
@@ -287,6 +291,13 @@ pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
                 let _ = writer.flush();
                 frame_idx += 1;
             }
+        }
+
+        // Sleep until the next tick. If processing took longer than the interval,
+        // this will return immediately.
+        let now = std::time::Instant::now();
+        if next_tick > now {
+            std::thread::sleep(next_tick - now);
         }
     }
 }
