@@ -231,8 +231,8 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Reasoning**:
     *   The 1.0s time window perfectly accommodates the maximum possible gap between two detections at 3 FPS (999ms).
     *   The `max(diff)` check elegantly handles complex edge cases without needing explicit `max_pop` checks:
-        *   **Unit deaths while heavily queued:** The `diff` increases temporarily, but is cleanly captured by the upper bound of the second overlay frame.
-        *   **House completions:** The available housing (`max_pop`) jumps up, causing an immediate spike in `diff` that exceeds both bounds, correctly breaking the interpolation.
+        *   **Unit deaths:** If a unit dies during a flicker (e.g., 20/20 -> 19/20 -> 19/20), the `diff` increases to 1. Since the second anchor also has a `diff` of 1, the intermediate frame is captured by the `max(0, 1)` bound and correctly bridged.
+        *   **House completions:** The available housing (`max_pop`) jumps up (e.g., 20/20 -> 20/25 -> 25/25). The intermediate `diff` of 5 exceeds the `max(0, 0)` bound, correctly breaking the interpolation.
 
 ## Vision Pipeline (May 4, 2026)
 

@@ -11,18 +11,7 @@ from typing import Dict, Any, List, Optional
 # Import functions from the existing vision POC
 import poc_vision
 
-@dataclass
-class CapturedFrame:
-    timestamp: float
-    frame_idx: int
-    pop_color: str
-    pop_total: int
-    pop_housing: int
-    row_data: Dict[str, Any]
-
-    @property
-    def pop_diff(self) -> int:
-        return self.pop_housing - self.pop_total
+from interpolation_engine import InterpolationEngine, CapturedFrame
 
 def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_frames=False, frames_dir=None):
     cap = cv2.VideoCapture(video_path)
@@ -63,13 +52,7 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
     headers += ['pop_color', 'housing']
 
     # State for Interpolation
-    pending_buffer: List[CapturedFrame] = []
-    last_housed_anchor: Optional[CapturedFrame] = None
-
-    def flush_buffer(buffer: List[CapturedFrame], writer: csv.DictWriter):
-        for f in buffer:
-            writer.writerow(f.row_data)
-        buffer.clear()
+    engine = InterpolationEngine(timeout_sec=1.0)
 
     with open(output_csv, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=headers)
@@ -154,33 +137,9 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
                     )
 
                     # --- INTERPOLATION ENGINE ---
-                    if pop_color == 'overlay':
-                        # Check if we have a previous anchor to bridge to
-                        if last_housed_anchor and (timestamp - last_housed_anchor.timestamp <= 1.0):
-                            # Bridge found: evaluate intermediate frames
-                            max_diff_bound = max(last_housed_anchor.pop_diff, current_frame.pop_diff)
-                            for bf in pending_buffer:
-                                if bf.pop_diff <= max_diff_bound:
-                                    bf.row_data['housing'] = 'housed'
-                        
-                        # Flush any processed buffer and the current anchor
-                        flush_buffer(pending_buffer, writer)
-                        writer.writerow(current_frame.row_data)
-                        last_housed_anchor = current_frame
-                    else:
-                        # Non-overlay frame
-                        if last_housed_anchor:
-                            if timestamp - last_housed_anchor.timestamp > 1.0:
-                                # Window timed out: flush buffer as raw and reset anchor
-                                flush_buffer(pending_buffer, writer)
-                                writer.writerow(current_frame.row_data)
-                                last_housed_anchor = None
-                            else:
-                                # Within window: add to buffer for potential bridging
-                                pending_buffer.append(current_frame)
-                        else:
-                            # No active anchor: write immediately
-                            writer.writerow(current_frame.row_data)
+                    output_rows = engine.process_frame(current_frame)
+                    for r in output_rows:
+                        writer.writerow(r)
 
                     csvfile.flush()
                     t_frame_end = time.time()
@@ -192,7 +151,8 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
             frame_idx += 1
 
         # Final flush for any remaining frames in buffer
-        flush_buffer(pending_buffer, writer)
+        for r in engine.flush():
+            writer.writerow(r)
 
     cap.release()
     print(f"\nProcessing complete! Results saved to: {output_csv}")

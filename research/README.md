@@ -18,7 +18,12 @@ This directory contains the Proof-of-Concept (PoC) vision system for extracting 
 - **`matcher.py`**: Robust digit matcher performing evaluation of extracted digits.
     - **Logic**: Uses the **Wiggle SSD** algorithm (Centering + Blurring + 9-Trial Offset).
     - **Purpose**: Verified at 100% accuracy across all UI scales.
-- **`test_video.py`**: Automated test suite for validating video extraction consistency.
+- **`test_video.py`**: Parameterized test suite for validating video extraction consistency.
+- **`interpolation_engine.py`**: Standalone state machine for bridging temporal gaps in UI overlays.
+    - **Logic**: Uses a 1.0s window and a population-difference bound check to bridge flickering "housed" overlays.
+    - **Purpose**: Decouples temporal state logic from the main video processing loop for independent verification.
+- **`test_interpolation.py`**: Unit test harness for the interpolation engine.
+    - **Logic**: Runs the engine against synthetic scenarios (flicker, house completion, unit death, timeout) defined in `test_bench/interpolation/`.
 
 ### Vision Pipeline & OCR
 
@@ -92,6 +97,12 @@ The extraction process follows an optimized 4-stage pipeline:
         - **SSD**: Calculates Sum of Squared Differences against 11 pre-loaded templates.
         - **Symmetry Tie-Breaker**: If '0' and '3/6/9' are within 20% SSD margin, compares horizontal symmetry scores to resolve the ambiguity.
     - **Performance**: Capable of processing a full UI panel in ~100ms.
+
+5.  **Stage 5: Housed State Interpolation (`InterpolationEngine`)**:
+    - **Logic**: 
+        - **Windowing**: Buffers frames for up to 1.0 seconds to bridge the "dark phase" of flickering UI overlays.
+        - **Difference Bound**: Only bridges if $diff(Intermediate) \leq \max(diff(Anchor1), diff(Anchor2))$, where $diff = housing - total$.
+    - **Purpose**: Reliably identifies "Housed" status even when the UI is flickering or when a unit dies during the flicker, while correctly breaking the bridge if a house completes (available housing spikes).
 
 
 

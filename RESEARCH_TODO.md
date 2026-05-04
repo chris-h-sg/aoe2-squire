@@ -43,7 +43,10 @@
     - [x] Internal state tracking for Building Instance IDs to resolve Building Types for Research and Unqueue events.
     - [x] Implement Building Construction extraction to achieve 100% building type coverage.
     - [x] Implement Resource Cost calculation in extraction output.
-- [ ] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops.
+- [x] **Sync Tool:** Build a "Mesher" that aligns timestamps and verifies resource drops. (Complete: `mesher.rs` handles sub-second temporal alignment).
+- [x] **State Interpolation Logic:** Validate the temporal bridging of "housed" overlays during vision flickers.
+    - [x] Implementation: `interpolation_engine.py`.
+    - [x] Verification: `test_interpolation.py` with synthetic scenarios in `test_bench/interpolation/`.
 
 
 ## Future Research (Post-Core-Tool)

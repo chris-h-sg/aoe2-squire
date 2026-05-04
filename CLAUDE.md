@@ -46,7 +46,8 @@ rts-analyzer/
     ├── poc_capture.py      ← live capture validation (reference only)
     ├── templates/enormous_numbers/   ← digit template PNGs (0-9 + slash)
     ├── test_vision.py      ← run from repo root: python research/test_vision.py
-    └── test_video.py       ← run from repo root: python research/test_video.py
+    ├── test_video.py       ← run from repo root: python research/test_video.py
+    └── test_interpolation.py ← run from repo root: python research/test_interpolation.py
 ```
 
 ## The Pipeline (port this to Rust)
@@ -133,5 +134,6 @@ Run the Python tests to get ground-truth output for the same inputs:
 ```
 python research/test_vision.py   # static screenshots
 python research/test_video.py    # video frame extraction
+python research/test_interpolation.py # state interpolation logic
 ```
 Expected values are in `test_bench/expected_values.json`.
