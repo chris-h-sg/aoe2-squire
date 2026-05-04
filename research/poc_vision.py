@@ -483,7 +483,20 @@ def process_frame(img, ui_map, templates, verbose=True):
         
         if category not in results:
             results[category] = {}
-        results[category][sub_key] = value_str
+        
+        # Special case: Split population into current and max (housing)
+        if name == "population_total":
+            if "/" in value_str:
+                curr, housing = value_str.split('/', 1)
+                results[category]['total'] = curr
+                results[category]['housing'] = housing
+            else:
+                if verbose:
+                    print(f"    WARNING: No slash found in {name}: '{value_str}'")
+                results[category]['total'] = value_str
+                results[category]['housing'] = ""
+        else:
+            results[category][sub_key] = value_str
     
     if 'population' not in results:
         results['population'] = {}

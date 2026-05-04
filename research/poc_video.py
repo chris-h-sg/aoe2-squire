@@ -35,13 +35,19 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
         os.makedirs(frames_dir, exist_ok=True)
 
     # Prepare CSV headers based on ui_map elements
-    # We'll use the names exactly as they are in the JSON
     element_names = list(ui_map.get('elements', {}).keys())
-    headers = ['timestamp_sec', 'frame_idx'] + element_names + ['pop_color', 'housing']
-
-    results = []
     
-    # Open CSV early to write headers and rows as we go (safer for long videos)
+    # Update headers to include discrete population fields
+    headers = ['timestamp_sec', 'frame_idx']
+    for name in element_names:
+        if name == "population_total":
+            headers.append("population_total")
+            headers.append("population_housing")
+        else:
+            headers.append(name)
+    headers += ['pop_color', 'housing']
+
+    # Open CSV early to write headers and rows as we go
     with open(output_csv, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=headers)
         writer.writeheader()
@@ -84,7 +90,12 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
                         parts = name.split('_')
                         category = parts[0]
                         sub_key = parts[1] if len(parts) > 1 else "value"
-                        row_data[name] = results.get(category, {}).get(sub_key, "")
+                        
+                        if name == "population_total":
+                            row_data['population_total'] = results.get('population', {}).get('total', "")
+                            row_data['population_housing'] = results.get('population', {}).get('housing', "")
+                        else:
+                            row_data[name] = results.get(category, {}).get(sub_key, "")
 
                     pop_color = results.get('population', {}).get('color', 'white')
                     row_data['pop_color'] = pop_color
