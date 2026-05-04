@@ -1,25 +1,8 @@
 use csv::ReaderBuilder;
 use rts_analyzer::replay::{extract_events, ReplayEvent};
-use rts_analyzer::types::CsvRow;
+use rts_analyzer::types::{CsvRow, MergedRow};
 use std::env;
 use std::path::Path;
-
-struct MergedRow {
-    in_game_ms: u64,
-    observation_type: String,
-    event_desc: String,
-    food: String,
-    wood: String,
-    gold: String,
-    stone: String,
-    rw_timestamp_ms: String,
-    building_type: String,
-    building_ids: String,
-    idle_vils: String,
-    pop_curr: String,
-    pop_max: String,
-    housing: String,
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();

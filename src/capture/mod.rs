@@ -244,18 +244,21 @@ pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
-                
-                let pop_curr = results.get("population")
+
+                let pop_curr = results
+                    .get("population")
                     .and_then(|m| m.get("total"))
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0);
-                
-                let pop_max = results.get("population")
+
+                let pop_max = results
+                    .get("population")
                     .and_then(|m| m.get("housing"))
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0);
 
-                let pop_color = results.get("population")
+                let pop_color = results
+                    .get("population")
                     .and_then(|m| m.get("color"))
                     .cloned()
                     .unwrap_or_else(|| "white".to_string());
@@ -270,7 +273,7 @@ pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
                 };
 
                 let interpolated_rows = engine.process_frame(frame);
-                
+
                 for (row_data, row_timestamp_ms) in interpolated_rows {
                     // For now, we just print the latest telemetry.
                     print_telemetry(&row_data, duration);
@@ -330,7 +333,8 @@ fn print_telemetry(results: &crate::types::Results, duration: Duration) {
             }
         }
     }
-    let ui_scale = results.get("meta")
+    let ui_scale = results
+        .get("meta")
         .and_then(|m| m.get("ui_scale"))
         .map(|s| s.as_str())
         .unwrap_or("?");

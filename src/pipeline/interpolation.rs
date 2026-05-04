@@ -73,7 +73,8 @@ impl InterpolationEngine {
                     let max_diff = last.pop_diff().max(frame.pop_diff());
                     for bf in self.pending_buffer.iter_mut() {
                         // Only upgrade to queued if not already upgraded to housed
-                        if get_housing_status(&bf.row_data) == "normal" && bf.pop_diff() <= max_diff {
+                        if get_housing_status(&bf.row_data) == "normal" && bf.pop_diff() <= max_diff
+                        {
                             set_housing_status(&mut bf.row_data, "queued");
                         }
                     }
@@ -86,7 +87,7 @@ impl InterpolationEngine {
                 while let Some(bf) = self.pending_buffer.pop_front() {
                     output_rows.push((bf.row_data, bf.timestamp_ms));
                 }
-                
+
                 set_housing_status(&mut frame.row_data, "housed");
                 output_rows.push((frame.row_data.clone(), frame.timestamp_ms));
 
@@ -110,7 +111,7 @@ impl InterpolationEngine {
                     while let Some(bf) = self.pending_buffer.pop_front() {
                         output_rows.push((bf.row_data, bf.timestamp_ms));
                     }
-                    
+
                     set_housing_status(&mut frame.row_data, "queued");
                     output_rows.push((frame.row_data.clone(), frame.timestamp_ms));
 
@@ -175,29 +176,29 @@ fn get_housing_status(results: &Results) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use csv::ReaderBuilder;
     use std::collections::HashMap;
     use std::path::Path;
-    use csv::ReaderBuilder;
 
     fn run_scenario(name: &str) {
         let test_data_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("test_bench")
             .join("interpolation")
             .join(format!("{}.csv", name));
-        
+
         println!("Running scenario: {}", test_data_path.display());
-        
+
         let mut rdr = ReaderBuilder::new()
             .from_path(&test_data_path)
             .expect("Failed to open test CSV");
-        
+
         let mut engine = InterpolationEngine::new();
         let mut expected_housing = Vec::new();
         let mut actual_rows = Vec::new();
 
         for result in rdr.records() {
             let record = result.expect("Failed to read CSV record");
-            
+
             let ts: f64 = record[0].parse().unwrap();
             let frame_idx: u64 = record[1].parse().unwrap();
             let pop_total: u32 = record[2].parse().unwrap();
@@ -237,39 +238,55 @@ mod tests {
         for (i, (actual, expected)) in actual_rows.iter().zip(expected_housing.iter()).enumerate() {
             let actual_status = get_housing_status(&actual.0);
             assert_eq!(
-                actual_status,
-                expected,
+                actual_status, expected,
                 "Mismatch at row {} in scenario {}",
-                i,
-                name
+                i, name
             );
         }
     }
 
     #[test]
-    fn test_scenario_flicker() { run_scenario("flicker"); }
+    fn test_scenario_flicker() {
+        run_scenario("flicker");
+    }
 
     #[test]
-    fn test_scenario_house_completion() { run_scenario("house_completion"); }
+    fn test_scenario_house_completion() {
+        run_scenario("house_completion");
+    }
 
     #[test]
-    fn test_scenario_mixed_priority() { run_scenario("mixed_priority"); }
+    fn test_scenario_mixed_priority() {
+        run_scenario("mixed_priority");
+    }
 
     #[test]
-    fn test_scenario_priority_overlap() { run_scenario("priority_overlap"); }
+    fn test_scenario_priority_overlap() {
+        run_scenario("priority_overlap");
+    }
 
     #[test]
-    fn test_scenario_queued_flicker() { run_scenario("queued_flicker"); }
+    fn test_scenario_queued_flicker() {
+        run_scenario("queued_flicker");
+    }
 
     #[test]
-    fn test_scenario_queued_timeout() { run_scenario("queued_timeout"); }
+    fn test_scenario_queued_timeout() {
+        run_scenario("queued_timeout");
+    }
 
     #[test]
-    fn test_scenario_state_transition() { run_scenario("state_transition"); }
+    fn test_scenario_state_transition() {
+        run_scenario("state_transition");
+    }
 
     #[test]
-    fn test_scenario_timeout() { run_scenario("timeout"); }
+    fn test_scenario_timeout() {
+        run_scenario("timeout");
+    }
 
     #[test]
-    fn test_scenario_unit_death() { run_scenario("unit_death"); }
+    fn test_scenario_unit_death() {
+        run_scenario("unit_death");
+    }
 }

@@ -30,7 +30,7 @@ cargo test -- --nocapture
 
 ### Running the Extractor
 
-By default, the application runs in **Live Capture Mode**. It uses Windows DXGI (Desktop Duplication) to capture your primary monitor every 500ms and stream real-time telemetry to the console.
+By default, the application runs in **Live Capture Mode**. It uses Windows DXGI (Desktop Duplication) to capture your primary monitor every 250ms (~4 FPS) and stream real-time telemetry to the console.
 
 ### Telemetry Logging
 While running in live mode, the application automatically persists telemetry data to timestamped CSV files in the `logs/` directory (e.g., `logs/telemetry_20260429_150000.csv`). This data is used for offline analysis and validation against game replays.
@@ -99,11 +99,23 @@ The tool calculates:
 *   **Per-Age Breakdown**: Idle time is automatically attributed to the specific game age (Dark, Feudal, Castle, or Imperial) in which it occurred, using replay research clicks as temporal boundaries.
 *   **Detailed Transitions**: A chronological log of every segment where villagers were idle, including the precise start and end times in `mm:ss.sss` format.
 
+The second implemented metric is **Housing Efficiency**.
+
+```powershell
+# Run the housing analyzer on the merged observations
+cargo run --bin housing_analyzer
+```
+
+The tool reports:
+*   **Housed Seconds**: Total time spent at maximum population capacity with no remaining space.
+*   **Queued Seconds**: Total time spent with a population status of "Queued" (indicating that units are being trained but not yet born, often used to bridge gaps).
+*   **Per-Age Breakdown**: Both metrics are broken down by game age (Dark, Feudal, Castle, Imperial).
+
 
 ### System Requirements (Live Capture)
 *   **Operating System**: Windows 10/11
 *   **Display**: Primary monitor must be active (DXGI does not support headless sessions).
-*   **Performance**: The capture loop is throttled to ~2 FPS to maintain <1% CPU impact during gameplay.
+*   **Performance**: The capture loop is throttled to ~4 FPS (250ms interval) to maintain <1% CPU impact during gameplay.
 
 ## Data Acknowledgements
 

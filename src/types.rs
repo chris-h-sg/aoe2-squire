@@ -36,3 +36,21 @@ pub struct CsvRow {
     pub idle_vils: Option<u32>,
     pub housing: Option<String>,
 }
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct MergedRow {
+    pub in_game_ms: u64,
+    pub observation_type: String,
+    pub event_desc: String,
+    pub food: String,
+    pub wood: String,
+    pub gold: String,
+    pub stone: String,
+    pub rw_timestamp_ms: String,
+    pub building_type: String,
+    pub building_ids: String,
+    pub idle_vils: String,
+    pub pop_curr: String,
+    pub pop_max: String,
+    pub housing: String,
+}

@@ -13,10 +13,10 @@ use image::DynamicImage;
 pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) -> Option<Results> {
     // Stage 1
     let ui_scale = anchor::detect_ui_scale(img, ui_map.baseline_margin)?;
-    
+
     let (img_w, img_h) = (img.width(), img.height());
     let mut results = Results::new();
-    
+
     results
         .entry("meta".to_string())
         .or_default()

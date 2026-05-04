@@ -9,7 +9,7 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 - Python R&D (`research/`) is finished and all tests pass. Do not modify it unless fixing a bug that needs to be carried into Rust.
 - The Rust production binary is fully functional. The entire vision pipeline is complete and operating under 1% CPU overhead.
 - Telemetry CSV logging and a fully-featured Replay Parser (via the `liouh/aoe2rec` fork) are implemented.
-- **Current Task:** Finalized the Interpolation Pipeline with millisecond standardization and configurable vision parameters. Transitioning to Phase 5: State Snapshotting.
+- **Current Task:** Phase 5 (Post-Game Analysis) in progress. The `idle_analyzer` and `housing_analyzer` binary utilities are complete, reporting per-age efficiency metrics from the merged observation stream. The shared `analysis.rs` library provides a generic, tested segmentation engine used by both tools.
 
 ## Repo Layout
 ```
@@ -30,9 +30,11 @@ rts-analyzer/
 │   │   ├── segment.rs      ← Stage 5: segment_into_digits (STUB)
 │   │   ├── canvas.rs       ← Stage 6: prepare_canvas (STUB)
 │   │   └── matcher.rs      ← Stage 7: load_templates, match_digit (STUB)
+│   ├── analysis.rs         ← shared game segmentation engine, metrics helpers & format utilities
 │   ├── bin/
-│   │   ├── mesher.rs       ← align telemetry CSV with .aoe2record ground truth
-│   │   └── idle_analyzer.rs ← calculate villager-seconds lost per age
+│   │   ├── mesher.rs           ← align telemetry CSV with .aoe2record ground truth
+│   │   ├── idle_analyzer.rs    ← calculate villager-seconds lost per age
+│   │   └── housing_analyzer.rs ← track housed/queued population time per age
 │   └── capture/mod.rs      ← DXGI screen capture
 ├── test_bench/             ← reference screenshots + expected_values.json
 │   ├── aoe2_16x9.png       ← 1080p baseline

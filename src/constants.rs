@@ -32,3 +32,7 @@ pub const WIGGLE_OFFSETS: [i32; 3] = [-1, 0, 1];
 pub const YELLOW_MIN_BRIGHTNESS: u8 = 100;
 pub const YELLOW_BLUE_MARGIN: i16 = 50;
 pub const YELLOW_RG_SIMILARITY: i16 = 50;
+
+// --- Analysis ---
+pub const GAME_AGES: [&str; 4] = ["Dark Age", "Feudal Age", "Castle Age", "Imperial Age"];
+pub const DEFAULT_MERGED_CSV: &str = "output/merged_observations.csv";

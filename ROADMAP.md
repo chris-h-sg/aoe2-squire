@@ -6,12 +6,12 @@ This roadmap outlines the development path for the RTS Analyzer, prioritizing hi
 
 The immediate focus is on creating a "Minimum Viable Analysis" that combines our existing data sources to highlight the most critical low-Elo mistakes.
 
-1. **Data Synchronization Foundation:** 
-   - Establish a method to synchronize the timestamp data from the DXGI vision pipeline with the exact event timestamps from the parsed `.aoe2record` file. This is a prerequisite for all combined analysis.
-2. **Idle Villagers Tracking (Quick Win):** 
-   - Utilize our existing `idle_vils` OCR data to calculate and report the total duration and count of idle villagers throughout the game. This requires almost no new parsing logic and provides immediate, high-impact value.
-3. **Getting "Housed" Penalties (Quick Win):** 
-   - Utilize our existing `detect_housed_overlay` vision function to track the exact duration a player is population-capped. Report the total production time lost.
+1. ✅ **Data Synchronization Foundation:** *(complete — `mesher` binary)*
+   - A two-point linear calibration model aligns vision telemetry with `.aoe2record` events at sub-second precision. Output: `output/merged_observations.csv`.
+2. ✅ **Idle Villagers Tracking (Quick Win):** *(complete — `idle_analyzer` binary)*
+   - Reports villager-seconds (VS) lost per age with a full chronological segment log and age-research click annotations.
+3. ✅ **Getting "Housed" Penalties (Quick Win):** *(complete — `housing_analyzer` binary)*
+   - Reports seconds spent in `housed` and `queued` population states, broken down by game age.
 4. **Floating Resources Alerts (Quick Win):** 
    - Track resource banks using the vision pipeline and flag sustained periods where resources exceed healthy thresholds (e.g., floating 1000+ wood in Feudal Age). We will need to define basic static thresholds.
 5. **Basic Idle TC Inference:** 
