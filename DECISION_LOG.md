@@ -226,10 +226,29 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
     *   A 500ms sampling interval hits exactly the Nyquist frequency of the slow cycle, leading to severe aliasing where the "on" phase can be missed for several consecutive cycles, causing false gaps of 2.0s+ between positive detections.
     *   At 333ms (3 FPS), the interval is strictly less than the shortest "on" window of the slow cycle (~400ms), mathematically guaranteeing every slow flash is detected at least once, while also catching most fast flashes.
 
-### 2. Housed State Interpolation
+### 2. Housed State Interpolation Logic
 *   **Decision**: Interpolate the "housed" state across intermediate non-overlay frames (e.g., white or yellow) if they are bounded by two `overlay` frames within a strict 1.0-second time window. Additionally, we enforce that `diff(C) <= max(diff(A), diff(B))` for any intermediate frame C, where `diff = max_pop - current_pop`.
 *   **Reasoning**:
     *   The 1.0s time window perfectly accommodates the maximum possible gap between two detections at 3 FPS (999ms).
     *   The `max(diff)` check elegantly handles complex edge cases without needing explicit `max_pop` checks:
         *   **Unit deaths while heavily queued:** The `diff` increases temporarily, but is cleanly captured by the upper bound of the second overlay frame.
         *   **House completions:** The available housing (`max_pop`) jumps up, causing an immediate spike in `diff` that exceeds both bounds, correctly breaking the interpolation.
+
+## Vision Pipeline (May 4, 2026)
+
+### 1. Discrete Population Fields
+*   **Decision**: Split the `population_total` OCR result into discrete `total` (current) and `housing` (capacity) fields at the source (`poc_vision.py`).
+*   **Reasoning**:
+    *   Eliminates brittle string parsing in downstream analysis.
+    *   Enables direct numerical comparison for state detection logic.
+    *   Aligns with the `total`/`vils` structure of other resources.
+
+### 2. Temporal Housed Interpolation Implementation
+*   **Decision**: Implemented a 1.0s windowed buffer in `poc_video.py` to bridge "flicker" gaps in the housed overlay.
+*   **Logic**:
+    *   Frames between two `overlay` anchors are marked as `housed` if $diff(C) \leq \max(diff(A), diff(B))$, where $diff = housing - total$.
+    *   Window timeout: 1.0 seconds.
+*   **Reasoning**:
+    *   Mathematically guarantees continuous housed detection at 3 FPS by outlasting the flicker's dark phase (~600ms).
+    *   The `diff` constraint correctly breaks the bridge if a house is completed (immediate spike in available housing).
+
