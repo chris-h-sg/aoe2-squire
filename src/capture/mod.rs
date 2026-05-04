@@ -28,11 +28,8 @@ pub fn prepare_telemetry_row(results: &Results, timestamp: u128) -> Vec<String> 
             .unwrap_or("")
     };
 
-    let pop_total = get_val("population", "total");
-    let (pop_curr, pop_max) = match pop_total.split_once('/') {
-        Some((c, m)) => (c, m),
-        None => (pop_total, ""),
-    };
+    let pop_curr = get_val("population", "total");
+    let pop_max = get_val("population", "housing");
 
     vec![
         timestamp.to_string(),
@@ -48,6 +45,7 @@ pub fn prepare_telemetry_row(results: &Results, timestamp: u128) -> Vec<String> 
         pop_max.to_string(),
         get_val("population", "vils").to_string(),
         get_val("idle", "vils").to_string(),
+        get_val("population", "status").to_string(),
     ]
 }
 
@@ -194,7 +192,8 @@ impl CaptureSession {
 pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
     let mut session = CaptureSession::new()?;
     let (w, h) = session.dimensions();
-    println!("Started capture loop ({}x{}) at ~2 FPS", w, h);
+    let fps = 1000.0 / crate::constants::CAPTURE_INTERVAL_MS as f64;
+    println!("Started capture loop ({}x{}) at ~{:.1} FPS", w, h, fps);
 
     let timestamp_str = Local::now().format("%Y%m%d_%H%M%S").to_string();
     let log_path = format!("logs/telemetry_{}.csv", timestamp_str);
@@ -225,30 +224,65 @@ pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
             "pop_max",
             "pop_vils",
             "idle_vils",
+            "housing",
         ])
         .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
 
+    let mut engine = pipeline::interpolation::InterpolationEngine::new();
+    let mut frame_idx = 0;
+
     loop {
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS));
 
         if let Some(dyn_image) = session.capture_frame()? {
             let start = std::time::Instant::now();
             if let Some(results) = pipeline::process_frame(&dyn_image, ui_map, templates) {
                 let duration = start.elapsed();
-                print_telemetry(&results, duration);
 
-                // CSV Logging
-                let now = SystemTime::now()
+                // Prepare CapturedFrame for interpolation
+                let timestamp_ms = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
-                let row = prepare_telemetry_row(&results, now);
+                
+                let pop_curr = results.get("population")
+                    .and_then(|m| m.get("total"))
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                
+                let pop_max = results.get("population")
+                    .and_then(|m| m.get("housing"))
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
 
-                writer.write_record(&row).map_err(|e| {
-                    windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
-                })?;
+                let pop_color = results.get("population")
+                    .and_then(|m| m.get("color"))
+                    .cloned()
+                    .unwrap_or_else(|| "white".to_string());
+
+                let frame = pipeline::interpolation::CapturedFrame {
+                    timestamp_ms: timestamp_ms as u64,
+                    frame_idx,
+                    pop_color,
+                    pop_curr,
+                    pop_max,
+                    row_data: results,
+                };
+
+                let interpolated_rows = engine.process_frame(frame);
+                
+                for (row_data, row_timestamp_ms) in interpolated_rows {
+                    // For now, we just print the latest telemetry.
+                    print_telemetry(&row_data, duration);
+
+                    let row = prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
+                    writer.write_record(&row).map_err(|e| {
+                        windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
+                    })?;
+                }
 
                 let _ = writer.flush();
+                frame_idx += 1;
             }
         }
     }
@@ -275,6 +309,18 @@ fn print_telemetry(results: &crate::types::Results, duration: Duration) {
 
             if cat == "idle" {
                 parts.push(format!("{}: {}", label, vils));
+            } else if cat == "population" {
+                let housing = data.get("housing").map(|s| s.as_str()).unwrap_or("");
+                let pop_str = if !housing.is_empty() {
+                    format!("{}/{}", total, housing)
+                } else {
+                    total.to_string()
+                };
+                if !vils.is_empty() {
+                    parts.push(format!("{}: {} ({})", label, pop_str, vils));
+                } else {
+                    parts.push(format!("{}: {}", label, pop_str));
+                }
             } else if !total.is_empty() && !vils.is_empty() {
                 parts.push(format!("{}: {} ({})", label, total, vils));
             } else if !total.is_empty() {
@@ -284,8 +330,14 @@ fn print_telemetry(results: &crate::types::Results, duration: Duration) {
             }
         }
     }
+    let ui_scale = results.get("meta")
+        .and_then(|m| m.get("ui_scale"))
+        .map(|s| s.as_str())
+        .unwrap_or("?");
+
     println!(
-        "[Telemetry] {} | Time: {}ms",
+        "[Telemetry] Scale: {} | {} | Time: {}ms",
+        ui_scale,
         parts.join(" | "),
         duration.as_millis()
     );
@@ -395,7 +447,8 @@ mod tests {
         results.insert("food".to_string(), food);
 
         let mut pop = HashMap::new();
-        pop.insert("total".to_string(), "15/20".to_string());
+        pop.insert("total".to_string(), "15".to_string());
+        pop.insert("housing".to_string(), "20".to_string());
         pop.insert("vils".to_string(), "12".to_string());
         results.insert("population".to_string(), pop);
 
@@ -423,6 +476,7 @@ mod tests {
         // Only population total, no slash
         let mut pop = HashMap::new();
         pop.insert("total".to_string(), "5".to_string());
+        pop.insert("housing".to_string(), "".to_string());
         results.insert("population".to_string(), pop);
 
         let row = prepare_telemetry_row(&results, 0);

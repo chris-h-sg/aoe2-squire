@@ -34,4 +34,5 @@ pub struct CsvRow {
     pub pop_curr: Option<u32>,
     pub pop_max: Option<u32>,
     pub idle_vils: Option<u32>,
+    pub housing: Option<String>,
 }

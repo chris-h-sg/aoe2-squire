@@ -25,7 +25,10 @@ pub(super) fn contains_yellow(img: &RgbImage) -> bool {
         let r16 = r as i16;
         let g16 = g as i16;
         let b16 = b as i16;
-        r > 100 && g > 100 && b16 < r16.min(g16) - 30 && (r16 - g16).abs() < 50
+        r > YELLOW_MIN_BRIGHTNESS
+            && g > YELLOW_MIN_BRIGHTNESS
+            && b16 < r16.min(g16) - YELLOW_BLUE_MARGIN
+            && (r16 - g16).abs() < YELLOW_RG_SIMILARITY
     })
 }
 

@@ -18,6 +18,7 @@ struct MergedRow {
     idle_vils: String,
     pop_curr: String,
     pop_max: String,
+    housing: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,7 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let stone = record[7].parse().ok();
             let pop_curr = record[9].parse().ok();
             let pop_max = record[10].parse().ok();
-            let idle_vils = record[12].parse().ok();
+            let idle_vils = record.get(12).and_then(|s| s.parse().ok());
+            let housing = record.get(13).map(|s| s.to_string());
             csv_rows.push(CsvRow {
                 timestamp_ms: ts,
                 food,
@@ -53,6 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 pop_curr,
                 pop_max,
                 idle_vils,
+                housing,
             });
         }
     }
@@ -242,6 +245,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             idle_vils: "".to_string(),
             pop_curr: "".to_string(),
             pop_max: "".to_string(),
+            housing: "".to_string(),
         });
     }
 
@@ -264,6 +268,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 idle_vils: row.idle_vils.map(|v| v.to_string()).unwrap_or_default(),
                 pop_curr: row.pop_curr.map(|v| v.to_string()).unwrap_or_default(),
                 pop_max: row.pop_max.map(|v| v.to_string()).unwrap_or_default(),
+                housing: row.housing.clone().unwrap_or_default(),
             });
         }
     }
@@ -291,6 +296,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "idle_vils",
         "pop_curr",
         "pop_max",
+        "housing",
     ])?;
     for record in merged {
         wtr.write_record([
@@ -307,6 +313,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             record.idle_vils,
             record.pop_curr,
             record.pop_max,
+            record.housing,
         ])?;
     }
 

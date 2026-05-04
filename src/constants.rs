@@ -1,3 +1,7 @@
+// --- Capture Loop ---
+pub const CAPTURE_INTERVAL_MS: u64 = 250;
+pub const INTERPOLATION_TIMEOUT_MS: u64 = 1000;
+
 // --- Anchor detection (image crate uses RGB, not BGR) ---
 pub const RED_R_MIN: u8 = 201;
 pub const RED_G_MAX: u8 = 60;
@@ -23,3 +27,8 @@ pub const WORKING_HEIGHT: u32 = 36;
 pub const CANVAS_SIZE: u32 = 64;
 pub const BLUR_SIGMA: f32 = 1.0;
 pub const WIGGLE_OFFSETS: [i32; 3] = [-1, 0, 1];
+
+// --- Yellow detection ---
+pub const YELLOW_MIN_BRIGHTNESS: u8 = 100;
+pub const YELLOW_BLUE_MARGIN: i16 = 50;
+pub const YELLOW_RG_SIMILARITY: i16 = 50;

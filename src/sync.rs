@@ -144,6 +144,7 @@ mod tests {
                 pop_curr: None,
                 pop_max: None,
                 idle_vils: None,
+                housing: None,
             },
             CsvRow {
                 timestamp_ms: 2000,
@@ -154,6 +155,7 @@ mod tests {
                 pop_curr: None,
                 pop_max: None,
                 idle_vils: None,
+                housing: None,
             },
         ];
         let events = vec![ReplayEvent::UnitQueued {

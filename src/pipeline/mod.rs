@@ -1,6 +1,7 @@
 pub mod anchor;
 pub mod canvas;
 pub mod filter;
+pub mod interpolation;
 pub mod matcher;
 pub mod segment;
 
@@ -12,10 +13,14 @@ use image::DynamicImage;
 pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) -> Option<Results> {
     // Stage 1
     let ui_scale = anchor::detect_ui_scale(img, ui_map.baseline_margin)?;
-    eprintln!("UI scale: {:.4}", ui_scale);
-
+    
     let (img_w, img_h) = (img.width(), img.height());
     let mut results = Results::new();
+    
+    results
+        .entry("meta".to_string())
+        .or_default()
+        .insert("ui_scale".to_string(), format!("{:.4}", ui_scale));
 
     for (name, coords) in &ui_map.elements {
         let x = (coords.x_px * ui_scale) as u32;
@@ -43,9 +48,20 @@ pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) 
             }
         } else if name == "population_total" {
             let overlay = filter::detect_housed_overlay(&box_img);
-            if overlay {
-                eprintln!("  Housed overlay detected for {}", name);
-            }
+            let yellow = filter::contains_yellow(&box_img);
+            let color = if overlay {
+                "overlay"
+            } else if yellow {
+                "yellow"
+            } else {
+                "white"
+            };
+
+            results
+                .entry("population".to_string())
+                .or_default()
+                .insert("color".to_string(), color.to_string());
+
             extract_and_match(&box_img, ui_scale, overlay, true, templates)
         } else {
             extract_and_match(&box_img, ui_scale, false, false, templates)
@@ -58,10 +74,28 @@ pub fn process_frame(img: &DynamicImage, ui_map: &UiMap, templates: &Templates) 
             _ => (name.clone(), "value".to_string()),
         };
 
-        results
-            .entry(category)
-            .or_default()
-            .insert(sub_key, value_str);
+        if name == "population_total" {
+            if let Some((curr, max)) = value_str.split_once('/') {
+                results
+                    .entry("population".to_string())
+                    .or_default()
+                    .insert("total".to_string(), curr.to_string());
+                results
+                    .entry("population".to_string())
+                    .or_default()
+                    .insert("housing".to_string(), max.to_string());
+            } else {
+                results
+                    .entry(category)
+                    .or_default()
+                    .insert(sub_key, value_str);
+            }
+        } else {
+            results
+                .entry(category)
+                .or_default()
+                .insert(sub_key, value_str);
+        }
     }
 
     Some(results)

@@ -9,7 +9,7 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 - Python R&D (`research/`) is finished and all tests pass. Do not modify it unless fixing a bug that needs to be carried into Rust.
 - The Rust production binary is fully functional. The entire vision pipeline is complete and operating under 1% CPU overhead.
 - Telemetry CSV logging and a fully-featured Replay Parser (via the `liouh/aoe2rec` fork) are implemented.
-- **Current Task:** The "Mesher" and "Idle Analyzer" are fully functional. Phase 4 (Validation & Sync) is complete. Transitioning to Phase 5: State Snapshotting.
+- **Current Task:** Finalized the Interpolation Pipeline with millisecond standardization and configurable vision parameters. Transitioning to Phase 5: State Snapshotting.
 
 ## Repo Layout
 ```
@@ -66,7 +66,7 @@ All logic lives in `research/poc_vision.py`. Read it. The stages:
 - Crop the region from the frame.
 
 ### 3. Special Cases Before Digit Extraction
-- **`idle_vils`**: Check for yellow pixels first (`contains_yellow`). If none → value is `"0"`, skip extraction entirely. Yellow criteria: R>100, G>100, B < min(R,G)−30, |R−G| < 50.
+- **`idle_vils`**: Check for yellow pixels first (`contains_yellow`). If none → value is `"0"`, skip extraction entirely. Yellow criteria: R>100, G>100, B < min(R,G)−50, |R−G| < 50.
 - **`population_total`**: Check for housed overlay (`mean(G)>150, mean(R)>150, mean(B)<100`). If detected → use overlay mode (background subtraction + normalize).
 
 ### 4. Color Filtering (`apply_base_filter`)
@@ -120,6 +120,8 @@ WORKING_HEIGHT      = 36
 CANVAS_SIZE         = 64
 BLUR_SIGMA          = 1.0
 WIGGLE_OFFSETS      = [-1, 0, 1]
+YELLOW_BLUE_MARGIN  = 50
+INTERPOLATION_TIMEOUT_MS = 1000
 ```
 
 ## Rust Decisions (already locked — see DECISION_LOG)

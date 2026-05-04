@@ -227,8 +227,20 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
     *   At 333ms (3 FPS), the interval is strictly less than the shortest "on" window (~400ms), mathematically guaranteeing every flash is detected at least once.
 
 ### 2. Discrete Population Fields
-*   **Decision**: Split the `population_total` OCR result into discrete `total` (current) and `housing` (capacity) fields at the source (`poc_vision.py`).
-*   **Reasoning**: Eliminates brittle string parsing in downstream analysis and enables direct numerical comparison for state detection logic.
+*   **Decision**: Split the `population_total` OCR result into discrete `total` (current) and `housing` (capacity) fields.
+*   **Reasoning**: Eliminates brittle string parsing in downstream analysis and ensures `total` always refers to a numeric count, matching other resource fields.
+
+## Standardization & Config (May 4, 2026)
+
+### 1. Millisecond-First Architecture
+*   **Decision**: Standardized all internal logic, configurations, and data structures to use `u64` milliseconds.
+*   **Reasoning**: 
+    *   Eliminates floating-point precision issues and redundant conversions between seconds and ms.
+    *   Ensures consistency with the high-resolution timestamps used in the DXGI capture loop and telemetry CSVs.
+
+### 2. Externalized Sensitivity Parameters
+*   **Decision**: Moved all vision sensitivity parameters (yellow thresholds, interpolation timeouts) to `src/constants.rs`.
+*   **Reasoning**: Allows rapid tuning of detection accuracy across different monitor brightness/contrast settings without recompiling core logic.
 
 ### 3. Priority-Based Queued Interpolation
 *   **Decision**: Implement a dual-anchor state machine to interpolate both "housed" (overlay) and "queued" (yellow) states, with strict priority for housed.
