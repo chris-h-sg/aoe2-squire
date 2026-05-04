@@ -250,3 +250,9 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
     *   **Population Bounds**: Both bridge types enforce $diff(C) \leq \max(diff(A), diff(B))$, where $diff = housing - total$.
 *   **Reasoning**:
     *   **Dual-State Flickering**: The game UI flashes between "overlay" and "yellow" when housed. Treating `overlay` as a valid "queued" anchor ensures the queued bridge doesn't break during a housed flicker.
+
+## Vision Pipeline (May 4, 2026)
+
+### 3. Robust UI Anchor Detection
+*   **Decision**: Replaced BFS connectivity with a **10x10 density check** and added strict **scale bounds (0.5–2.0)**.
+*   **Reasoning**: Improves detection on anti-aliased frames where single-pixel gaps would otherwise cause an anchor miss.

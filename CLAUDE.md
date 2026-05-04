@@ -57,10 +57,11 @@ rts-analyzer/
 All logic lives in `research/poc_vision.py`. Read it. The stages:
 
 ### 1. Anchor Detection & Scale (`detect_ui_scale`)
-- Crop top **5%** of frame (not 20% — see DECISION_LOG).
-- Mask for red pixels: R > 201, G < 60, B < 60.
-- If fewer than 5 red pixels found → return `None` (no fallback, log and skip frame).
-- `ui_scale = (frame_width - rightmost_red_x) / 263` (baseline margin = 263px at 1080p).
+- Crop top **5%** of frame.
+- Mask for red: **R >= 190, G/B < 60**.
+- **Density Check**: Requires ≥ **12** red pixels in a 10x10 box (left-and-down).
+- **Scale Bounds**: Must be within **0.5–2.0**.
+- `ui_scale = (frame_width - rightmost_red_x) / 263`.
 
 ### 2. Region Cropping
 - Load `ui_map.json`. Each element has `x_px, y_px, w_px, h_px` at baseline 1080p.
