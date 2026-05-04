@@ -39,3 +39,43 @@ pub const YELLOW_RG_SIMILARITY: i16 = 50;
 // --- Analysis ---
 pub const GAME_AGES: [&str; 4] = ["Dark Age", "Feudal Age", "Castle Age", "Imperial Age"];
 pub const DEFAULT_MERGED_CSV: &str = "output/merged_observations.csv";
+
+// --- Floating Resources Analysis ---
+// See DECISION_LOG.md "Floating Resources Analysis" for threshold rationale.
+
+pub const FLOATING_MIN_DURATION_MS: u64 = 30_000;
+
+/// Indexed to match GAME_AGES order: Dark Age, Feudal Age, Castle Age, Imperial Age.
+pub struct ResourceThresholds {
+    pub food: u32,
+    pub wood: u32,
+    pub gold: u32,
+    pub stone: u32,
+}
+
+pub const FLOATING_THRESHOLDS: [ResourceThresholds; 4] = [
+    ResourceThresholds {
+        food: 200,
+        wood: 200,
+        gold: 100,
+        stone: 200,
+    }, // Dark Age
+    ResourceThresholds {
+        food: 500,
+        wood: 500,
+        gold: 300,
+        stone: 300,
+    }, // Feudal Age
+    ResourceThresholds {
+        food: 800,
+        wood: 800,
+        gold: 500,
+        stone: 500,
+    }, // Castle Age
+    ResourceThresholds {
+        food: 1000,
+        wood: 1000,
+        gold: 1000,
+        stone: 1000,
+    }, // Imperial Age
+];

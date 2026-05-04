@@ -111,6 +111,18 @@ The tool reports:
 *   **Queued Seconds**: Total time spent with a population status of "Queued" (indicating that units are being trained but not yet born, often used to bridge gaps).
 *   **Per-Age Breakdown**: Both metrics are broken down by game age (Dark, Feudal, Castle, Imperial).
 
+The third implemented metric is **Floating Resources**.
+
+```powershell
+# Run the floating resources analyzer on the merged observations
+cargo run --bin floating_analyzer
+```
+
+The tool reports:
+*   **Floating Resource Seconds**: Total time spent continuously exceeding healthy resource thresholds for at least 30 seconds.
+*   **Per-Resource Breakdown**: Floating time is calculated independently for Food, Wood, Gold, and Stone.
+*   **Per-Age Breakdown**: Metrics are broken down by game age, with thresholds scaling appropriately for each age.
+
 
 ### System Requirements (Live Capture)
 *   **Operating System**: Windows 10/11

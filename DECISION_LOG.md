@@ -262,3 +262,37 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 ### 3. Robust UI Anchor Detection
 *   **Decision**: Replaced BFS connectivity with a **10x10 density check** and added strict **scale bounds (0.5–2.0)**.
 *   **Reasoning**: Improves detection on anti-aliased frames where single-pixel gaps would otherwise cause an anchor miss.
+
+## Floating Resources Analysis (May 4, 2026)
+
+### 1. Threshold Design: Per-Age Static Limits
+*   **Decision**: Flag sustained resource accumulation using static per-age thresholds stored in `constants.rs` as a `const [ResourceThresholds; 4]` indexed to match `GAME_AGES`.
+*   **Thresholds**:
+
+    | Resource | Dark Age | Feudal Age | Castle Age | Imperial Age |
+    |---|---|---|---|---|
+    | Food | 200 | 500 | 800 | 1000 |
+    | Wood | 200 | 500 | 800 | 1000 |
+    | Gold | 100 | 300 | 500 | 1000 |
+    | Stone | 200 | 300 | 500 | 1000 |
+
+*   **Reasoning**:
+    *   **Dark Age values equal starting resources** (200/200/100/200). Exceeding your starting amount, sustained, is an unambiguous sign of stalled spending.
+    *   **Food and wood use identical thresholds per age** for player-facing clarity — two primary resources, one rule.
+    *   **Gold and stone scale more slowly** because their sinks are narrower (gold: military units; stone: castles/towers). They converge to 1000 in Imperial where late-game macro noise is highest.
+    *   **Imperial flat-1000 rule**: Late-game complexity makes tighter thresholds produce excessive false positives. A player floating 1000+ of any resource for 30s in Imperial is genuinely stalling.
+
+### 2. Minimum Floating Duration: 30 Seconds
+*   **Decision**: Only flag a resource run if it exceeds the threshold continuously for at least **30,000ms** (`FLOATING_MIN_DURATION_MS`).
+*   **Reasoning**: Brief spikes are normal during resource reassignment, unit queuing, or building placement. 30s filters these while reliably catching sustained neglect.
+
+### 3. Known False Positives (Deferred Suppression)
+*   **Identified but not suppressed in v1**:
+    *   **Food/Gold before age-up clicks**: Aging up requires 800 food (→Castle) or 1000 food + 800 gold (→Imperial). The food/gold ceiling will be breached during save-up windows.
+    *   **Stone before Castle placement**: A Castle costs 650 stone. A player mining stone for their first castle will temporarily exceed the Castle Age threshold (500).
+*   **Future suppression approach**: Use `RecEvent` timestamps (already in the merged stream) to detect the age-up click and suppress the preceding ~2-minute window. Stone suppression can use the same mechanism tied to castle construction.
+
+### 4. Age Transition Closes Run State
+*   **Decision**: When a `RecEvent` advances the age, any in-progress "above threshold" runs that meet the 30s minimum duration are closed and counted in the *previous* age's bucket. Short runs (< 30s) are discarded.
+*   **Reasoning**: If a player has already been floating for more than 30s when they click an age-up research, that float was a legitimate issue in the current age. Closing it at the transition timestamp (rather than discarding it) provides more accurate attribution of economic stalling.
+

@@ -12,8 +12,8 @@ The immediate focus is on creating a "Minimum Viable Analysis" that combines our
    - Reports villager-seconds (VS) lost per age with a full chronological segment log and age-research click annotations.
 3. ✅ **Getting "Housed" Penalties (Quick Win):** *(complete — `housing_analyzer` binary)*
    - Reports seconds spent in `housed` and `queued` population states, broken down by game age.
-4. **Floating Resources Alerts (Quick Win):** 
-   - Track resource banks using the vision pipeline and flag sustained periods where resources exceed healthy thresholds (e.g., floating 1000+ wood in Feudal Age). We will need to define basic static thresholds.
+4. ✅ **Floating Resources Alerts (Quick Win):** *(complete — `floating_analyzer` binary)*
+   - Tracks resource banks using the vision pipeline and flags sustained periods (30s+) where resources exceed age-specific healthy thresholds.
 5. **Basic Idle TC Inference:** 
    - Combine the vision pipeline's `population_vils` count with the replay parser's villager queue events. If the villager count stagnates and no queue event is active, flag the TC as idle.
 
