@@ -18,7 +18,8 @@ impl CapturedFrame {
 }
 
 pub struct InterpolationEngine {
-    timeout_ms: u64,
+    housed_timeout_ms: u64,
+    queued_timeout_ms: u64,
     pending_buffer: VecDeque<CapturedFrame>,
     last_housed_anchor: Option<CapturedFrame>,
     last_queued_anchor: Option<CapturedFrame>,
@@ -33,7 +34,8 @@ impl Default for InterpolationEngine {
 impl InterpolationEngine {
     pub fn new() -> Self {
         Self {
-            timeout_ms: crate::constants::INTERPOLATION_TIMEOUT_MS,
+            housed_timeout_ms: crate::constants::HOUSED_INTERPOLATION_TIMEOUT_MS,
+            queued_timeout_ms: crate::constants::QUEUED_INTERPOLATION_TIMEOUT_MS,
             pending_buffer: VecDeque::new(),
             last_housed_anchor: None,
             last_queued_anchor: None,
@@ -56,7 +58,7 @@ impl InterpolationEngine {
             // Housed Bridge: overlay -> ... -> overlay
             if is_overlay {
                 if let Some(ref last) = self.last_housed_anchor {
-                    if frame.timestamp_ms - last.timestamp_ms <= self.timeout_ms {
+                    if frame.timestamp_ms - last.timestamp_ms <= self.housed_timeout_ms {
                         let max_diff = last.pop_diff().max(frame.pop_diff());
                         for bf in self.pending_buffer.iter_mut() {
                             if bf.pop_diff() <= max_diff {
@@ -69,7 +71,7 @@ impl InterpolationEngine {
 
             // Queued Bridge: (yellow|overlay) -> ... -> (yellow|overlay)
             if let Some(ref last) = self.last_queued_anchor {
-                if frame.timestamp_ms - last.timestamp_ms <= self.timeout_ms {
+                if frame.timestamp_ms - last.timestamp_ms <= self.queued_timeout_ms {
                     let max_diff = last.pop_diff().max(frame.pop_diff());
                     for bf in self.pending_buffer.iter_mut() {
                         // Only upgrade to queued if not already upgraded to housed
@@ -97,7 +99,7 @@ impl InterpolationEngine {
                 // yellow
                 // If a housed bridge is potentially still open, buffer this yellow frame
                 let housed_active = if let Some(ref last) = self.last_housed_anchor {
-                    frame.timestamp_ms - last.timestamp_ms <= self.timeout_ms
+                    frame.timestamp_ms - last.timestamp_ms <= self.housed_timeout_ms
                 } else {
                     false
                 };
@@ -122,12 +124,12 @@ impl InterpolationEngine {
         } else {
             // Non-anchor frame (white)
             let housed_active = if let Some(ref last) = self.last_housed_anchor {
-                frame.timestamp_ms - last.timestamp_ms <= self.timeout_ms
+                frame.timestamp_ms - last.timestamp_ms <= self.housed_timeout_ms
             } else {
                 false
             };
             let queued_active = if let Some(ref last) = self.last_queued_anchor {
-                frame.timestamp_ms - last.timestamp_ms <= self.timeout_ms
+                frame.timestamp_ms - last.timestamp_ms <= self.queued_timeout_ms
             } else {
                 false
             };
@@ -248,6 +250,11 @@ mod tests {
     #[test]
     fn test_scenario_flicker() {
         run_scenario("flicker");
+    }
+
+    #[test]
+    fn test_scenario_housed_fallback_to_queued() {
+        run_scenario("housed_fallback_to_queued");
     }
 
     #[test]

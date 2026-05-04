@@ -27,10 +27,10 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
                     }
                 }
 
-                if count >= RED_PIXEL_MIN_COUNT {
-                    if best_rightmost_x.is_none() || x > best_rightmost_x.unwrap() {
-                        best_rightmost_x = Some(x);
-                    }
+                if count >= RED_PIXEL_MIN_COUNT
+                    && (best_rightmost_x.is_none() || x > best_rightmost_x.unwrap())
+                {
+                    best_rightmost_x = Some(x);
                 }
             }
         }
@@ -40,7 +40,7 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
     let margin_px = (width - rightmost_x) as f64;
     let ui_scale = margin_px / baseline_margin;
 
-    if ui_scale < UI_SCALE_MIN || ui_scale > UI_SCALE_MAX {
+    if !(UI_SCALE_MIN..=UI_SCALE_MAX).contains(&ui_scale) {
         return None;
     }
 

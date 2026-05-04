@@ -68,7 +68,8 @@ def main():
         "priority_overlap",
         "state_transition",
         "mixed_priority",
-        "queued_timeout"
+        "queued_timeout",
+        "housed_fallback_to_queued"
     ]
     
     all_passed = True

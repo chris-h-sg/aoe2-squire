@@ -1,4 +1,4 @@
 timestamp_sec,frame_idx,population_total,population_housing,pop_color,housing
 0.0,0,100,100,overlay,housed
-0.5,30,100,100,white,normal
-2.1,126,100,100,overlay,housed
+0.5,30,100,100,white,queued
+1.2,72,100,100,overlay,housed

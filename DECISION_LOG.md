@@ -251,6 +251,12 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Reasoning**:
     *   **Dual-State Flickering**: The game UI flashes between "overlay" and "yellow" when housed. Treating `overlay` as a valid "queued" anchor ensures the queued bridge doesn't break during a housed flicker.
 
+### 4. Decoupled Interpolation Timeouts
+*   **Decision**: Decouple the interpolation timeouts for "housed" and "queued" states, setting housed to 1000ms and queued to 2000ms.
+*   **Reasoning**:
+    *   The "queued" state (yellow text) flickers at a significantly slower and less consistent rate than the "housed" overlay flash.
+    *   A 1000ms timeout was insufficient to bridge the gaps in queued status, while a 2000ms timeout reliably connects the state without introducing false positives when units die or houses complete.
+
 ## Vision Pipeline (May 4, 2026)
 
 ### 3. Robust UI Anchor Detection

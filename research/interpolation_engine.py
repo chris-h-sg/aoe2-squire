@@ -14,11 +14,13 @@ class CapturedFrame:
     def pop_diff(self) -> int:
         return self.pop_housing - self.pop_total
 
-INTERPOLATION_TIMEOUT_SEC = 1.0
+HOUSED_INTERPOLATION_TIMEOUT_SEC = 1.0
+QUEUED_INTERPOLATION_TIMEOUT_SEC = 2.0
 
 class InterpolationEngine:
-    def __init__(self, timeout_sec: float = INTERPOLATION_TIMEOUT_SEC):
-        self.timeout_sec = timeout_sec
+    def __init__(self, housed_timeout_sec: float = HOUSED_INTERPOLATION_TIMEOUT_SEC, queued_timeout_sec: float = QUEUED_INTERPOLATION_TIMEOUT_SEC):
+        self.housed_timeout_sec = housed_timeout_sec
+        self.queued_timeout_sec = queued_timeout_sec
         self.pending_buffer: List[CapturedFrame] = []
         self.last_housed_anchor: Optional[CapturedFrame] = None
         self.last_queued_anchor: Optional[CapturedFrame] = None
@@ -39,7 +41,7 @@ class InterpolationEngine:
             
             # Housed Bridge: overlay -> ... -> overlay
             if is_overlay and self.last_housed_anchor:
-                if frame.timestamp - self.last_housed_anchor.timestamp <= self.timeout_sec:
+                if frame.timestamp - self.last_housed_anchor.timestamp <= self.housed_timeout_sec:
                     max_diff = max(self.last_housed_anchor.pop_diff, frame.pop_diff)
                     for bf in self.pending_buffer:
                         if bf.pop_diff <= max_diff:
@@ -47,7 +49,7 @@ class InterpolationEngine:
 
             # Queued Bridge: (yellow|overlay) -> ... -> (yellow|overlay)
             if self.last_queued_anchor:
-                if frame.timestamp - self.last_queued_anchor.timestamp <= self.timeout_sec:
+                if frame.timestamp - self.last_queued_anchor.timestamp <= self.queued_timeout_sec:
                     max_diff = max(self.last_queued_anchor.pop_diff, frame.pop_diff)
                     for bf in self.pending_buffer:
                         # Only upgrade to queued if not already upgraded to housed
@@ -61,13 +63,15 @@ class InterpolationEngine:
                 for bf in self.pending_buffer:
                     output_rows.append(bf.row_data)
                 self.pending_buffer.clear()
+                
+                frame.row_data['housing'] = 'housed'
                 output_rows.append(frame.row_data)
                 
                 self.last_housed_anchor = frame
                 self.last_queued_anchor = frame
             else: # yellow
                 # If a housed bridge is potentially still open, buffer this yellow frame
-                if self.last_housed_anchor and (frame.timestamp - self.last_housed_anchor.timestamp <= self.timeout_sec):
+                if self.last_housed_anchor and (frame.timestamp - self.last_housed_anchor.timestamp <= self.housed_timeout_sec):
                     self.pending_buffer.append(frame)
                     self.last_queued_anchor = frame
                 else:
@@ -75,14 +79,16 @@ class InterpolationEngine:
                     for bf in self.pending_buffer:
                         output_rows.append(bf.row_data)
                     self.pending_buffer.clear()
+                    
+                    frame.row_data['housing'] = 'queued'
                     output_rows.append(frame.row_data)
                     
                     self.last_housed_anchor = None
                     self.last_queued_anchor = frame
         else:
             # Non-anchor frame (white)
-            housed_active = self.last_housed_anchor and (frame.timestamp - self.last_housed_anchor.timestamp <= self.timeout_sec)
-            queued_active = self.last_queued_anchor and (frame.timestamp - self.last_queued_anchor.timestamp <= self.timeout_sec)
+            housed_active = self.last_housed_anchor and (frame.timestamp - self.last_housed_anchor.timestamp <= self.housed_timeout_sec)
+            queued_active = self.last_queued_anchor and (frame.timestamp - self.last_queued_anchor.timestamp <= self.queued_timeout_sec)
             
             if housed_active or queued_active:
                 self.pending_buffer.append(frame)

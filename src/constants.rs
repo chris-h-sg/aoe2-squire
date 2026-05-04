@@ -1,6 +1,7 @@
 // --- Capture Loop ---
 pub const CAPTURE_INTERVAL_MS: u64 = 250;
-pub const INTERPOLATION_TIMEOUT_MS: u64 = 1000;
+pub const HOUSED_INTERPOLATION_TIMEOUT_MS: u64 = 1000;
+pub const QUEUED_INTERPOLATION_TIMEOUT_MS: u64 = 2000;
 
 // --- Anchor detection (image crate uses RGB, not BGR) ---
 pub const RED_R_MIN: u8 = 190;
