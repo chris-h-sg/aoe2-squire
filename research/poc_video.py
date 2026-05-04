@@ -52,7 +52,7 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
     headers += ['pop_color', 'housing']
 
     # State for Interpolation
-    engine = InterpolationEngine(timeout_sec=1.0)
+    engine = InterpolationEngine()
 
     with open(output_csv, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=headers)

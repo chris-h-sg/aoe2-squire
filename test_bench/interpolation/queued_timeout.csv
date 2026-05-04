@@ -1,0 +1,4 @@
+timestamp_sec,frame_idx,population_total,population_housing,pop_color,housing
+0.0,0,15,20,yellow,queued
+0.5,30,15,20,white,normal
+1.6,96,15,20,yellow,queued

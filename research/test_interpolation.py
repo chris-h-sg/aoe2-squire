@@ -5,7 +5,7 @@ from interpolation_engine import InterpolationEngine, CapturedFrame
 
 def run_test(name, scenario_csv):
     print(f"Running test: {name}...")
-    engine = InterpolationEngine(timeout_sec=1.0)
+    engine = InterpolationEngine()
     
     expected_housing = []
     actual_rows = []
@@ -63,7 +63,12 @@ def main():
         "flicker",
         "house_completion",
         "unit_death",
-        "timeout"
+        "timeout",
+        "queued_flicker",
+        "priority_overlap",
+        "state_transition",
+        "mixed_priority",
+        "queued_timeout"
     ]
     
     all_passed = True

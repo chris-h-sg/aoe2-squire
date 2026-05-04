@@ -1,0 +1,6 @@
+timestamp_sec,frame_idx,population_total,population_housing,pop_color,housing
+0.0,0,20,20,overlay,housed
+0.2,12,20,20,white,housed
+0.4,24,20,20,yellow,housed
+0.6,36,20,20,white,housed
+0.8,48,20,20,overlay,housed

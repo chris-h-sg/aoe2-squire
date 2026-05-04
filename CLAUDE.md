@@ -134,6 +134,6 @@ Run the Python tests to get ground-truth output for the same inputs:
 ```
 python research/test_vision.py   # static screenshots
 python research/test_video.py    # video frame extraction
-python research/test_interpolation.py # state interpolation logic
+python research/test_interpolation.py # priority-based state interpolation logic
 ```
 Expected values are in `test_bench/expected_values.json`.

@@ -14,7 +14,7 @@
 *   **Decision**: Filter pixels based on **Grayscale Consistency** (R≈G≈B) rather than targeting specific colors (e.g., "yellow").
 *   **Logic**:
     *   Calculate `max_diff = max(|r-g|, |g-b|, |r-b|)`.
-    *   We found `COLOR_TOLERANCE = 40` to be optimal.
+    *   We found a multi-stage tolerance to be optimal: **20** for high-quality extraction and **30** for robust segmentation.
     *   This generalizes better than "remove yellow" because it handles any colored background (icons, wood borders, stone borders) while preserving the white text.
 *   **Critical Fix**: Must cast image channels to `int16` before subtraction. `uint8` subtraction wraps around (e.g. 5 - 10 = 250), which broke the filter logic.
 
@@ -217,38 +217,26 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Decision**: Maintained the simpler `np.any(is_yellow)` check in `contains_yellow` without a strict pixel count threshold.
 *   **Reasoning**: We initially thought yellow pixels on white population numbers were video compression artifacts, but discovered they are actual in-game warnings when queued unit capacity exceeds population limits. Tightening the blue margin to `50` perfectly balances ignoring actual compression artifacts while retaining sensitivity for these valid UI warnings.
 
-## Housed State Tracking (May 2, 2026)
+## Vision & State Analysis (May 4, 2026)
 
 ### 1. Sampling Frequency & Aliasing
 *   **Decision**: Increase video sampling frequency to 3 FPS (333ms interval) instead of 2 FPS (500ms).
 *   **Reasoning**:
-    *   Based on our frame analysis (`test_bench/extract-housed-frames.csv`), the overlay initially flashes very quickly for the first second (~167ms on/off), then transitions to a slow cycle of ~600ms off / ~400ms on (total ~1000ms).
-    *   A 500ms sampling interval hits exactly the Nyquist frequency of the slow cycle, leading to severe aliasing where the "on" phase can be missed for several consecutive cycles, causing false gaps of 2.0s+ between positive detections.
-    *   At 333ms (3 FPS), the interval is strictly less than the shortest "on" window of the slow cycle (~400ms), mathematically guaranteeing every slow flash is detected at least once, while also catching most fast flashes.
+    *   Based on our frame analysis (`test_bench/extract-housed-frames.csv`), the overlay transitions to a slow cycle of ~600ms off / ~400ms on.
+    *   A 500ms sampling interval hits the Nyquist frequency of the slow cycle, causing severe aliasing where the "on" phase can be missed for several consecutive cycles.
+    *   At 333ms (3 FPS), the interval is strictly less than the shortest "on" window (~400ms), mathematically guaranteeing every flash is detected at least once.
 
-### 2. Housed State Interpolation Logic
-*   **Decision**: Interpolate the "housed" state across intermediate non-overlay frames (e.g., white or yellow) if they are bounded by two `overlay` frames within a strict 1.0-second time window. Additionally, we enforce that `diff(C) <= max(diff(A), diff(B))` for any intermediate frame C, where `diff = max_pop - current_pop`.
-*   **Reasoning**:
-    *   The 1.0s time window perfectly accommodates the maximum possible gap between two detections at 3 FPS (999ms).
-    *   The `max(diff)` check elegantly handles complex edge cases without needing explicit `max_pop` checks:
-        *   **Unit deaths:** If a unit dies during a flicker (e.g., 20/20 -> 19/20 -> 19/20), the `diff` increases to 1. Since the second anchor also has a `diff` of 1, the intermediate frame is captured by the `max(0, 1)` bound and correctly bridged.
-        *   **House completions:** The available housing (`max_pop`) jumps up (e.g., 20/20 -> 20/25 -> 25/25). The intermediate `diff` of 5 exceeds the `max(0, 0)` bound, correctly breaking the interpolation.
-
-## Vision Pipeline (May 4, 2026)
-
-### 1. Discrete Population Fields
+### 2. Discrete Population Fields
 *   **Decision**: Split the `population_total` OCR result into discrete `total` (current) and `housing` (capacity) fields at the source (`poc_vision.py`).
-*   **Reasoning**:
-    *   Eliminates brittle string parsing in downstream analysis.
-    *   Enables direct numerical comparison for state detection logic.
-    *   Aligns with the `total`/`vils` structure of other resources.
+*   **Reasoning**: Eliminates brittle string parsing in downstream analysis and enables direct numerical comparison for state detection logic.
 
-### 2. Temporal Housed Interpolation Implementation
-*   **Decision**: Implemented a 1.0s windowed buffer in `poc_video.py` to bridge "flicker" gaps in the housed overlay.
+### 3. Priority-Based Queued Interpolation
+*   **Decision**: Implement a dual-anchor state machine to interpolate both "housed" (overlay) and "queued" (yellow) states, with strict priority for housed.
 *   **Logic**:
-    *   Frames between two `overlay` anchors are marked as `housed` if $diff(C) \leq \max(diff(A), diff(B))$, where $diff = housing - total$.
-    *   Window timeout: 1.0 seconds.
+    *   **Anchors**: `overlay` frames anchor both housed and queued bridges. `yellow` frames anchor only queued bridges.
+    *   **Priority**: When a bridge is resolved, `housed` status is applied first. `queued` is applied only if the frame wasn't already upgraded to housed.
+    *   **Transition Bridging**: Gaps between an `overlay` and a `yellow` frame (or vice versa) are bridged to `queued`.
+    *   **Population Bounds**: Both bridge types enforce $diff(C) \leq \max(diff(A), diff(B))$, where $diff = housing - total$.
 *   **Reasoning**:
-    *   Mathematically guarantees continuous housed detection at 3 FPS by outlasting the flicker's dark phase (~600ms).
-    *   The `diff` constraint correctly breaks the bridge if a house is completed (immediate spike in available housing).
-
+    *   **Dual-State Flickering**: The game UI flashes between "overlay" and "yellow" when housed. Treating `overlay` as a valid "queued" anchor ensures the queued bridge doesn't break during a housed flicker.
+    *   **The `max(diff)` Bound**: Elegantly handles complex edge cases like unit deaths ($diff$ increases) and house completions ($diff$ spikes, breaking the bridge) without needing explicit `max_pop` checks.
