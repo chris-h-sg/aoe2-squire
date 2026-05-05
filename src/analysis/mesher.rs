@@ -36,20 +36,20 @@ pub fn generate_merged_observations(
         }
     }
 
-    // Find Game Start in CSV (200F, 200W, 100G, 200S)
+    // Find Game Start in CSV (First frame where all resources are detected)
     let mut start_ts_rw = 0;
     for row in &csv_rows {
-        if row.food == Some(200)
-            && row.wood == Some(200)
-            && row.gold == Some(100)
-            && row.stone == Some(200)
+        if row.food.is_some()
+            && row.wood.is_some()
+            && row.gold.is_some()
+            && row.stone.is_some()
         {
             start_ts_rw = row.timestamp_ms;
             break;
         }
     }
     if start_ts_rw == 0 {
-        return Err("Could not find game start (200/200/100/200) in CSV.".into());
+        return Err("Could not find any frames with resource data in CSV.".into());
     }
 
     // 2. Parse Replay

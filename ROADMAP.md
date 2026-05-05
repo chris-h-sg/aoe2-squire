@@ -40,6 +40,7 @@ Once the MVP is providing user value, development will shift toward expanding ou
 ### Core Automation & Fundamentals
 *   **Pause Detection:** Implement logic to detect game pauses (e.g., via menu detection or timer stagnation) to prevent temporal drift in the synchronization pipeline.
 *   **Civilization Tech Tree Data Integration:** Integrate a comprehensive data file defining what units and technologies each civilization has access to, preventing the analyzer from penalizing players for missing unavailable upgrades.
+*   **Starting Resource Extraction:** Update the `aoe2rec` parser to correctly extract starting resources for the recorded player, replacing the current "first frame" heuristic with absolute ground truth.
 
 ### Vision Pipeline Expansions
 *   **Game Timer (F11) Capture:** Read the top-screen game clock to allow flawless, absolute synchronization between vision data and replay data, replacing heuristic syncing.
