@@ -45,6 +45,10 @@ pub const DEFAULT_MERGED_CSV: &str = "output/merged_observations.csv";
 
 pub const FLOATING_MIN_DURATION_MS: u64 = 30_000;
 
+/// Duration before a major spend event (age-up click, castle placement) during which
+/// the relevant resource accumulation is not flagged as floating (save-up window suppression).
+pub const SAVE_UP_WINDOW_MS: u64 = 60_000;
+
 /// Indexed to match GAME_AGES order: Dark Age, Feudal Age, Castle Age, Imperial Age.
 pub struct ResourceThresholds {
     pub food: u32,

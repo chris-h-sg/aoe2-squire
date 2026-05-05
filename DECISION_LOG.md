@@ -286,11 +286,22 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Decision**: Only flag a resource run if it exceeds the threshold continuously for at least **30,000ms** (`FLOATING_MIN_DURATION_MS`).
 *   **Reasoning**: Brief spikes are normal during resource reassignment, unit queuing, or building placement. 30s filters these while reliably catching sustained neglect.
 
-### 3. Known False Positives (Deferred Suppression)
-*   **Identified but not suppressed in v1**:
-    *   **Food/Gold before age-up clicks**: Aging up requires 800 food (→Castle) or 1000 food + 800 gold (→Imperial). The food/gold ceiling will be breached during save-up windows.
-    *   **Stone before Castle placement**: A Castle costs 650 stone. A player mining stone for their first castle will temporarily exceed the Castle Age threshold (500).
-*   **Future suppression approach**: Use `RecEvent` timestamps (already in the merged stream) to detect the age-up click and suppress the preceding ~2-minute window. Stone suppression can use the same mechanism tied to castle construction.
+### 3. Save-Up Window Suppression
+*   **Decision**: Trim floating resource runs that overlap with the **60-second window before a major spend event** (`SAVE_UP_WINDOW_MS = 60_000`). Applies to:
+    *   **Feudal Age click** → food only
+    *   **Castle / Imperial Age click** → food + gold
+    *   **Castle placement (`Build Castle`)** → stone only
+*   **Implementation**:
+    *   A pre-indexing pass (`index_save_up_events`) converts major spend events into flat lists of forbidden time intervals (`Vec<(u64, u64)>`) grouped by resource into a `Suppressions` struct.
+    *   `apply_suppression(start_ms, end_ms, intervals)` subtracts any overlapping save-up windows from a floating segment, returning a `Vec<(u64, u64)>` of valid sub-segments.
+        *   **Full overlap**: segment is discarded (returns empty vec).
+        *   **Partial overlap**: segment is trimmed to the window boundary.
+        *   **Spanning overlap**: segment is split into pre-window and post-event sub-segments.
+        *   **No overlap**: segment is unchanged.
+*   **Rejected alternatives**:
+    *   **Threshold raise** (+500f before Feudal etc.): changes the meaning of "floating" and couples cost data into threshold logic.
+    *   **Full-window discard**: a player who was genuinely floating for 2 minutes before then saving up would go un-flagged for the early portion.
+*   **Reasoning**: Surgically removes false positives caused by resource accumulation for age advancement or castle construction, while preserving attribution of genuine pre-save-up floating.
 
 ### 4. Age Transition Closes Run State
 *   **Decision**: When a `RecEvent` advances the age, any in-progress "above threshold" runs that meet the 30s minimum duration are closed and counted in the *previous* age's bucket. Short runs (< 30s) are discarded.
