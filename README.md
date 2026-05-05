@@ -10,9 +10,9 @@ The "Hybrid Data Strategy":
 - **Analysis:** Combines both to identify "Efficiency Gaps" (e.g., "You had the tech for faster gathering but your resource intake didn't rise, implying poor lumber camp placement").
 
 ## Project Status
-- **Phase:** Validation & Sync (Phase 4).
-- **Primary Goal:** Align live vision telemetry with ground-truth replay data to create a high-precision game analysis stream.
-- **Status:** The `mesher` tool is fully operational, providing sub-second temporal alignment using a two-point linear calibration model. The pipeline successfully extracts and merges unit production, tech research, and building events with live resource and population telemetry.
+- **Phase:** Release Prototype (Phase 5).
+- **Primary Goal:** Package the existing analyzers into an automated, standalone agent for a first private release.
+- **Status:** Core analyzers (Idle, Housing, Floating) are fully validated against ground-truth replays. Current focus is on building the master orchestrator for automated game detection and report generation.
 
 ## Development
 The production pipeline is written in Rust. The Python code in `/research` is strictly for rapid prototyping and validation, and is not part of the shipped product.
