@@ -307,3 +307,7 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Decision**: When a `RecEvent` advances the age, any in-progress "above threshold" runs that meet the 30s minimum duration are closed and counted in the *previous* age's bucket. Short runs (< 30s) are discarded.
 *   **Reasoning**: If a player has already been floating for more than 30s when they click an age-up research, that float was a legitimate issue in the current age. Closing it at the transition timestamp (rather than discarding it) provides more accurate attribution of economic stalling.
 
+## Pipeline Modularization (May 5, 2026)
+
+*   **Decision**: Transitioned from standalone analysis binaries to a unified library-first architecture with thin binary wrappers and a "Progressive Disclosure" CLI (verbose flag).
+*   **Reasoning**: Enables in-memory orchestration of the full analysis suite immediately after capture, eliminates redundant I/O, and centralizes shared analytical logic (segmentation, timing) for better maintainability and testability.

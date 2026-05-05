@@ -1,18 +1,48 @@
-use rts_analyzer::{capture, pipeline, replay, types};
+use rts_analyzer::analysis::{floating, housing, idle, mesher};
+use rts_analyzer::{capture, pipeline, types};
+use std::error::Error;
 use std::path::Path;
 
-fn main() {
+fn run_full_analysis(
+    csv_path: &Path,
+    replay_path: &Path,
+    verbose: bool,
+) -> Result<(), Box<dyn Error>> {
+    println!("\n=== STARTING INTEGRATED ANALYSIS PIPELINE ===");
+    println!("CSV: {}", csv_path.display());
+    println!("Replay: {}", replay_path.display());
+
+    // 1. Mesh
+    let merged = mesher::generate_merged_observations(csv_path, replay_path)?;
+    println!("Successfully meshed {} rows.", merged.len());
+
+    // 2. Run Analyzers
+    idle::analyze_idle(merged.iter().cloned(), verbose)?;
+    housing::analyze_housing(merged.iter().cloned(), verbose)?;
+    floating::analyze_floating(merged, verbose)?;
+
+    println!("\n=== ANALYSIS COMPLETE ===");
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
+    let verbose = args.iter().any(|arg| arg == "--verbose" || arg == "-v" || arg == "--v");
+
+    // Support manual analysis: cargo run -- --analyze <csv> <rec> [--verbose]
+    if args.len() >= 4 && args[1] == "--analyze" {
+        let csv_path = Path::new(&args[2]);
+        let replay_path = Path::new(&args[3]);
+        return run_full_analysis(csv_path, replay_path, verbose);
+    }
 
     let ui_map: types::UiMap = {
         let data = std::fs::read_to_string("ui_map.json").expect("ui_map.json not found");
         serde_json::from_str(&data).expect("failed to parse ui_map.json")
     };
-    println!("Loaded {} UI elements", ui_map.elements.len());
 
     let templates_dir = Path::new("research/templates/enormous_numbers");
     let templates = pipeline::matcher::load_templates(templates_dir);
-    println!("Loaded {} templates", templates.len());
 
     if args.len() > 1 && args[1] == "--parse-replay" {
         if args.len() < 3 {
@@ -21,8 +51,8 @@ fn main() {
         }
         let replay_path = Path::new(&args[2]);
         println!("Parsing replay: {}", replay_path.display());
-        replay::print_events(replay_path).expect("Failed to parse replay");
-        return;
+        rts_analyzer::replay::print_events(replay_path)?;
+        return Ok(());
     }
 
     if args.len() > 1 && args[1] != "--live" {
@@ -51,12 +81,13 @@ fn main() {
         println!("Starting live screen capture...");
         match capture::run_capture_loop(&ui_map, &templates) {
             Ok(Some((telemetry, replay))) => {
-                println!("\n--- Orchestrator Part 2: Discovery Complete ---");
-                println!("Telemetry CSV: {}", telemetry.display());
-                println!("Replay File:   {}", replay.display());
+                println!("\n--- Capture & Discovery Complete ---");
+                run_full_analysis(&telemetry, &replay, verbose)?;
             }
             Ok(None) => println!("Capture loop ended without recording a complete session."),
             Err(e) => eprintln!("Capture loop failed: {:?}", e),
         }
     }
+
+    Ok(())
 }
