@@ -49,6 +49,14 @@ fn main() {
         }
     } else {
         println!("Starting live screen capture...");
-        capture::run_capture_loop(&ui_map, &templates).expect("Capture loop failed");
+        match capture::run_capture_loop(&ui_map, &templates) {
+            Ok(Some((telemetry, replay))) => {
+                println!("\n--- Orchestrator Part 2: Discovery Complete ---");
+                println!("Telemetry CSV: {}", telemetry.display());
+                println!("Replay File:   {}", replay.display());
+            }
+            Ok(None) => println!("Capture loop ended without recording a complete session."),
+            Err(e) => eprintln!("Capture loop failed: {:?}", e),
+        }
     }
 }

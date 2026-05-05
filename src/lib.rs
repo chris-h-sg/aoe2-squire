@@ -5,3 +5,4 @@ pub mod pipeline;
 pub mod replay;
 pub mod sync;
 pub mod types;
+pub mod replay_discovery;

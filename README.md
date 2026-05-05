@@ -30,15 +30,18 @@ cargo test -- --nocapture
 
 ### Running the Extractor
 
-By default, the application runs in **Live Capture Mode**. It uses Windows DXGI (Desktop Duplication) to capture your primary monitor every 250ms (~4 FPS) and stream real-time telemetry to the console.
-
-### Telemetry Logging
-While running in live mode, the application automatically persists telemetry data to timestamped CSV files in the `logs/` directory (e.g., `logs/telemetry_20260429_150000.csv`). This data is used for offline analysis and validation against game replays.
+By default, the application runs in **Orchestrator Mode**. It uses Windows DXGI (Desktop Duplication) to monitor your primary monitor and automatically manages the capture session:
+1. **Waiting for Game:** The agent sits in a low-resource standby mode (showing a CLI spinner) until it detects the Age of Empires II in-game UI.
+2. **Automatic Recording:** Once the game starts, it begins streaming telemetry and persisting it to a CSV file.
+3. **Replay Discovery:** When the game ends (UI lost), the orchestrator automatically locates the corresponding `.aoe2record` file in your Steam save directory.
 
 ```powershell
-# Run the live capture loop (highly recommended to use --release for performance)
+# Run the orchestrator (highly recommended to use --release for performance)
 cargo run --release
 ```
+
+### Telemetry Logging
+While recording, the application persists telemetry data to timestamped CSV files in the `logs/` directory (e.g., `logs/telemetry_20260505_120000.csv`). This data is later synchronized with the discovered replay file for deep analysis.
 
 #### Static Image Mode
 You can still process a specific static image file by passing its path as an argument:

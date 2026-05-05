@@ -189,117 +189,180 @@ impl CaptureSession {
     }
 }
 
-pub fn run_capture_loop(ui_map: &UiMap, templates: &Templates) -> Result<()> {
+#[derive(PartialEq)]
+enum CaptureState {
+    WaitingForGame,
+    Recording,
+    GameEnded,
+}
+
+pub fn run_capture_loop(
+    ui_map: &UiMap,
+    templates: &Templates,
+) -> Result<Option<(std::path::PathBuf, std::path::PathBuf)>> {
     let mut session = CaptureSession::new()?;
     let (w, h) = session.dimensions();
     let fps = 1000.0 / crate::constants::CAPTURE_INTERVAL_MS as f64;
     println!("Started capture loop ({}x{}) at ~{:.1} FPS", w, h, fps);
 
-    let timestamp_str = Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let log_path = format!("logs/telemetry_{}.csv", timestamp_str);
-
-    // Ensure logs dir exists
-    let _ = std::fs::create_dir_all("logs");
-
-    let file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&log_path)
-        .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
-
-    let mut writer = csv::Writer::from_writer(file);
-    writer
-        .write_record([
-            "timestamp_ms",
-            "food_total",
-            "food_vils",
-            "wood_total",
-            "wood_vils",
-            "gold_total",
-            "gold_vils",
-            "stone_total",
-            "stone_vils",
-            "pop_curr",
-            "pop_max",
-            "pop_vils",
-            "idle_vils",
-            "housing",
-        ])
-        .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
-
+    let mut state = CaptureState::WaitingForGame;
+    let mut writer: Option<csv::Writer<std::fs::File>> = None;
     let mut engine = pipeline::interpolation::InterpolationEngine::new();
     let mut frame_idx = 0;
+    let mut tick_count = 0;
+    let mut session_start: Option<SystemTime> = None;
+    let mut telemetry_path: Option<std::path::PathBuf> = None;
     let capture_interval = Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS);
 
     loop {
-        // Record the deadline for the *next* tick before any work begins.
-        // This way the sleep at the bottom only covers the time we haven't
-        // already spent capturing and processing, keeping intervals tight.
         let next_tick = std::time::Instant::now() + capture_interval;
 
         if let Some(dyn_image) = session.capture_frame()? {
             let start = std::time::Instant::now();
-            if let Some(results) = pipeline::process_frame(&dyn_image, ui_map, templates) {
-                let duration = start.elapsed();
+            let process_result = pipeline::process_frame(&dyn_image, ui_map, templates);
 
-                // Prepare CapturedFrame for interpolation
-                let timestamp_ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis();
+            match state {
+                CaptureState::WaitingForGame => {
+                    let spinner = ['|', '/', '-', '\\'];
+                    print!("\rWaiting for game to start... {} ", spinner[tick_count % 4]);
+                    use std::io::Write;
+                    let _ = std::io::stdout().flush();
+                    tick_count += 1;
 
-                let pop_curr = results
-                    .get("population")
-                    .and_then(|m| m.get("total"))
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0);
+                    if let Some(results) = process_result {
+                        // Check if all major fields have a "total" value
+                        let has_all_fields = ["food", "wood", "gold", "stone", "population"]
+                            .iter()
+                            .all(|&cat| {
+                                results
+                                    .get(cat)
+                                    .map_or(false, |m| m.contains_key("total") && !m["total"].is_empty())
+                            });
 
-                let pop_max = results
-                    .get("population")
-                    .and_then(|m| m.get("housing"))
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0);
+                        if has_all_fields {
+                            println!("\nGame UI detected with all fields. Starting recording...");
+                            state = CaptureState::Recording;
+                            session_start = Some(SystemTime::now());
 
-                let pop_color = results
-                    .get("population")
-                    .and_then(|m| m.get("color"))
-                    .cloned()
-                    .unwrap_or_else(|| "white".to_string());
+                            // Open writer
+                            let timestamp_str = Local::now().format("%Y%m%d_%H%M%S").to_string();
+                            let log_path = format!("logs/telemetry_{}.csv", timestamp_str);
+                            let _ = std::fs::create_dir_all("logs");
+                            let path_buf = std::path::PathBuf::from(&log_path);
 
-                let frame = pipeline::interpolation::CapturedFrame {
-                    timestamp_ms: timestamp_ms as u64,
-                    frame_idx,
-                    pop_color,
-                    pop_curr,
-                    pop_max,
-                    row_data: results,
-                };
+                            let file = OpenOptions::new()
+                                .write(true)
+                                .create(true)
+                                .truncate(true)
+                                .open(&path_buf)
+                                .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
 
-                let interpolated_rows = engine.process_frame(frame);
-
-                for (row_data, row_timestamp_ms) in interpolated_rows {
-                    // For now, we just print the latest telemetry.
-                    print_telemetry(&row_data, duration);
-
-                    let row = prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
-                    writer.write_record(&row).map_err(|e| {
-                        windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
-                    })?;
+                            telemetry_path = Some(path_buf);
+                            let mut w = csv::Writer::from_writer(file);
+                            w.write_record([
+                                "timestamp_ms",
+                                "food_total",
+                                "food_vils",
+                                "wood_total",
+                                "wood_vils",
+                                "gold_total",
+                                "gold_vils",
+                                "stone_total",
+                                "stone_vils",
+                                "pop_curr",
+                                "pop_max",
+                                "pop_vils",
+                                "idle_vils",
+                                "housing",
+                            ])
+                            .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
+                            
+                            writer = Some(w);
+                        }
+                    }
                 }
+                CaptureState::Recording => {
+                    if let Some(results) = process_result {
+                        let duration = start.elapsed();
 
-                let _ = writer.flush();
-                frame_idx += 1;
+                        // Prepare CapturedFrame for interpolation
+                        let timestamp_ms = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_millis();
+
+                        let pop_curr = results
+                            .get("population")
+                            .and_then(|m| m.get("total"))
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0);
+
+                        let pop_max = results
+                            .get("population")
+                            .and_then(|m| m.get("housing"))
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0);
+
+                        let pop_color = results
+                            .get("population")
+                            .and_then(|m| m.get("color"))
+                            .cloned()
+                            .unwrap_or_else(|| "white".to_string());
+
+                        let frame = pipeline::interpolation::CapturedFrame {
+                            timestamp_ms: timestamp_ms as u64,
+                            frame_idx,
+                            pop_color,
+                            pop_curr,
+                            pop_max,
+                            row_data: results,
+                        };
+
+                        let interpolated_rows = engine.process_frame(frame);
+
+                        if let Some(ref mut w) = writer {
+                            for (row_data, row_timestamp_ms) in interpolated_rows {
+                                print_telemetry(&row_data, duration);
+
+                                let row = prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
+                                w.write_record(&row).map_err(|e| {
+                                    windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
+                                })?;
+                            }
+                            let _ = w.flush();
+                        }
+                        frame_idx += 1;
+                    } else {
+                        println!("Game UI lost. Ending recording...");
+                        state = CaptureState::GameEnded;
+                        break;
+                    }
+                }
+                CaptureState::GameEnded => break,
             }
         }
 
-        // Sleep until the next tick. If processing took longer than the interval,
-        // this will return immediately.
         let now = std::time::Instant::now();
         if next_tick > now {
             std::thread::sleep(next_tick - now);
         }
     }
+
+    if state == CaptureState::GameEnded {
+        println!("Capture loop finished successfully.");
+        if let (Some(start), Some(telemetry)) = (session_start, telemetry_path) {
+            println!("[Discovery] Waiting 3s for game to write replay file...");
+            std::thread::sleep(Duration::from_secs(3));
+            if let Some(replay) = crate::replay_discovery::find_latest_replay(start, None) {
+                println!("[Discovery] Discovered latest replay: {:?}", replay);
+                return Ok(Some((telemetry, replay)));
+            } else {
+                eprintln!("[Discovery] Could not find a replay file modified after the session start.");
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 fn print_telemetry(results: &crate::types::Results, duration: Duration) {
