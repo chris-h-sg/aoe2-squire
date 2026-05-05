@@ -79,18 +79,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         p_id as u32 == rec_owner
     });
 
-    // Adjust for Hindustanis (46 food villager workaround)
-    for ev in events.iter_mut() {
-        if let ReplayEvent::UnitQueued {
-            cost, unit_type, ..
-        } = ev
-        {
-            if unit_type == "Villager" {
-                cost.food = 46; // Temporary workaround
-            }
-        }
-    }
-
     // 3. Detect Game Speed & Offset (Two-Point Calibration)
     let calibration = rts_analyzer::sync::calibrate_timing(&csv_rows, &events, start_ts_rw)?;
     let speed_factor = calibration.speed_factor;

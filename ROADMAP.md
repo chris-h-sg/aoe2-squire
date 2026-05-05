@@ -6,7 +6,7 @@ This roadmap outlines the development path for the RTS Analyzer, prioritizing hi
 
 The immediate focus is to package our existing analyzers into a seamless, automated flow for our first private prototype release.
 
-1. **Remove Civilization Workarounds:** Remove the temporary Hindustani villager cost workaround, expecting standard civs only for a stable baseline.
+1. ✅ **Remove Civilization Workarounds:** Removed the temporary Hindustani villager cost workaround, expecting standard civs only for a stable baseline.
 2. **Master Orchestrator (Part 1): Game State Automation:** 
     - Implement process monitoring or UI anchor detection to automatically start the capture loop when the game begins and stop it when the game ends.
     - **User Feedback:** Add a CLI spinner or status indicator so the user knows the agent is active while the game is running.
