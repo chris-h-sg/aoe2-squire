@@ -4,12 +4,12 @@
 A native Windows background tool that scrapes AoE2:DE resource/villager counts from the screen in real time and combines them with replay data to produce post-game efficiency coaching. Target: minimal CPU footprint (<1% to avoid impacting the game), no memory hooking, no anti-cheat risk.
 
 ## Current Status
-**Phase 4 in progress — Validation & Sync Tool.**
+**Phase 5 Complete — Integrated Reporting & Prototype Release.**
 
-- Python R&D (`research/`) is finished and all tests pass. Do not modify it unless fixing a bug that needs to be carried into Rust.
-- The Rust production binary is fully functional. The entire vision pipeline is complete and operating under 1% CPU overhead.
-- Telemetry CSV logging and a fully-featured Replay Parser (via the `liouh/aoe2rec` fork) are implemented.
-- **Current Task:** Phase 5 (Post-Game Analysis) in progress. The `idle_analyzer`, `housing_analyzer`, and `floating_analyzer` binary utilities are complete, reporting per-age efficiency metrics from the merged observation stream. The shared `analysis.rs` library provides a generic, tested segmentation engine used by these tools.
+- Python R&D (`research/`) is finished and remains the canonical reference.
+- The Rust production binary is fully functional, with a complete vision pipeline operating under 1% CPU overhead.
+- Master Orchestrator is operational, automating capture, replay discovery, data meshing, and analysis.
+- **Reporting:** Interactive, offline-capable HTML reports are automatically generated and bundled with Chart.js for standalone use.
 
 ## Repo Layout
 ```
@@ -23,20 +23,17 @@ rts-analyzer/
 │   ├── main.rs             ← entry point: load ui_map.json + templates, run process_frame
 │   ├── constants.rs        ← all pipeline constants (mirrors poc_vision.py constants)
 │   ├── types.rs            ← UiMap, UiElement, Templates, Results
-│   ├── pipeline/
-│   │   ├── mod.rs          ← process_frame orchestration
-│   │   ├── anchor.rs       ← Stage 1: detect_ui_scale (DONE)
-│   │   ├── filter.rs       ← Stage 4: apply_base_filter, cleanup_box, contains_yellow, detect_housed_overlay (DONE)
-│   │   ├── segment.rs      ← Stage 5: segment_into_digits (STUB)
-│   │   ├── canvas.rs       ← Stage 6: prepare_canvas (STUB)
-│   │   └── matcher.rs      ← Stage 7: load_templates, match_digit (STUB)
-│   ├── analysis.rs         ← shared game segmentation engine, metrics helpers & format utilities
-│   ├── bin/
-│   │   ├── mesher.rs           ← align telemetry CSV with .aoe2record ground truth
-│   │   ├── idle_analyzer.rs    ← calculate villager-seconds lost per age
-│   │   ├── housing_analyzer.rs ← track housed/queued population time per age
-│   │   └── floating_analyzer.rs← flag sustained periods of floating resources
-│   └── capture/mod.rs      ← DXGI screen capture
+│   ├── pipeline/           ← Vision pipeline implementation (DONE)
+│   │   ├── mod.rs, anchor.rs, filter.rs, segment.rs, canvas.rs, matcher.rs, interpolation.rs
+│   ├── capture/            ← DXGI screen capture implementation
+│   │   └── mod.rs
+│   ├── bin/                ← Standalone CLI tools (Orchestrator is in main.rs)
+│   │   ├── mesher.rs, idle_analyzer.rs, housing_analyzer.rs, floating_analyzer.rs
+│   ├── analysis.rs         ← shared metrics helpers & format utilities
+│   └── report.rs           ← HTML report generator (minijinja)
+├── templates/              ← HTML report templates
+│   ├── report.html         ← main template
+│   └── js/                 ← bundled JS libraries (Chart.js)
 ├── test_bench/             ← reference screenshots + expected_values.json
 │   ├── aoe2_16x9.png       ← 1080p baseline
 │   ├── aoe2_16x9_min.png   ← 75% UI scale

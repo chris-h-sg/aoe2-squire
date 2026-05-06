@@ -22,15 +22,17 @@ fn run_full_analysis(
     // 2. Run Analyzers
     let idle_stats = idle::analyze_idle(merged.iter().cloned(), verbose)?;
     let housing_stats = housing::analyze_housing(merged.iter().cloned(), verbose)?;
-    let floating_stats = floating::analyze_floating(merged, verbose)?;
+    let floating_stats = floating::analyze_floating(merged.clone(), verbose)?;
 
     // 3. Generate Report
     println!("\nGenerating HTML report...");
+    let chart_data = report::extract_chart_data(&merged, &floating_stats);
     let report_html = report::generate_report(
         &replay_data.metadata,
         &idle_stats,
         &housing_stats,
         &floating_stats,
+        &chart_data,
     )?;
     let output_path = Path::new("output/report.html");
     fs::write(output_path, report_html)?;

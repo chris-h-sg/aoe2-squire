@@ -1,5 +1,6 @@
 use crate::analysis::{floating::FloatingReport, housing::HousingReport, idle::IdleReport};
 use crate::replay::MatchMetadata;
+use crate::types::MergedRow;
 use minijinja::{context, Environment};
 use std::fs;
 
@@ -17,11 +18,133 @@ pub fn load_template() -> String {
     }
 }
 
+pub fn load_chart_js() -> String {
+    #[cfg(not(debug_assertions))]
+    {
+        include_str!("../templates/js/chart.umd.min.js").to_string()
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        fs::read_to_string("templates/js/chart.umd.min.js").expect(
+            "Failed to read templates/js/chart.umd.min.js. Ensure you are running from the project root.",
+        )
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ChartData {
+    pub time_labels_json: String,
+    pub pop_vils_json: String,
+    pub idle_vils_json: String,
+    pub housed_flags_json: String,
+    pub age_ups_json: String, // Array of {label: string, age: string}
+    pub floating_food_json: String,
+    pub floating_wood_json: String,
+    pub floating_gold_json: String,
+    pub floating_stone_json: String,
+    pub resource_food_json: String,
+    pub resource_wood_json: String,
+    pub resource_gold_json: String,
+    pub resource_stone_json: String,
+}
+
+pub fn extract_chart_data(rows: &[MergedRow], floating_report: &FloatingReport) -> ChartData {
+    let mut time_labels = Vec::new();
+    let mut pop_vils = Vec::new();
+    let mut idle_vils = Vec::new();
+    let mut housed_flags = Vec::new();
+    let mut floating_food = Vec::new();
+    let mut floating_wood = Vec::new();
+    let mut floating_gold = Vec::new();
+    let mut floating_stone = Vec::new();
+    let mut res_food = Vec::new();
+    let mut res_wood = Vec::new();
+    let mut res_gold = Vec::new();
+    let mut res_stone = Vec::new();
+    let mut age_ups = Vec::new();
+
+    for row in rows {
+        if row.observation_type == "ScreenGrab" {
+            let label = crate::analysis::format_time(row.in_game_ms);
+            // simplify label by removing ms
+            let label_no_ms = label.split('.').next().unwrap_or(&label).to_string();
+            time_labels.push(label_no_ms);
+            pop_vils.push(row.pop_vils.parse::<u32>().ok());
+            idle_vils.push(row.idle_vils.parse::<u32>().ok());
+            housed_flags.push(row.housing == "housed");
+
+            let ms = row.in_game_ms;
+            floating_food.push(
+                floating_report
+                    .segments
+                    .iter()
+                    .any(|s| s.resource == "Food" && ms >= s.start_ms && ms <= s.end_ms),
+            );
+            floating_wood.push(
+                floating_report
+                    .segments
+                    .iter()
+                    .any(|s| s.resource == "Wood" && ms >= s.start_ms && ms <= s.end_ms),
+            );
+            floating_gold.push(
+                floating_report
+                    .segments
+                    .iter()
+                    .any(|s| s.resource == "Gold" && ms >= s.start_ms && ms <= s.end_ms),
+            );
+            floating_stone.push(
+                floating_report
+                    .segments
+                    .iter()
+                    .any(|s| s.resource == "Stone" && ms >= s.start_ms && ms <= s.end_ms),
+            );
+
+            res_food.push(row.food.parse::<u32>().ok());
+            res_wood.push(row.wood.parse::<u32>().ok());
+            res_gold.push(row.gold.parse::<u32>().ok());
+            res_stone.push(row.stone.parse::<u32>().ok());
+        } else if row.observation_type == "RecEvent"
+            && row.event_desc.starts_with("Research ")
+            && row.event_desc.ends_with(" Age")
+        {
+            let label = crate::analysis::format_time(row.in_game_ms);
+            let label_no_ms = label.split('.').next().unwrap_or(&label).to_string();
+            age_ups.push(serde_json::json!({
+                "label": label_no_ms,
+                "age": format!("{} queued", row.event_desc.replace("Research ", ""))
+            }));
+        }
+    }
+
+    ChartData {
+        time_labels_json: serde_json::to_string(&time_labels).unwrap_or_else(|_| "[]".to_string()),
+        pop_vils_json: serde_json::to_string(&pop_vils).unwrap_or_else(|_| "[]".to_string()),
+        idle_vils_json: serde_json::to_string(&idle_vils).unwrap_or_else(|_| "[]".to_string()),
+        housed_flags_json: serde_json::to_string(&housed_flags)
+            .unwrap_or_else(|_| "[]".to_string()),
+        age_ups_json: serde_json::to_string(&age_ups).unwrap_or_else(|_| "[]".to_string()),
+        floating_food_json: serde_json::to_string(&floating_food)
+            .unwrap_or_else(|_| "[]".to_string()),
+        floating_wood_json: serde_json::to_string(&floating_wood)
+            .unwrap_or_else(|_| "[]".to_string()),
+        floating_gold_json: serde_json::to_string(&floating_gold)
+            .unwrap_or_else(|_| "[]".to_string()),
+        floating_stone_json: serde_json::to_string(&floating_stone)
+            .unwrap_or_else(|_| "[]".to_string()),
+        resource_food_json: serde_json::to_string(&res_food).unwrap_or_else(|_| "[]".to_string()),
+        resource_wood_json: serde_json::to_string(&res_wood).unwrap_or_else(|_| "[]".to_string()),
+        resource_gold_json: serde_json::to_string(&res_gold).unwrap_or_else(|_| "[]".to_string()),
+        resource_stone_json: serde_json::to_string(&res_stone).unwrap_or_else(|_| "[]".to_string()),
+    }
+}
+
 pub fn generate_report(
     metadata: &MatchMetadata,
     idle_stats: &IdleReport,
     housing_stats: &HousingReport,
     floating_stats: &FloatingReport,
+    chart_data: &ChartData,
 ) -> Result<String, minijinja::Error> {
     let template_str = load_template();
 
@@ -29,11 +152,15 @@ pub fn generate_report(
     env.add_template("report", &template_str)?;
     let tmpl = env.get_template("report")?;
 
+    let chart_js_lib = load_chart_js();
+
     tmpl.render(context! {
         meta => metadata,
         idle => idle_stats,
         housing => housing_stats,
         floating => floating_stats,
+        chart => chart_data,
+        chart_js_lib => chart_js_lib,
     })
 }
 
@@ -90,7 +217,9 @@ mod tests {
             ],
         };
 
-        let html = generate_report(&metadata, &idle, &housing, &floating)
+        let chart_data = extract_chart_data(&[], &floating);
+
+        let html = generate_report(&metadata, &idle, &housing, &floating, &chart_data)
             .expect("Template should render successfully");
         assert!(
             html.contains("RTS Match Analysis Report"),

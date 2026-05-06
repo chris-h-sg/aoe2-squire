@@ -20,6 +20,7 @@ pub fn generate_merged_observations(
             let stone = record[7].parse().ok();
             let pop_curr = record[9].parse().ok();
             let pop_max = record[10].parse().ok();
+            let pop_vils = record.get(11).and_then(|s| s.parse().ok());
             let idle_vils = record.get(12).and_then(|s| s.parse().ok());
             let housing = record.get(13).map(|s| s.to_string());
             csv_rows.push(CsvRow {
@@ -30,6 +31,7 @@ pub fn generate_merged_observations(
                 stone,
                 pop_curr,
                 pop_max,
+                pop_vils,
                 idle_vils,
                 housing,
             });
@@ -180,6 +182,7 @@ pub fn generate_merged_observations(
             idle_vils: "".to_string(),
             pop_curr: "".to_string(),
             pop_max: "".to_string(),
+            pop_vils: "".to_string(),
             housing: "".to_string(),
         });
     }
@@ -203,6 +206,7 @@ pub fn generate_merged_observations(
                 idle_vils: row.idle_vils.map(|v| v.to_string()).unwrap_or_default(),
                 pop_curr: row.pop_curr.map(|v| v.to_string()).unwrap_or_default(),
                 pop_max: row.pop_max.map(|v| v.to_string()).unwrap_or_default(),
+                pop_vils: row.pop_vils.map(|v| v.to_string()).unwrap_or_default(),
                 housing: row.housing.clone().unwrap_or_default(),
             });
         }

@@ -33,6 +33,7 @@ pub struct CsvRow {
     pub stone: Option<u32>,
     pub pop_curr: Option<u32>,
     pub pop_max: Option<u32>,
+    pub pop_vils: Option<u32>,
     pub idle_vils: Option<u32>,
     pub housing: Option<String>,
 }
@@ -52,5 +53,6 @@ pub struct MergedRow {
     pub idle_vils: String,
     pub pop_curr: String,
     pub pop_max: String,
+    pub pop_vils: String,
     pub housing: String,
 }

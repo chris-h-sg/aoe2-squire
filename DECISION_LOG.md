@@ -311,3 +311,20 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 
 *   **Decision**: Transitioned from standalone analysis binaries to a unified library-first architecture with thin binary wrappers and a "Progressive Disclosure" CLI (verbose flag).
 *   **Reasoning**: Enables in-memory orchestration of the full analysis suite immediately after capture, eliminates redundant I/O, and centralizes shared analytical logic (segmentation, timing) for better maintainability and testability.
+
+## HTML Report Visualization (May 6, 2026)
+
+### 1. Unified Multi-Layer Timeline
+*   **Decision**: Overlaid population metrics, research markers, and status lanes (housed/floating) into a single synchronized timeline.
+*   **Reasoning**: Enables immediate visual correlation between different performance gaps (e.g., clicking an age-up and the resulting resource float or villager idle spike).
+
+### 2. Categorized HTML Legend
+*   **Decision**: Replaced the default Chart.js legend with a custom HTML-based two-tier legend.
+*   **Reasoning**: A single-line legend with 7+ items became unreadable. Category-based grouping (Economy vs. Population) reduces cognitive load and allows for better vertical spacing control.
+
+### 3. Hierarchical Tooltip Design
+*   **Decision**: Categorized tooltip information into distinct sections (Body, AfterBody, and Footer).
+*   **Reasoning**: Prevents information density overload when multiple alerts (housed + floating) are active simultaneously, ensuring the most critical statuses remain prominent.
+### 4. Offline Asset Bundling
+*   **Decision**: Embedded the Chart.js library directly into the HTML report using `include_str!`.
+*   **Reasoning**: Ensures the report is fully functional without internet access. This aligns with the "Single Executable" requirement by eliminating external CDN dependencies at runtime.

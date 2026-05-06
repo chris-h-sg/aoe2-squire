@@ -1,7 +1,7 @@
 # Project: RTS Analyzer
 
 ## Vision
-A cross-game RTS coaching tool that provides **instant, narrative-driven feedback** immediately after a match ends. Unlike current tools that require manual uploads or watching replays, RTS Analyzer uses a local agent to provide a "Post-Game Report" the second the match is over.
+A cross-game RTS coaching tool that provides **performance feedback** immediately after a match ends. Unlike current tools that require manual uploads or watching replays, RTS Analyzer uses a local agent to generate a "Post-Game Report" once the match is over.
 
 ## The Core Concept
 The "Hybrid Data Strategy":
@@ -23,7 +23,7 @@ By default, the application runs in **Orchestrator Mode**. It uses Windows DXGI 
 1. **Waiting for Game:** The agent sits in a low-resource standby mode (showing a CLI spinner) until it detects the Age of Empires II in-game UI.
 2. **Automatic Recording:** Once the game starts, it streams telemetry to a timestamped CSV in the `logs/` directory.
 3. **Replay Discovery:** When the game ends, it automatically locates the corresponding `.aoe2record` file.
-4. **Integrated Analysis:** The orchestrator immediately meshes the telemetry with the replay, runs the full analysis suite, and **automatically generates a comprehensive HTML report**.
+4. **Integrated Analysis:** The orchestrator immediately meshes the telemetry with the replay, runs the full analysis suite, and **generates an interactive HTML report**.
 
 ```powershell
 # Run the full automated orchestrator
@@ -36,7 +36,7 @@ cargo run --release -- --v
 
 ### Reporting
 
-After the analysis completes, the tool automatically generates a beautifully styled HTML report in `output/report.html` and launches it in your default browser. The report includes:
+After the analysis completes, the tool generates an interactive HTML report in `output/report.html` and launches it in your default browser. The report includes:
 - **Match Details:** Real-world start time, match duration, and player civilizations.
 - **Performance Metrics:** Comprehensive summaries of Idle Villagers, Housing Efficiency, and Floating Resources.
 

@@ -1,17 +1,17 @@
 # RTS Analyzer Roadmap
 
-This roadmap outlines the development path for the RTS Analyzer, prioritizing high-value, low-effort features to deliver actionable insights to players as quickly as possible, before investing in deeper automation and complex computer vision expansions.
+This roadmap outlines the development path for the RTS Analyzer, prioritizing core metrics and automation to provide performance data to players, before expanding into complex computer vision features.
 
 ## Immediate Priorities (Release Prototype)
 
-The immediate focus is to package our existing analyzers into a seamless, automated flow for our first private prototype release.
+The immediate focus is to package the existing analyzers into an automated pipeline for the first private prototype release.
 
 1. ✅ **Remove Civilization Workarounds:** Removed the temporary Hindustani villager cost workaround, expecting standard civs only for a stable baseline.
 2. ✅ **Master Orchestrator (Part 1): Game State Automation:** Implemented UI anchor and field detection to automatically start/stop the capture loop, including a CLI spinner for user feedback.
 3. ✅ **Master Orchestrator (Part 2): Replay Discovery:** Implemented logic to locate the user's Steam SaveGame directory and identify the most recent `.aoe2record` file immediately after a match concludes.
 4. ✅ **Master Orchestrator (Part 3): Integrated Analysis Pipeline:** 
     - Created a unified execution flow that programmatically runs the `mesher` and all three analyzers (Idle, Housing, Floating) in sequence without manual CLI intervention.
-5. **HTML Report Generation:** Generate a clean, unified HTML report summarizing all findings and auto-open it in the default browser at the end of the pipeline. (Current: Basic text & metadata styling complete)
+5. ✅ **HTML Report Generation:** Generate a unified HTML report summarizing all findings, automatically opening in the default browser at the end of the pipeline. (Complete: Integrated multi-layered timeline with population, housing, and resource data)
 6. **Embed Assets & Data:** Move all external dependencies into the binary using `include_str!` or `include_bytes!` to ensure a single standalone `.exe`:
     - CSV Data Files (`data/*.csv`)
     - UI Mapping JSON (`ui_map.json`)

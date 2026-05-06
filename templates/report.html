@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RTS Analyzer Report</title>
+    <script>{{ chart_js_lib | safe }}</script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,48 +14,102 @@
             margin: 0;
             padding: 20px;
         }
-        h1, h2, h3 {
+
+        h1,
+        h2,
+        h3 {
             color: #ffffff;
         }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
+
         .card {
             background-color: #1e1e1e;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
-        th, td {
+
+        th,
+        td {
             padding: 10px;
             text-align: left;
             border-bottom: 1px solid #333;
         }
+
         th {
             background-color: #2a2a2a;
         }
+
         .metric {
             font-size: 2em;
             font-weight: bold;
-            color: #4CAF50;
+            margin-bottom: 10px;
         }
+
         .danger {
             color: #f44336;
         }
+
+        .custom-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        .legend-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #e0e0e0;
+            font-size: 13px;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+
+        .legend-item:hover {
+            opacity: 0.8;
+        }
+
+        .legend-item.hidden {
+            text-decoration: line-through;
+            opacity: 0.4;
+        }
+
+        .legend-box {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            border-radius: 3px;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>RTS Match Analysis Report</h1>
-        
-        <div class="card" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 20px; background-color: #2a2a2a;">
+
+        <div class="card"
+            style="display: flex; justify-content: space-between; align-items: flex-start; padding: 20px; background-color: #2a2a2a;">
             <div>
                 <h2 style="margin-top: 0; color: #4CAF50;">Match Details</h2>
                 <p style="margin: 5px 0;"><strong>Started:</strong> {{ meta.start_time }}</p>
@@ -63,12 +119,51 @@
                 <h3 style="margin-top: 0;">Players</h3>
                 <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
                     {% for p in meta.players %}
-                    <li style="margin-bottom: 5px;"><strong>{{ p.name }}</strong> <span style="color: #bbb;">({{ p.civ }})</span></li>
+                    <li style="margin-bottom: 5px;"><strong>{{ p.name }}</strong> <span style="color: #bbb;">({{ p.civ
+                            }})</span></li>
                     {% endfor %}
                 </ul>
             </div>
         </div>
-        
+
+        <div class="card">
+            <h2>Match Timeline</h2>
+            <div id="chart-legend" class="custom-legend">
+                <!-- Group 1: Core Metrics -->
+                <div class="legend-group">
+                    <div class="legend-item" onclick="toggleDataset(0, this)">
+                        <div class="legend-box" style="background-color: #2196F3;"></div> Villagers
+                    </div>
+                    <div class="legend-item" onclick="toggleDataset(1, this)">
+                        <div class="legend-box" style="background-color: #FFC107;"></div> Idle Villagers
+                    </div>
+                    <div class="legend-item" onclick="toggleDataset(2, this)">
+                        <div class="legend-box"
+                            style="background-color: rgba(244, 67, 54, 0.6); border: 1px solid rgba(244, 67, 54, 0.8);">
+                        </div> Housed
+                    </div>
+                </div>
+                <!-- Group 2: Floating Status -->
+                <div class="legend-group">
+                    <div class="legend-item" onclick="toggleDataset(3, this)">
+                        <div class="legend-box" style="background-color: #e57373;"></div> Float Food
+                    </div>
+                    <div class="legend-item" onclick="toggleDataset(4, this)">
+                        <div class="legend-box" style="background-color: #81c784;"></div> Float Wood
+                    </div>
+                    <div class="legend-item" onclick="toggleDataset(5, this)">
+                        <div class="legend-box" style="background-color: #ffd54f;"></div> Float Gold
+                    </div>
+                    <div class="legend-item" onclick="toggleDataset(6, this)">
+                        <div class="legend-box" style="background-color: #cfd8dc;"></div> Float Stone
+                    </div>
+                </div>
+            </div>
+            <div style="position: relative; height: 400px; width: 100%;">
+                <canvas id="matchChart"></canvas>
+            </div>
+        </div>
+
         <div class="card">
             <h2>Idle Villagers</h2>
             <p>Total Villager Seconds Lost: <span class="metric danger">{{ idle.total_vs_lost | round(1) }}</span></p>
@@ -135,5 +230,233 @@
             </table>
         </div>
     </div>
+
+    <script>
+        const timeLabels = {{ chart.time_labels_json | safe }};
+        const popVils = {{ chart.pop_vils_json | safe }};
+        const idleVils = {{ chart.idle_vils_json | safe }};
+        const housedFlags = {{ chart.housed_flags_json | safe }};
+        const ageUpEvents = {{ chart.age_ups_json | safe }};
+        const floatFood = {{ chart.floating_food_json | safe }};
+        const floatWood = {{ chart.floating_wood_json | safe }};
+        const floatGold = {{ chart.floating_gold_json | safe }};
+        const floatStone = {{ chart.floating_stone_json | safe }};
+
+        const resFood = {{ chart.resource_food_json | safe }};
+        const resWood = {{ chart.resource_wood_json | safe }};
+        const resGold = {{ chart.resource_gold_json | safe }};
+        const resStone = {{ chart.resource_stone_json | safe }};
+
+        const housedOverlayPlugin = {
+            id: 'housedOverlay',
+            beforeDraw: (chart) => {
+                const datasetIndex = chart.data.datasets.findIndex(ds => ds.label === 'Housed');
+                if (datasetIndex !== -1 && !chart.isDatasetVisible(datasetIndex)) {
+                    return;
+                }
+
+                const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+                ctx.save();
+                for (let i = 0; i < housedFlags.length - 1; i++) {
+                    if (housedFlags[i]) {
+                        const startX = x.getPixelForValue(i);
+                        const endX = x.getPixelForValue(i + 1);
+                        ctx.fillStyle = 'rgba(244, 67, 54, 0.15)';
+                        ctx.fillRect(startX, top, endX - startX, bottom - top);
+                    }
+                }
+                ctx.restore();
+            }
+        };
+
+        const ageUpLinePlugin = {
+            id: 'ageUpLines',
+            afterDraw: (chart) => {
+                const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+                ctx.save();
+                ageUpEvents.forEach(ev => {
+                    const index = timeLabels.indexOf(ev.label);
+                    if (index !== -1) {
+                        const xPos = x.getPixelForValue(index);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        ctx.setLineDash([5, 5]);
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, top);
+                        ctx.lineTo(xPos, bottom);
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '11px Segoe UI';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(ev.age, xPos, top - 10);
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
+        const floatingOverlayPlugin = {
+            id: 'floatingOverlay',
+            beforeDraw: (chart) => {
+                const { ctx, chartArea: { top, left, right }, scales: { x } } = chart;
+                const laneHeight = 5;
+                const lanes = [
+                    { label: 'Float Food', data: floatFood, color: '#e57373' },
+                    { label: 'Float Wood', data: floatWood, color: '#81c784' },
+                    { label: 'Float Gold', data: floatGold, color: '#ffd54f' },
+                    { label: 'Float Stone', data: floatStone, color: '#cfd8dc' }
+                ];
+
+                ctx.save();
+                lanes.forEach((lane, idx) => {
+                    const datasetIndex = chart.data.datasets.findIndex(ds => ds.label === lane.label);
+                    if (datasetIndex !== -1 && !chart.isDatasetVisible(datasetIndex)) return;
+
+                    const laneY = top + (idx * laneHeight);
+                    for (let i = 0; i < lane.data.length - 1; i++) {
+                        if (lane.data[i]) {
+                            const startX = x.getPixelForValue(i);
+                            const endX = x.getPixelForValue(i + 1);
+                            ctx.fillStyle = lane.color;
+                            ctx.globalAlpha = 0.6;
+                            ctx.fillRect(startX, laneY, endX - startX, laneHeight - 1);
+                        }
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
+        const legendSpacingPlugin = {
+            id: 'legendSpacing',
+            beforeInit(chart) {
+                // We keep a small gap for the Age labels even with HTML legend
+                const originalFit = chart.legend.fit;
+                chart.legend.fit = function fit() {
+                    originalFit.bind(chart.legend)();
+                    this.height = 10; // Minimal height since HTML legend is used, but keeps space for labels
+                };
+            }
+        };
+
+        let matchChart;
+        function toggleDataset(index, el) {
+            const meta = matchChart.getDatasetMeta(index);
+            meta.hidden = meta.hidden === null ? !matchChart.data.datasets[index].hidden : null;
+            el.classList.toggle('hidden');
+            matchChart.update();
+        }
+
+        const ctx = document.getElementById('matchChart').getContext('2d');
+        matchChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {
+                        label: 'Villagers',
+                        data: popVils,
+                        borderColor: '#2196F3', // Blue
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: false,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Idle Villagers',
+                        data: idleVils,
+                        borderColor: '#FFC107', // Amber
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: false,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Housed',
+                        data: [], // Dummy dataset for legend toggle
+                        backgroundColor: 'rgba(244, 67, 54, 0.3)',
+                        borderColor: 'rgba(244, 67, 54, 0.8)',
+                        borderWidth: 1,
+                        fill: true
+                    },
+                    {
+                        label: 'Float Food',
+                        data: [],
+                        backgroundColor: '#e57373'
+                    },
+                    {
+                        label: 'Float Wood',
+                        data: [],
+                        backgroundColor: '#81c784'
+                    },
+                    {
+                        label: 'Float Gold',
+                        data: [],
+                        backgroundColor: '#ffd54f'
+                    },
+                    {
+                        label: 'Float Stone',
+                        data: [],
+                        backgroundColor: '#cfd8dc'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 8
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        footerFont: { weight: 'bold' },
+                        callbacks: {
+                            afterBody: function (tooltipItems) {
+                                let index = tooltipItems[0].dataIndex;
+                                let lines = [];
+                                if (floatFood[index]) lines.push('Floating Food: ' + resFood[index]);
+                                if (floatWood[index]) lines.push('Floating Wood: ' + resWood[index]);
+                                if (floatGold[index]) lines.push('Floating Gold: ' + resGold[index]);
+                                if (floatStone[index]) lines.push('Floating Stone: ' + resStone[index]);
+                                return lines;
+                            },
+                            footer: function (tooltipItems) {
+                                let index = tooltipItems[0].dataIndex;
+                                if (housedFlags[index]) return 'Housed';
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#aaa', maxTicksLimit: 20 },
+                        grid: { color: '#333' }
+                    },
+                    y: {
+                        ticks: { color: '#aaa' },
+                        grid: { color: '#333' },
+                        beginAtZero: true
+                    }
+                }
+            },
+            plugins: [housedOverlayPlugin, ageUpLinePlugin, floatingOverlayPlugin, legendSpacingPlugin]
+        });
+    </script>
 </body>
+
 </html>
