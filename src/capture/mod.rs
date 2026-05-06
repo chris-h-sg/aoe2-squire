@@ -224,7 +224,10 @@ pub fn run_capture_loop(
             match state {
                 CaptureState::WaitingForGame => {
                     let spinner = ['|', '/', '-', '\\'];
-                    print!("\rWaiting for game to start... {} ", spinner[tick_count % 4]);
+                    print!(
+                        "\rWaiting for game to start... {} ",
+                        spinner[tick_count % 4]
+                    );
                     use std::io::Write;
                     let _ = std::io::stdout().flush();
                     tick_count += 1;
@@ -234,9 +237,9 @@ pub fn run_capture_loop(
                         let has_all_fields = ["food", "wood", "gold", "stone", "population"]
                             .iter()
                             .all(|&cat| {
-                                results
-                                    .get(cat)
-                                    .map_or(false, |m| m.contains_key("total") && !m["total"].is_empty())
+                                results.get(cat).is_some_and(|m| {
+                                    m.contains_key("total") && !m["total"].is_empty()
+                                })
                             });
 
                         if has_all_fields {
@@ -255,7 +258,12 @@ pub fn run_capture_loop(
                                 .create(true)
                                 .truncate(true)
                                 .open(&path_buf)
-                                .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
+                                .map_err(|e| {
+                                    windows::core::Error::new(
+                                        windows::core::HRESULT(-1),
+                                        e.to_string(),
+                                    )
+                                })?;
 
                             telemetry_path = Some(path_buf);
                             let mut w = csv::Writer::from_writer(file);
@@ -275,8 +283,10 @@ pub fn run_capture_loop(
                                 "idle_vils",
                                 "housing",
                             ])
-                            .map_err(|e| windows::core::Error::new(windows::core::HRESULT(-1), e.to_string()))?;
-                            
+                            .map_err(|e| {
+                                windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
+                            })?;
+
                             writer = Some(w);
                         }
                     }
@@ -324,9 +334,13 @@ pub fn run_capture_loop(
                             for (row_data, row_timestamp_ms) in interpolated_rows {
                                 print_telemetry(&row_data, duration);
 
-                                let row = prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
+                                let row =
+                                    prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
                                 w.write_record(&row).map_err(|e| {
-                                    windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
+                                    windows::core::Error::new(
+                                        windows::core::HRESULT(-1),
+                                        e.to_string(),
+                                    )
                                 })?;
                             }
                             let _ = w.flush();
@@ -357,7 +371,9 @@ pub fn run_capture_loop(
                 println!("[Discovery] Discovered latest replay: {:?}", replay);
                 return Ok(Some((telemetry, replay)));
             } else {
-                eprintln!("[Discovery] Could not find a replay file modified after the session start.");
+                eprintln!(
+                    "[Discovery] Could not find a replay file modified after the session start."
+                );
             }
         }
     }

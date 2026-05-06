@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTS Analyzer Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th {
+            background-color: #2a2a2a;
+        }
+        .metric {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .danger {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RTS Match Analysis Report</h1>
+        
+        <div class="card" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 20px; background-color: #2a2a2a;">
+            <div>
+                <h2 style="margin-top: 0; color: #4CAF50;">Match Details</h2>
+                <p style="margin: 5px 0;"><strong>Started:</strong> {{ meta.start_time }}</p>
+                <p style="margin: 5px 0;"><strong>Duration:</strong> {{ meta.duration_formatted }}</p>
+            </div>
+            <div style="min-width: 200px;">
+                <h3 style="margin-top: 0;">Players</h3>
+                <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
+                    {% for p in meta.players %}
+                    <li style="margin-bottom: 5px;"><strong>{{ p.name }}</strong> <span style="color: #bbb;">({{ p.civ }})</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Idle Villagers</h2>
+            <p>Total Villager Seconds Lost: <span class="metric danger">{{ idle.total_vs_lost | round(1) }}</span></p>
+            <table>
+                <tr>
+                    <th>Age</th>
+                    <th>VS Lost</th>
+                </tr>
+                {% for age, lost in idle.age_vs_lost|items %}
+                <tr>
+                    <td>{{ age }}</td>
+                    <td>{{ lost | round(1) }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Housing Efficiency</h2>
+            <p>Total Seconds Housed: <span class="metric danger">{{ housing.total_housed_sec | round(1) }}s</span></p>
+            <p>Total Seconds Fully Queued: <span class="metric">{{ housing.total_queued_sec | round(1) }}s</span></p>
+            <table>
+                <tr>
+                    <th>Age</th>
+                    <th>Housed</th>
+                    <th>Queued</th>
+                </tr>
+                {% for age, m in housing.metrics|items %}
+                <tr>
+                    <td>{{ age }}</td>
+                    <td>{{ m.housed | default(0.0) | round(1) }}s</td>
+                    <td>{{ m.queued | default(0.0) | round(1) }}s</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Floating Resources</h2>
+            <table>
+                <tr>
+                    <th>Age</th>
+                    <th>Food</th>
+                    <th>Wood</th>
+                    <th>Gold</th>
+                    <th>Stone</th>
+                </tr>
+                {% for age, s in floating.summary|items %}
+                <tr>
+                    <td>{{ age }}</td>
+                    <td>{{ s.food | round(1) }}s</td>
+                    <td>{{ s.wood | round(1) }}s</td>
+                    <td>{{ s.gold | round(1) }}s</td>
+                    <td>{{ s.stone | round(1) }}s</td>
+                </tr>
+                {% endfor %}
+                <tr style="font-weight: bold; background-color: #2a2a2a;">
+                    <td>TOTAL</td>
+                    <td>{{ floating.total.food | round(1) }}s</td>
+                    <td>{{ floating.total.wood | round(1) }}s</td>
+                    <td>{{ floating.total.gold | round(1) }}s</td>
+                    <td>{{ floating.total.stone | round(1) }}s</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

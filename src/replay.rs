@@ -1,5 +1,6 @@
 use aoe2rec::Savegame;
 use binrw::BinReaderExt;
+use chrono::{Local, TimeZone};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -145,10 +146,24 @@ fn parse_csv_map(
     Ok((name_map, cost_map, building_map))
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct PlayerInfo {
+    pub name: String,
+    pub civ: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct MatchMetadata {
+    pub start_time: String,
+    pub duration_formatted: String,
+    pub players: Vec<PlayerInfo>,
+}
+
 pub struct ReplayData {
     pub rec_owner: u32,
     pub player_names: HashMap<u8, String>,
     pub events: Vec<ReplayEvent>,
+    pub metadata: MatchMetadata,
 }
 
 pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::error::Error>> {
@@ -170,6 +185,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         parse_csv_map("data/techs.csv", 0, 1, Some(2), Some(6), 4)?;
     let (building_map, building_cost_map, _) =
         parse_csv_map("data/buildings.csv", 0, 1, Some(4), None, 4)?;
+    let (civ_map, _, _) = parse_csv_map("data/civilizations.csv", 0, 1, None, None, 0)?;
 
     // Map building IDs to names for easier lookup
     let unit_to_b_map: HashMap<u32, String> = unit_to_b_raw
@@ -202,6 +218,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     }
 
     let mut player_names = HashMap::new();
+    let mut player_infos = Vec::new();
+
     for (i, player) in savegame.zheader.game_settings.players.iter().enumerate() {
         let name: String = player.name.clone().into();
         let ai_name: String = player.ai_name.clone().into();
@@ -212,7 +230,26 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         } else {
             format!("Player {}", i + 1)
         };
-        player_names.insert((i + 1) as u8, display_name);
+        player_names.insert((i + 1) as u8, display_name.clone());
+
+        let civ_name = civ_map
+            .get(&player.civ_id)
+            .cloned()
+            .unwrap_or_else(|| format!("Unknown Civ {}", player.civ_id));
+
+        if player.player_type == 2 || player.player_type == 4 {
+            // Only valid human/AI players, 2=Human, 4=AI
+            player_infos.push(PlayerInfo {
+                name: display_name,
+                civ: civ_name,
+            });
+        } else if display_name != format!("Player {}", i + 1) && !display_name.trim().is_empty() {
+            // fallback if player_type is different but it has a real name
+            player_infos.push(PlayerInfo {
+                name: display_name,
+                civ: civ_name,
+            });
+        }
     }
 
     let mut current_ms = 0;
@@ -493,10 +530,22 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         }
     }
 
+    let datetime = Local
+        .timestamp_opt(savegame.zheader.timestamp as i64, 0)
+        .unwrap();
+    let start_time = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
+
+    let metadata = MatchMetadata {
+        start_time,
+        duration_formatted: format_time(current_ms),
+        players: player_infos,
+    };
+
     Ok(ReplayData {
         rec_owner: savegame.meta.rec_owner,
         player_names,
         events,
+        metadata,
     })
 }
 

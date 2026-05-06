@@ -11,7 +11,7 @@ The immediate focus is to package our existing analyzers into a seamless, automa
 3. ✅ **Master Orchestrator (Part 2): Replay Discovery:** Implemented logic to locate the user's Steam SaveGame directory and identify the most recent `.aoe2record` file immediately after a match concludes.
 4. ✅ **Master Orchestrator (Part 3): Integrated Analysis Pipeline:** 
     - Created a unified execution flow that programmatically runs the `mesher` and all three analyzers (Idle, Housing, Floating) in sequence without manual CLI intervention.
-5. **HTML Report Generation:** Generate a clean, unified HTML report summarizing all findings and auto-open it in the default browser at the end of the pipeline.
+5. **HTML Report Generation:** Generate a clean, unified HTML report summarizing all findings and auto-open it in the default browser at the end of the pipeline. (Current: Basic text & metadata styling complete)
 6. **Embed Assets & Data:** Move all external dependencies into the binary using `include_str!` or `include_bytes!` to ensure a single standalone `.exe`:
     - CSV Data Files (`data/*.csv`)
     - UI Mapping JSON (`ui_map.json`)

@@ -3,12 +3,13 @@ use crate::constants::{
     FLOATING_MIN_DURATION_MS, FLOATING_THRESHOLDS, GAME_AGES, SAVE_UP_WINDOW_MS,
 };
 use crate::types::MergedRow;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
 
 // --- Core types ---
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Serialize, Clone)]
 pub struct FloatingSeconds {
     pub food: f64,
     pub wood: f64,
@@ -16,11 +17,19 @@ pub struct FloatingSeconds {
     pub stone: f64,
 }
 
+#[derive(Debug, Serialize, Clone)]
 pub struct FloatingSegment {
     pub start_ms: u64,
     pub end_ms: u64,
     pub resource: String,
     pub age: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FloatingReport {
+    pub summary: HashMap<String, FloatingSeconds>,
+    pub segments: Vec<FloatingSegment>,
+    pub total: FloatingSeconds,
 }
 
 /// Which resources to suppress in the 60-second save-up window before a major spend event.
@@ -253,7 +262,10 @@ pub fn calculate_floating_seconds(
 
 // --- Entry point ---
 
-pub fn analyze_floating(rows: Vec<MergedRow>, verbose: bool) -> Result<(), Box<dyn Error>> {
+pub fn analyze_floating(
+    rows: Vec<MergedRow>,
+    verbose: bool,
+) -> Result<FloatingReport, Box<dyn Error>> {
     println!("\n=== FLOATING RESOURCE ANALYSIS ===");
     let suppressions = index_save_up_events(&rows);
     let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &suppressions);
@@ -283,20 +295,24 @@ pub fn analyze_floating(rows: Vec<MergedRow>, verbose: bool) -> Result<(), Box<d
     }
 
     // 2. Summary Table
-    println!(
-        "{:<15} | {:>10} | {:>10} | {:>10} | {:>10}",
-        "Age", "Food", "Wood", "Gold", "Stone"
-    );
-    println!("{}", "-".repeat(65));
+    if verbose {
+        println!(
+            "{:<15} | {:>10} | {:>10} | {:>10} | {:>10}",
+            "Age", "Food", "Wood", "Gold", "Stone"
+        );
+        println!("{}", "-".repeat(65));
+    }
 
     let mut total = FloatingSeconds::default();
 
     for age in GAME_AGES {
         if let Some(s) = summary.get(age) {
-            println!(
-                "{:<15} | {:>9.1}s | {:>9.1}s | {:>9.1}s | {:>9.1}s",
-                age, s.food, s.wood, s.gold, s.stone
-            );
+            if verbose {
+                println!(
+                    "{:<15} | {:>9.1}s | {:>9.1}s | {:>9.1}s | {:>9.1}s",
+                    age, s.food, s.wood, s.gold, s.stone
+                );
+            }
             total.food += s.food;
             total.wood += s.wood;
             total.gold += s.gold;
@@ -304,13 +320,19 @@ pub fn analyze_floating(rows: Vec<MergedRow>, verbose: bool) -> Result<(), Box<d
         }
     }
 
-    println!("{}", "-".repeat(65));
-    println!(
-        "{:<15} | {:>9.1}s | {:>9.1}s | {:>9.1}s | {:>9.1}s",
-        "TOTAL", total.food, total.wood, total.gold, total.stone
-    );
+    if verbose {
+        println!("{}", "-".repeat(65));
+        println!(
+            "{:<15} | {:>9.1}s | {:>9.1}s | {:>9.1}s | {:>9.1}s",
+            "TOTAL", total.food, total.wood, total.gold, total.stone
+        );
+    }
 
-    Ok(())
+    Ok(FloatingReport {
+        summary,
+        segments,
+        total,
+    })
 }
 
 // --- Tests ---

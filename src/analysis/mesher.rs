@@ -1,6 +1,6 @@
-use csv::ReaderBuilder;
 use crate::replay::{extract_events, ReplayEvent};
 use crate::types::{CsvRow, MergedRow};
+use csv::ReaderBuilder;
 use std::path::Path;
 
 pub fn generate_merged_observations(
@@ -39,11 +39,7 @@ pub fn generate_merged_observations(
     // Find Game Start in CSV (First frame where all resources are detected)
     let mut start_ts_rw = 0;
     for row in &csv_rows {
-        if row.food.is_some()
-            && row.wood.is_some()
-            && row.gold.is_some()
-            && row.stone.is_some()
-        {
+        if row.food.is_some() && row.wood.is_some() && row.gold.is_some() && row.stone.is_some() {
             start_ts_rw = row.timestamp_ms;
             break;
         }

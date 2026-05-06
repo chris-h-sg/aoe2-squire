@@ -46,7 +46,10 @@ pub fn find_latest_replay(
     }
 
     if savegame_dirs.is_empty() {
-        eprintln!("[Discovery] No 'savegame' directories found in {:?}", games_path);
+        eprintln!(
+            "[Discovery] No 'savegame' directories found in {:?}",
+            games_path
+        );
         return None;
     }
 
@@ -57,14 +60,15 @@ pub fn find_latest_replay(
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.filter_map(|e| e.ok()) {
                 let path = entry.path();
-                if path.extension().map_or(false, |ext| ext == "aoe2record") {
+                if path.extension().is_some_and(|ext| ext == "aoe2record") {
                     if let Ok(metadata) = fs::metadata(&path) {
                         if let Ok(modified) = metadata.modified() {
                             // Only consider files modified AFTER our capture session started
-                            if modified > session_start {
-                                if latest_file.is_none() || modified > latest_file.as_ref().unwrap().1 {
-                                    latest_file = Some((path, modified));
-                                }
+                            if modified > session_start
+                                && (latest_file.is_none()
+                                    || modified > latest_file.as_ref().unwrap().1)
+                            {
+                                latest_file = Some((path, modified));
                             }
                         }
                     }

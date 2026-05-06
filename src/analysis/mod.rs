@@ -270,7 +270,7 @@ mod tests {
     }
 }
 
-pub mod mesher;
-pub mod idle;
-pub mod housing;
 pub mod floating;
+pub mod housing;
+pub mod idle;
+pub mod mesher;

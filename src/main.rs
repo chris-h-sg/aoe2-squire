@@ -1,6 +1,7 @@
 use rts_analyzer::analysis::{floating, housing, idle, mesher};
-use rts_analyzer::{capture, pipeline, types};
+use rts_analyzer::{capture, pipeline, report, types};
 use std::error::Error;
+use std::fs;
 use std::path::Path;
 
 fn run_full_analysis(
@@ -16,10 +17,26 @@ fn run_full_analysis(
     let merged = mesher::generate_merged_observations(csv_path, replay_path)?;
     println!("Successfully meshed {} rows.", merged.len());
 
+    let replay_data = rts_analyzer::replay::extract_events(replay_path)?;
+
     // 2. Run Analyzers
-    idle::analyze_idle(merged.iter().cloned(), verbose)?;
-    housing::analyze_housing(merged.iter().cloned(), verbose)?;
-    floating::analyze_floating(merged, verbose)?;
+    let idle_stats = idle::analyze_idle(merged.iter().cloned(), verbose)?;
+    let housing_stats = housing::analyze_housing(merged.iter().cloned(), verbose)?;
+    let floating_stats = floating::analyze_floating(merged, verbose)?;
+
+    // 3. Generate Report
+    println!("\nGenerating HTML report...");
+    let report_html = report::generate_report(
+        &replay_data.metadata,
+        &idle_stats,
+        &housing_stats,
+        &floating_stats,
+    )?;
+    let output_path = Path::new("output/report.html");
+    fs::write(output_path, report_html)?;
+
+    println!("Opening report in default browser...");
+    open::that(output_path)?;
 
     println!("\n=== ANALYSIS COMPLETE ===");
     Ok(())
@@ -27,7 +44,9 @@ fn run_full_analysis(
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
-    let verbose = args.iter().any(|arg| arg == "--verbose" || arg == "-v" || arg == "--v");
+    let verbose = args
+        .iter()
+        .any(|arg| arg == "--verbose" || arg == "-v" || arg == "--v");
 
     // Support manual analysis: cargo run -- --analyze <csv> <rec> [--verbose]
     if args.len() >= 4 && args[1] == "--analyze" {

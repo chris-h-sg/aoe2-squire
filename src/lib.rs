@@ -3,6 +3,7 @@ pub mod capture;
 pub mod constants;
 pub mod pipeline;
 pub mod replay;
+pub mod replay_discovery;
+pub mod report;
 pub mod sync;
 pub mod types;
-pub mod replay_discovery;
