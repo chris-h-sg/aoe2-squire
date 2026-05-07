@@ -11,12 +11,16 @@ from pathlib import Path
 # ==========================================
 
 # --- Scale Detection ---
-RED_MASK_LOWER = np.array([0, 0, 201])
-RED_MASK_UPPER = np.array([60, 60, 255])
+RED_MASK_LOWER = np.array([0, 0, 160])
+RED_MASK_UPPER = np.array([70, 70, 255])
 BASELINE_MARGIN = 263
+ANCHOR_MIN_X = 0.5
+ANCHOR_MAX_X = 0.95
+ANCHOR_MIN_Y = 0.015
+ANCHOR_MAX_Y = 0.05
 
 # --- Extraction Clean-up ---
-OUT_GREY_TOLERANCE = 20
+OUT_GREY_TOLERANCE = 30
 OUT_BRIGHTNESS_THRESHOLD = 5
 
 # --- Segmentation ---
@@ -50,8 +54,14 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
         return None
 
     h, w, _ = img.shape
-    top_h = int(h * 0.05)
-    crop = img[0:top_h, :]
+    
+    # Calculate scan boundaries
+    y_min = int(h * ANCHOR_MIN_Y)
+    y_max = int(h * ANCHOR_MAX_Y)
+    x_min_scan = int(w * ANCHOR_MIN_X)
+    x_max_scan = int(w * ANCHOR_MAX_X)
+    
+    crop = img[y_min:y_max, x_min_scan:x_max_scan]
 
     # Mask for red pixels
     mask = cv2.inRange(crop, RED_MASK_LOWER, RED_MASK_UPPER)
@@ -60,8 +70,9 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
     if len(x_idxs) < 5:
         return None
         
-    # Distance from right edge to the rightmost red pixel
-    margin_px = w - np.max(x_idxs)
+    # Distance from right edge to the rightmost red pixel (within the scan area)
+    best_x = np.max(x_idxs) + x_min_scan
+    margin_px = w - best_x
     return margin_px / baseline_margin
 
 # ==========================================
@@ -71,21 +82,21 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
 def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allow_yellow=False):
     """
     Filter by greyness and brightness to isolate white text.
-    If overlay_mode is True, uses background color subtraction to bypass yellow overlay.
     """
+    if img is None or img.size == 0:
+        return np.zeros((1, 1), dtype=np.uint8)
+
     if overlay_mode:
         # Detect overlay color from a near-black background pixel (top-left)
+        # Ensure we have enough pixels for [2,2]
+        h, w = img.shape[:2]
+        if h < 3 or w < 3:
+            return np.zeros((h, w), dtype=np.uint8)
+            
         bg_color = img[2, 2].astype(np.int16)
-        
-        # Undo the overlay by subtracting the background color
         subtracted = np.clip(img.astype(np.int16) - bg_color, 0, 255).astype(np.uint8)
-        
-        # Convert to grayscale to avoid grey_tol issues with the remaining tint
         gray_sub = cv2.cvtColor(subtracted, cv2.COLOR_BGR2GRAY)
-        
-        # Normalize to bring the text to full brightness
         normalized = cv2.normalize(gray_sub, None, 0, 255, cv2.NORM_MINMAX)
-        
         _, cleaned = cv2.threshold(normalized, brightness_thresh, 255, cv2.THRESH_TOZERO)
         return cleaned
 
@@ -96,17 +107,14 @@ def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allo
         min_val = np.min(img, axis=2).astype(np.int16)
         diff = max_val - min_val
         
-        # 1. Standard grey mask (keeps white/grey text)
         to_keep = (diff <= grey_tol)
         
-        # 2. Dynamic Yellow Font Detection (Restricted to allow_yellow fields):
         if allow_yellow:
             rg_diff = np.abs(r.astype(np.int16) - g.astype(np.int16))
             is_yellow = (r > 150) & (g > 150) & (rg_diff < 50) & (b < max_val - 15)
             if np.any(is_yellow):
                 to_keep |= is_yellow
         
-        # Use max_val for grayscale to ensure colored text matches white templates
         filtered = np.zeros(max_val.shape, dtype=np.uint8)
         filtered[to_keep] = max_val.astype(np.uint8)[to_keep]
     else:
@@ -405,7 +413,7 @@ def process_frame(img, ui_map, templates, verbose=True):
     if ui_scale is None:
         if verbose:
             print("[no anchor] Red UI reference not found — game not visible or UI changed.")
-        return None
+        return {}
 
     results = {}
     pop_color = "white"

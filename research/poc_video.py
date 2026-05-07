@@ -2,18 +2,17 @@ import cv2
 import csv
 import os
 import argparse
-import json
 import time
 from pathlib import Path
-from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Optional
 
 # Import functions from the existing vision POC
 import poc_vision
+import video_common
 
 from interpolation_engine import InterpolationEngine, CapturedFrame
 
-def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_frames=False, frames_dir=None):
+def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_frames=False, frames_dir=None, start_time=None, end_time=None):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video {video_path}")
@@ -33,6 +32,10 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
     print(f"Processing Video: {video_path}")
     print(f"Properties: {fps:.2f} FPS, {total_frames} total frames, {duration:.2f}s duration")
     print(f"Interval: {interval_sec}s")
+    if start_time:
+        print(f"Start Time: {start_time}s")
+    if end_time:
+        print(f"End Time: {end_time}s")
     print(f"Output: {output_csv}")
     if save_frames:
         print(f"Saving frames to: {frames_dir}")
@@ -61,6 +64,12 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
         next_process_time = 0.0
         frame_idx = 0
 
+        # Seek to start time if provided
+        if start_time:
+            cap.set(cv2.CAP_PROP_POS_MSEC, start_time * 1000)
+            frame_idx = int(start_time * fps)
+            next_process_time = start_time
+
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -68,6 +77,11 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
 
             timestamp = frame_idx / fps
             
+            # Stop if we reached the end time
+            if end_time and timestamp > end_time:
+                print(f"\nReached end time {end_time}s. Stopping.")
+                break
+
             # Use a small epsilon to avoid floating point issues
             if timestamp >= next_process_time - 0.001:
                 print(f"  [{timestamp:6.2f}s] Processing frame {frame_idx}...", end='', flush=True)
@@ -82,10 +96,7 @@ def process_video(video_path, output_csv, interval_sec, ui_map, templates, save_
                 results = poc_vision.process_frame(frame, ui_map, templates, verbose=False)
 
                 if results is None:
-                    # Anchor lost: flush existing buffer as-is
-                    flush_buffer(pending_buffer, writer)
-                    last_housed_anchor = None
-                    
+                    # Anchor lost
                     t_frame_end = time.time()
                     print(f" [no anchor] ({(t_frame_end - t_frame_start)*1000:.0f}ms)")
                 else:
@@ -163,30 +174,24 @@ def main():
     parser.add_argument("--interval", type=float, default=1.0, help="Sampling interval in seconds (default: 1.0)")
     parser.add_argument("--output", type=str, default="extract_results.csv", help="Output CSV filename")
     parser.add_argument("--save-frames", action="store_true", help="Save the sampled frames to output/frames/")
+    parser.add_argument("--start", type=str, help="Start time (e.g. 18:55 or 1135)")
+    parser.add_argument("--end", type=str, help="End time (e.g. 19:25 or 1165)")
     args = parser.parse_args()
+
+    # Parse times
+    start_seconds = video_common.parse_time(args.start)
+    end_seconds = video_common.parse_time(args.end)
 
     # Setup paths relative to script location
     script_dir = Path(__file__).parent.absolute()
     
-    # 1. Load UI Map
-    map_path = script_dir.parent / "ui_map.json"
-    if not map_path.exists():
-        print(f"Error: UI map not found at {map_path}")
+    try:
+        ui_map = video_common.load_ui_map(script_dir)
+        templates = video_common.load_templates(script_dir)
+    except Exception as e:
+        print(f"Error: {e}")
         return
-    with open(map_path, 'r') as f:
-        ui_map = json.load(f)
 
-    # 2. Load Templates (using enormous_numbers as the primary source)
-    templates_dir = script_dir / "templates" / "enormous_numbers"
-    if not templates_dir.exists():
-        print(f"Error: Templates directory not found at {templates_dir}")
-        return
-        
-    templates = poc_vision.load_templates(str(templates_dir))
-    if not templates:
-        print(f"Error: No templates loaded from {templates_dir}")
-        return
-        
     print(f"Successfully loaded {len(templates)} digit templates.")
 
     # 3. Resolve Video Path
@@ -210,7 +215,7 @@ def main():
     frames_dir = script_dir / "output" / "frames"
 
     # Run the core logic
-    process_video(str(video_path), str(output_path), args.interval, ui_map, templates, args.save_frames, str(frames_dir))
+    process_video(str(video_path), str(output_path), args.interval, ui_map, templates, args.save_frames, str(frames_dir), start_seconds, end_seconds)
 
 if __name__ == "__main__":
     main()

@@ -328,3 +328,12 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 ### 4. Offline Asset Bundling
 *   **Decision**: Embedded the Chart.js library directly into the HTML report using `include_str!`.
 *   **Reasoning**: Ensures the report is fully functional without internet access. This aligns with the "Single Executable" requirement by eliminating external CDN dependencies at runtime.
+
+## Vision Pipeline Tuning (May 7, 2026)
+
+### 1. Explicit Anchor Spatial Bounds
+*   **Decision**: Replaced the simple `ANCHOR_SCAN_FRACTION` with explicit spatial bounds (`ANCHOR_MIN_X`, `ANCHOR_MAX_X`, `ANCHOR_MIN_Y`, `ANCHOR_MAX_Y`).
+*   **Reasoning**: 
+    *   Relaxing the red color thresholds to improve stability on video compression artifacts inadvertently caused the engine to pick up red UI elements that appear for some civs (e.g. Koreans).
+    *   By restricting the anchor scan area strictly to the top-center/right area (excluding the far right and top), we ignore UI noise.
+    *   These boundaries work consistently across standard 16:9 and ultra-wide (21:9, 32:9) aspect ratios because the top-bar resource UI remains anchored.
