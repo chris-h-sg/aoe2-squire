@@ -3,20 +3,24 @@ use image::DynamicImage;
 
 pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> {
     let (width, height) = (img.width(), img.height());
-    let top_h = ((height as f64 * ANCHOR_SCAN_FRACTION) as u32).max(1);
+
+    let y_min_scan = (height as f64 * ANCHOR_MIN_Y) as u32;
+    let y_max_scan = ((height as f64 * ANCHOR_MAX_Y) as u32).min(height - 1);
+    let x_min_scan = (width as f64 * ANCHOR_MIN_X) as u32;
+    let x_max_scan = ((width as f64 * ANCHOR_MAX_X) as u32).min(width - 1);
+
     let rgb = img.to_rgb8();
     let mut best_rightmost_x: Option<u32> = None;
 
-    for y in 0..top_h {
-        for x in 0..width {
+    for y in y_min_scan..=y_max_scan {
+        for x in x_min_scan..=x_max_scan {
             let [r, g, b] = rgb.get_pixel(x, y).0;
             if r >= RED_R_MIN && g < RED_G_MAX && b < RED_B_MAX {
                 // Density check: count red pixels in a 10x10 box extending to the left.
-                // This bridges small gaps that might break strict connectivity.
                 let mut count = 0;
-                let x_min = x.saturating_sub(9);
+                let x_min = x.saturating_sub(9).max(x_min_scan);
                 let y_min = y;
-                let y_max = (y + 9).min(top_h - 1);
+                let y_max = (y + 9).min(y_max_scan);
 
                 for bx in x_min..=x {
                     for by in y_min..=y_max {
@@ -58,9 +62,10 @@ mod tests {
         let height = 100;
         let mut img = RgbImage::new(width, height);
 
-        // Place 15 red pixels in a 3x5 block at x=77..82, y=0..3
+        // Place 15 red pixels in a 3x5 block at x=77..82, y=2..5
         // (x=81 is 19 pixels from the right edge)
-        for y in 0..3 {
+        // y=2 is within the scan area (1.5% to 5.0% of 100 = 1..5)
+        for y in 2..5 {
             for x in 77..82 {
                 img.put_pixel(x, y, Rgb([255, 0, 0]));
             }
@@ -74,7 +79,7 @@ mod tests {
 
         // Test scale out of bounds: (100 - 75) / 10 = 2.5 (> 2.0)
         let mut img_high = RgbImage::new(width, height);
-        for y in 0..3 {
+        for y in 2..5 {
             for x in 71..76 {
                 img_high.put_pixel(x, y, Rgb([255, 0, 0]));
             }
@@ -83,9 +88,10 @@ mod tests {
         assert!(detect_ui_scale(&dyn_img_high, 10.0).is_none());
 
         // Test scale out of bounds: (100 - 96) / 10 = 0.4 (< 0.5)
+        // Note: x=96 is also outside the scan area (max 95), so this should return None.
         let mut img_low = RgbImage::new(width, height);
-        for y in 0..3 {
-            for x in 92..97 {
+        for y in 2..5 {
+            for x in 96..100 {
                 img_low.put_pixel(x, y, Rgb([255, 0, 0]));
             }
         }

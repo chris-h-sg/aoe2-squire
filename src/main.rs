@@ -1,5 +1,7 @@
 use rts_analyzer::analysis::{floating, housing, idle, mesher};
-use rts_analyzer::constants::{CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE};
+use rts_analyzer::constants::{
+    CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
+};
 use rts_analyzer::{capture, pipeline, report, types};
 use std::error::Error;
 use std::fs;
@@ -15,17 +17,20 @@ fn run_full_analysis(
     println!("\n=== STARTING INTEGRATED ANALYSIS PIPELINE ===");
     println!("CSV: {}", csv_path.display());
     println!("Replay: {}", replay_path.display());
-    println!("Smoothing: min_spike={}, max_duration_ms={}", min_spike, max_duration_ms);
+    println!(
+        "Smoothing: min_spike={}, max_duration_ms={}",
+        min_spike, max_duration_ms
+    );
 
     // Convert duration from ms to frames
     let max_duration_frames = (max_duration_ms / CAPTURE_INTERVAL_MS) as usize;
 
     // 1. Mesh (includes smoothing)
     let merged = mesher::generate_merged_observations(
-        csv_path, 
-        replay_path, 
-        min_spike, 
-        max_duration_frames
+        csv_path,
+        replay_path,
+        min_spike,
+        max_duration_frames,
     )?;
     println!("Successfully meshed {} rows.", merged.len());
 

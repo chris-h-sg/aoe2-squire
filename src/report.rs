@@ -2,6 +2,7 @@ use crate::analysis::{floating::FloatingReport, housing::HousingReport, idle::Id
 use crate::replay::MatchMetadata;
 use crate::types::MergedRow;
 use minijinja::{context, Environment};
+#[cfg(debug_assertions)]
 use std::fs;
 
 pub fn load_template() -> String {

@@ -4,18 +4,22 @@ pub const HOUSED_INTERPOLATION_TIMEOUT_MS: u64 = 1000;
 pub const QUEUED_INTERPOLATION_TIMEOUT_MS: u64 = 2000;
 
 // --- Anchor detection (image crate uses RGB, not BGR) ---
-pub const RED_R_MIN: u8 = 190;
-pub const RED_G_MAX: u8 = 60;
-pub const RED_B_MAX: u8 = 60;
+pub const RED_R_MIN: u8 = 160;
+pub const RED_G_MAX: u8 = 70;
+pub const RED_B_MAX: u8 = 70;
 pub const RED_PIXEL_MIN_COUNT: usize = 12;
-/// Fraction of frame height to scan for the red anchor pixels.
-/// Restricted to the top 5% to avoid stray red pixels from taskbar icons.
-pub const ANCHOR_SCAN_FRACTION: f64 = 0.05;
+
+// Spatial boundaries for anchor detection (fraction of frame)
+pub const ANCHOR_MIN_X: f64 = 0.5;
+pub const ANCHOR_MAX_X: f64 = 0.95;
+pub const ANCHOR_MIN_Y: f64 = 0.015;
+pub const ANCHOR_MAX_Y: f64 = 0.05;
+
 pub const UI_SCALE_MIN: f64 = 0.5;
 pub const UI_SCALE_MAX: f64 = 2.0;
 
 // --- Output / cleanup filter ---
-pub const OUT_GREY_TOLERANCE: i16 = 20;
+pub const OUT_GREY_TOLERANCE: i16 = 30;
 pub const OUT_BRIGHTNESS_THRESHOLD: u8 = 5;
 pub const OUT_OVERLAY_BRIGHTNESS_THRESHOLD: u8 = 30;
 
@@ -86,4 +90,4 @@ pub const FLOATING_THRESHOLDS: [ResourceThresholds; 4] = [
 
 // --- Smoothing ---
 pub const SMOOTH_VILS_MIN_SPIKE: i32 = 2;
-pub const SMOOTH_VILS_MAX_DURATION_MS: u64 = 5000;
+pub const SMOOTH_VILS_MAX_DURATION_MS: u64 = 2000;

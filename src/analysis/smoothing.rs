@@ -1,6 +1,6 @@
 /// Smooths out sudden outliers in a numeric sequence.
-/// 
-/// A spike is defined as a sequence of frames where the values deviate from 
+///
+/// A spike is defined as a sequence of frames where the values deviate from
 /// the surrounding trend by more than `min_spike` and then return to the trend.
 /// Interpolates values for spikes up to `max_duration`.
 pub fn smooth_sequence(values: &mut [Option<u32>], min_spike: i32, max_duration: usize) -> usize {
@@ -35,8 +35,9 @@ pub fn smooth_sequence(values: &mut [Option<u32>], min_spike: i32, max_duration:
             }
 
             let mut all_spikes = true;
-            let mut direction = 0;
 
+            // Use range loop as we need index 'k' for linear interpolation math 't'
+            #[allow(clippy::needless_range_loop)]
             for k in i + 1..j {
                 let t = (k - i) as f64 / (j - i) as f64;
                 let target = start_val + (end_val - start_val) * t;
@@ -49,19 +50,13 @@ pub fn smooth_sequence(values: &mut [Option<u32>], min_spike: i32, max_duration:
                             all_spikes = false;
                             break;
                         }
-
-                        let current_dir = if diff > 0.0 { 1 } else { -1 };
-                        if direction == 0 {
-                            direction = current_dir;
-                        } else if direction != current_dir {
-                            all_spikes = false;
-                            break;
-                        }
                     }
                 }
             }
 
             if all_spikes {
+                // Use range loop as we need index 'k' for linear interpolation math 't'
+                #[allow(clippy::needless_range_loop)]
                 for k in i + 1..j {
                     let t = (k - i) as f64 / (j - i) as f64;
                     let target = (start_val + (end_val - start_val) * t).round() as u32;

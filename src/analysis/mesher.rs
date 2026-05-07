@@ -1,6 +1,6 @@
+use crate::analysis::smoothing;
 use crate::replay::{extract_events, ReplayEvent};
 use crate::types::{CsvRow, MergedRow};
-use crate::analysis::smoothing;
 use csv::ReaderBuilder;
 use std::path::Path;
 
@@ -48,7 +48,13 @@ pub fn generate_merged_observations(
     // --- SMOOTHING STEP ---
     // Extract pop_vils into a sequence, smooth it, and put it back
     let mut vils_seq: Vec<Option<u32>> = csv_rows.iter().map(|r| r.pop_vils).collect();
-    smoothing::smooth_sequence(&mut vils_seq, min_spike, max_duration);
+    let smoothed_count = smoothing::smooth_sequence(&mut vils_seq, min_spike, max_duration);
+    if smoothed_count > 0 {
+        println!(
+            "Smoothing: corrected {} OCR outliers in 'pop_vils'.",
+            smoothed_count
+        );
+    }
     for (i, row) in csv_rows.iter_mut().enumerate() {
         row.pop_vils = vils_seq[i];
     }

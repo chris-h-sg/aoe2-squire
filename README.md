@@ -52,6 +52,9 @@ cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record"
 cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record" --verbose
 # OR:
 cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record" --v
+
+# Override default smoothing sensitivity parameters
+cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record" --min-spike 3 --max-duration 2000
 ```
 
 ### Individual Analyzers (CLI)
