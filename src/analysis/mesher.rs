@@ -1,11 +1,14 @@
 use crate::replay::{extract_events, ReplayEvent};
 use crate::types::{CsvRow, MergedRow};
+use crate::analysis::smoothing;
 use csv::ReaderBuilder;
 use std::path::Path;
 
 pub fn generate_merged_observations(
     csv_path: &Path,
     replay_path: &Path,
+    min_spike: i32,
+    max_duration: usize,
 ) -> Result<Vec<MergedRow>, Box<dyn std::error::Error>> {
     // 1. Parse CSV
     let mut rdr = ReaderBuilder::new().from_path(csv_path)?;
@@ -36,6 +39,18 @@ pub fn generate_merged_observations(
                 housing,
             });
         }
+    }
+
+    if csv_rows.is_empty() {
+        return Err("CSV is empty.".into());
+    }
+
+    // --- SMOOTHING STEP ---
+    // Extract pop_vils into a sequence, smooth it, and put it back
+    let mut vils_seq: Vec<Option<u32>> = csv_rows.iter().map(|r| r.pop_vils).collect();
+    smoothing::smooth_sequence(&mut vils_seq, min_spike, max_duration);
+    for (i, row) in csv_rows.iter_mut().enumerate() {
+        row.pop_vils = vils_seq[i];
     }
 
     // Find Game Start in CSV (First frame where all resources are detected)

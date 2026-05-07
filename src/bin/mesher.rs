@@ -1,18 +1,29 @@
 use rts_analyzer::analysis::mesher;
+use rts_analyzer::constants::{CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE};
 use std::env;
 use std::path::Path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        eprintln!("Usage: cargo run --bin mesher <path/to/csv> <path/to/replay>");
+        eprintln!("Usage: cargo run --bin mesher <path/to/csv> <path/to/replay> [min_spike] [max_duration_ms]");
         std::process::exit(1);
     }
 
     let csv_path = Path::new(&args[1]);
     let replay_path = Path::new(&args[2]);
+    let min_spike = args.get(3).and_then(|s| s.parse::<i32>().ok()).unwrap_or(SMOOTH_VILS_MIN_SPIKE);
+    let max_duration_ms = args.get(4).and_then(|s| s.parse::<u64>().ok()).unwrap_or(SMOOTH_VILS_MAX_DURATION_MS);
 
-    let merged = mesher::generate_merged_observations(csv_path, replay_path)?;
+    // Convert duration from ms to frames
+    let max_duration_frames = (max_duration_ms / CAPTURE_INTERVAL_MS) as usize;
+
+    let merged = mesher::generate_merged_observations(
+        csv_path, 
+        replay_path, 
+        min_spike, 
+        max_duration_frames
+    )?;
 
     // 5. Write to CSV
     let out_dir = Path::new("output");
@@ -35,6 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "idle_vils",
         "pop_curr",
         "pop_max",
+        "pop_vils",
         "housing",
     ])?;
     for record in merged {
@@ -52,6 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             record.idle_vils,
             record.pop_curr,
             record.pop_max,
+            record.pop_vils,
             record.housing,
         ])?;
     }

@@ -83,3 +83,7 @@ pub const FLOATING_THRESHOLDS: [ResourceThresholds; 4] = [
         stone: 1000,
     }, // Imperial Age
 ];
+
+// --- Smoothing ---
+pub const SMOOTH_VILS_MIN_SPIKE: i32 = 2;
+pub const SMOOTH_VILS_MAX_DURATION_MS: u64 = 5000;

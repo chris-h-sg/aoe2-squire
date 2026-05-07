@@ -1,4 +1,5 @@
 use rts_analyzer::analysis::{floating, housing, idle, mesher};
+use rts_analyzer::constants::{CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE};
 use rts_analyzer::{capture, pipeline, report, types};
 use std::error::Error;
 use std::fs;
@@ -8,13 +9,24 @@ fn run_full_analysis(
     csv_path: &Path,
     replay_path: &Path,
     verbose: bool,
+    min_spike: i32,
+    max_duration_ms: u64,
 ) -> Result<(), Box<dyn Error>> {
     println!("\n=== STARTING INTEGRATED ANALYSIS PIPELINE ===");
     println!("CSV: {}", csv_path.display());
     println!("Replay: {}", replay_path.display());
+    println!("Smoothing: min_spike={}, max_duration_ms={}", min_spike, max_duration_ms);
 
-    // 1. Mesh
-    let merged = mesher::generate_merged_observations(csv_path, replay_path)?;
+    // Convert duration from ms to frames
+    let max_duration_frames = (max_duration_ms / CAPTURE_INTERVAL_MS) as usize;
+
+    // 1. Mesh (includes smoothing)
+    let merged = mesher::generate_merged_observations(
+        csv_path, 
+        replay_path, 
+        min_spike, 
+        max_duration_frames
+    )?;
     println!("Successfully meshed {} rows.", merged.len());
 
     let replay_data = rts_analyzer::replay::extract_events(replay_path)?;
@@ -50,11 +62,30 @@ fn main() -> Result<(), Box<dyn Error>> {
         .iter()
         .any(|arg| arg == "--verbose" || arg == "-v" || arg == "--v");
 
-    // Support manual analysis: cargo run -- --analyze <csv> <rec> [--verbose]
+    // Extract smoothing parameters if provided, otherwise use constants
+    let mut min_spike = SMOOTH_VILS_MIN_SPIKE;
+    let mut max_duration_ms = SMOOTH_VILS_MAX_DURATION_MS;
+
+    if let Some(pos) = args.iter().position(|arg| arg == "--min-spike") {
+        if let Some(val) = args.get(pos + 1) {
+            if let Ok(v) = val.parse::<i32>() {
+                min_spike = v;
+            }
+        }
+    }
+    if let Some(pos) = args.iter().position(|arg| arg == "--max-duration") {
+        if let Some(val) = args.get(pos + 1) {
+            if let Ok(v) = val.parse::<u64>() {
+                max_duration_ms = v;
+            }
+        }
+    }
+
+    // Support manual analysis: cargo run -- --analyze <csv> <rec> [--verbose] [--min-spike <n>] [--max-duration <ms>]
     if args.len() >= 4 && args[1] == "--analyze" {
         let csv_path = Path::new(&args[2]);
         let replay_path = Path::new(&args[3]);
-        return run_full_analysis(csv_path, replay_path, verbose);
+        return run_full_analysis(csv_path, replay_path, verbose, min_spike, max_duration_ms);
     }
 
     let ui_map: types::UiMap = {
@@ -103,7 +134,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         match capture::run_capture_loop(&ui_map, &templates) {
             Ok(Some((telemetry, replay))) => {
                 println!("\n--- Capture & Discovery Complete ---");
-                run_full_analysis(&telemetry, &replay, verbose)?;
+                run_full_analysis(&telemetry, &replay, verbose, min_spike, max_duration_ms)?;
             }
             Ok(None) => println!("Capture loop ended without recording a complete session."),
             Err(e) => eprintln!("Capture loop failed: {:?}", e),
