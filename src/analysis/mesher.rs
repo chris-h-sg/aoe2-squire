@@ -93,7 +93,37 @@ pub fn generate_merged_observations(
     let speed_factor = calibration.speed_factor;
     let game_start_rw_f64 = calibration.game_start_rw_ms;
 
-    // 4. Create merged stream
+    // 4. Filter events to ignore anything after the final captured frame
+    let last_captured_ig_ms = if let Some(last_row) = csv_rows.last() {
+        if last_row.timestamp_ms as f64 >= game_start_rw_f64 {
+            ((last_row.timestamp_ms as f64 - game_start_rw_f64) * speed_factor).round() as u64
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    let original_event_count = events.len();
+    events.retain(|e| {
+        let ev_ms = match e {
+            ReplayEvent::TechResearch { timestamp_ms, .. } => *timestamp_ms,
+            ReplayEvent::UnitQueued { timestamp_ms, .. } => *timestamp_ms,
+            ReplayEvent::QueueCancellation { timestamp_ms, .. } => *timestamp_ms,
+            ReplayEvent::BuildingConstruction { timestamp_ms, .. } => *timestamp_ms,
+            ReplayEvent::Deletion { timestamp_ms, .. } => *timestamp_ms,
+        };
+        ev_ms as u64 <= last_captured_ig_ms
+    });
+
+    if events.len() < original_event_count {
+        println!(
+            "Mesher: Ignored {} replay events that occurred after the final captured frame.",
+            original_event_count - events.len()
+        );
+    }
+
+    // 5. Create merged stream
     let mut merged: Vec<MergedRow> = Vec::new();
 
     // Add Rec Events FIRST (so they appear before ScreenGrabs at same ms)

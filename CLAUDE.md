@@ -9,6 +9,8 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 - Python R&D (`research/`) is finished and remains the canonical reference.
 - The Rust production binary is fully functional, with a complete vision pipeline operating under 1% CPU overhead.
 - Master Orchestrator is operational, automating capture, replay discovery, data meshing, and analysis.
+- **Replay Discovery:** Automated lookup of the latest replay file with a **Smart Manual Fallback** (native file picker with recent profile auto-selection).
+- **Refinement:** The analysis pipeline now automatically filters out replay events that occur after the final captured frame, supporting truncated watch sessions.
 - **Reporting:** Interactive, offline-capable HTML reports are automatically generated and bundled with Chart.js for standalone use.
 
 ## Repo Layout

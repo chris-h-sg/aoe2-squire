@@ -8,9 +8,10 @@ The immediate focus is to package the existing analyzers into an automated pipel
 
 1. ✅ **Remove Civilization Workarounds:** Removed the temporary Hindustani villager cost workaround, expecting standard civs only for a stable baseline.
 2. ✅ **Master Orchestrator (Part 1): Game State Automation:** Implemented UI anchor and field detection to automatically start/stop the capture loop, including a CLI spinner for user feedback.
-3. ✅ **Master Orchestrator (Part 2): Replay Discovery:** Implemented logic to locate the user's Steam SaveGame directory and identify the most recent `.aoe2record` file immediately after a match concludes.
+3. ✅ **Master Orchestrator (Part 2): Replay Discovery:** Implemented logic to locate the user's Steam SaveGame directory and identify the most recent `.aoe2record` file immediately after a match concludes. Added a **Manual Replay Selection** fallback (file picker) that automatically targets the most recently active profile folder.
 4. ✅ **Master Orchestrator (Part 3): Integrated Analysis Pipeline:** 
     - Created a unified execution flow that programmatically runs the `mesher` and all three analyzers (Idle, Housing, Floating) in sequence without manual CLI intervention.
+    - **Refinement**: Implemented filtering to ignore replay events occurring after the final captured frame, supporting truncated watch sessions.
 5. ✅ **HTML Report Generation:** Generate a unified HTML report summarizing all findings, automatically opening in the default browser at the end of the pipeline. (Complete: Integrated multi-layered timeline with population, housing, and resource data)
 6. ✅ **Embed Assets & Data:** Move all external dependencies into the binary using `include_str!` or `include_dir` to ensure a single standalone `.exe`:
     - UI Mapping JSON (`ui_map.json`)

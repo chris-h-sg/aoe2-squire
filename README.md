@@ -22,7 +22,7 @@ The production pipeline is written in Rust. The project uses a modular library s
 By default, the application runs in **Orchestrator Mode**. It uses Windows DXGI (Desktop Duplication) to monitor your primary monitor and automatically manages the entire analysis lifecycle:
 1. **Waiting for Game:** The agent sits in a low-resource standby mode (showing a CLI spinner) until it detects the Age of Empires II in-game UI.
 2. **Automatic Recording:** Once the game starts, it streams telemetry to a timestamped CSV in the `logs/` directory.
-3. **Replay Discovery:** When the game ends, it automatically locates the corresponding `.aoe2record` file.
+3. **Replay Discovery:** When the game ends, it automatically locates the corresponding `.aoe2record` file. If automated discovery fails (e.g., when watching an old replay), a **native Windows file picker** is launched, automatically targeting the most recently active profile folder.
 4. **Integrated Analysis:** The orchestrator immediately meshes the telemetry with the replay, runs the full analysis suite, and **generates an interactive HTML report**.
 
 ```powershell

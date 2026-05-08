@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+use rfd::FileDialog;
 
 /// Attempts to find the most recently modified .aoe2record file that was saved
 /// after the provided `session_start` time.
@@ -32,18 +33,7 @@ pub fn find_latest_replay(
     }
 
     // 2. Find the profile directory (it's a long numeric string)
-    let entries = fs::read_dir(&games_path).ok()?;
-    let mut savegame_dirs = Vec::new();
-
-    for entry in entries.filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path.is_dir() {
-            let savegame_path = path.join("savegame");
-            if savegame_path.exists() {
-                savegame_dirs.push(savegame_path);
-            }
-        }
-    }
+    let savegame_dirs = get_savegame_dirs(&games_path);
 
     if savegame_dirs.is_empty() {
         eprintln!(
@@ -78,6 +68,45 @@ pub fn find_latest_replay(
     }
 
     latest_file.map(|(path, _)| path)
+}
+
+fn get_savegame_dirs(games_path: &Path) -> Vec<PathBuf> {
+    let mut savegame_dirs = Vec::new();
+    if let Ok(entries) = fs::read_dir(games_path) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_dir() {
+                let savegame_path = path.join("savegame");
+                if savegame_path.exists() {
+                    if let Ok(metadata) = fs::metadata(&savegame_path) {
+                        if let Ok(modified) = metadata.modified() {
+                            savegame_dirs.push((savegame_path, modified));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Sort by modification time, descending (most recent first)
+    savegame_dirs.sort_by(|a, b| b.1.cmp(&a.1));
+    savegame_dirs.into_iter().map(|(path, _)| path).collect()
+}
+
+pub fn pick_replay_manually() -> Option<PathBuf> {
+    let user_profile = std::env::var("USERPROFILE").ok()?;
+    let games_path = Path::new(&user_profile)
+        .join("Games")
+        .join("Age of Empires 2 DE");
+
+    let savegame_dirs = get_savegame_dirs(&games_path);
+    let starting_dir = savegame_dirs.first().cloned().unwrap_or(games_path);
+
+    println!("[Discovery] Opening file picker...");
+    FileDialog::new()
+        .set_title("Select the recorded game file")
+        .add_filter("AoE2 Recorded Game", &["aoe2record"])
+        .set_directory(starting_dir)
+        .pick_file()
 }
 
 #[cfg(test)]

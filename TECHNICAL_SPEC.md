@@ -9,7 +9,9 @@
     - *Formula:* Efficiency = (Vils_Scraped * BaseRate_ParsedTech) / DeltaResource_Scraped.
 
 ## Replay Parsing
-- **Trigger**: File watcher (future) or manual CLI command.
+- **Trigger**: Automatic discovery after capture ends, with a manual fallback (native file picker).
+- **Smart Directory**: The file picker automatically defaults to the most recently modified profile folder.
+- **Filtering**: Ignores replay events beyond the final captured frame to support truncated sessions.
 - **Library**: Custom integration with the **liouh/aoe2rec** Rust fork.
 - **Capabilities**:
     - **Re-sync Logic**: Handles modern DE replay binary formats with checksum validation.

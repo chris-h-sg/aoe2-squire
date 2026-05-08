@@ -23,6 +23,7 @@ binrw = "0.15.0"
 minijinja = "1.0"
 open = "5.0"
 include_dir = "0.7"
+rfd = "0.17.2"
 
 
 [target.'cfg(windows)'.dependencies]

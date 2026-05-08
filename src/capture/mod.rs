@@ -374,6 +374,10 @@ pub fn run_capture_loop(
                 eprintln!(
                     "[Discovery] Could not find a replay file modified after the session start."
                 );
+                if let Some(replay) = crate::replay_discovery::pick_replay_manually() {
+                    println!("[Discovery] Manually selected replay: {:?}", replay);
+                    return Ok(Some((telemetry, replay)));
+                }
             }
         }
     }

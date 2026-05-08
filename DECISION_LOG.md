@@ -355,3 +355,16 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 *   **Implementation**: 
     *   Used `include_dir` for the OCR template directory to avoid manual `include_bytes!` boilerplate.
     *   Retained `#[cfg(debug_assertions)]` fallbacks for HTML templates to allow hot-reloading during development while ensuring static embedding in release builds.
+
+## Replay Discovery (May 8, 2026)
+
+### 1. Manual Replay Selection Fallback
+*   **Decision**: Integrated a Windows file chooser (fd crate) as a fallback when automated replay discovery fails.
+*   **Reasoning**:
+    *   When watching recorded games, the .aoe2record file is often modified *before* the capture session starts, causing the automated search to fail.
+    *   Providing a file picker allows users to manually specify the match they were analyzing without restarting the tool or renaming files.
+    *   Maintains the " Zero Setup\ philosophy while handling edge cases for advanced users (casters, analysts).
+
+### 2. Smart Starting Directory for Picker
+*   **Decision**: Refined the manual picker to automatically start in the most recently modified savegame directory.
+*   **Reasoning**: Players with multiple profiles or shared machines often have several all-digit folders. Starting the picker in the most recently active one saves the user from navigating through subfolders manually.
