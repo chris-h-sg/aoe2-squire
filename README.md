@@ -36,7 +36,7 @@ cargo run --release -- --v
 
 ### Reporting
 
-After the analysis completes, the tool generates an interactive HTML report in `output/report.html` and launches it in your default browser. The report includes:
+After the analysis completes, the tool generates an interactive HTML report in `output/<timestamp>-<player>-<civ>.html` and launches it in your default browser. The report includes:
 - **Match Details:** Real-world start time, match duration, and player civilizations.
 - **Performance Metrics:** Comprehensive summaries of Idle Villagers, Housing Efficiency, and Floating Resources.
 

@@ -180,6 +180,7 @@ mod tests {
             segments: vec![],
             age_vs_lost,
             total_vs_lost: 10.0,
+            total_idle_duration_sec: 0.0,
         };
 
         let mut metrics = HashMap::new();
@@ -226,20 +227,20 @@ mod tests {
         let html = generate_report(&metadata, &idle, &housing, &floating, &chart_data)
             .expect("Template should render successfully");
         assert!(
-            html.contains("RTS Match Analysis Report"),
-            "HTML should contain the title"
+            html.contains("Franks vs Britons"),
+            "HTML should contain the player civilizations in the title"
+        );
+        assert!(
+            html.contains("AoE2 Analyzer"),
+            "HTML should contain the app name in the title"
         );
         assert!(
             html.contains("Idle Villagers"),
-            "HTML should contain Idle section"
+            "HTML should contain the Idle Villagers legend entry"
         );
         assert!(
-            html.contains("Housing Efficiency"),
-            "HTML should contain Housing section"
-        );
-        assert!(
-            html.contains("Floating Resources"),
-            "HTML should contain Floating section"
+            html.contains("matchChart"),
+            "HTML should contain the chart canvas element"
         );
     }
 }

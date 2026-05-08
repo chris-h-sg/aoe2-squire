@@ -6,23 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | AoE2 Analyzer</title>
     <script>{{ chart_js_lib | safe }}</script>
+    <style data-purpose="custom-fonts">
+        @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap");
+    </style>
     <style>
         * {
             box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
+            font-family: "Roboto", sans-serif;
+            background-color: #f4ecd8; /* Parchment/Paper background */
+            color: #e5e0d8; /* Default text color for inside panels */
             margin: 0;
-            padding: 20px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(200, 180, 140, 0.2) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(180, 160, 120, 0.3) 0%, transparent 50%),
+        url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.05' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
         }
 
-        h1,
-        h2,
-        h3 {
-            color: #ffffff;
+        h1 {
+            font-family: "Cinzel", serif;
+            color: #d4af37; /* Metallic Gold */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            margin-top: 0;
+            padding-top: 20px;
         }
 
         .container {
@@ -31,11 +39,13 @@
         }
 
         .card {
-            background-color: #1e1e1e;
-            border-radius: 8px;
+            background-color: #3f3223; /* Dark Wood */
+            border: 2px solid #5a4b3c;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 6px rgba(0,0,0,0.5);
+            border-radius: 4px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: relative;
         }
 
         table {
@@ -62,14 +72,15 @@
         }
 
         .danger {
-            color: #f44336;
+            color: #F44336;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
 
         .custom-legend {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding: 0 20px;
         }
 
@@ -84,7 +95,7 @@
             display: flex;
             align-items: center;
             cursor: pointer;
-            color: #e0e0e0;
+            color: #e5e0d8;
             font-size: 13px;
             user-select: none;
             transition: opacity 0.2s;
@@ -115,10 +126,11 @@
         }
 
         .kpi-card {
-            background-color: #1e1e1e;
-            border-radius: 8px;
+            background-color: #3f3223; /* Dark Wood */
+            border: 2px solid #5a4b3c;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 6px rgba(0,0,0,0.5);
+            border-radius: 4px;
             padding: 24px 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -136,7 +148,7 @@
 
         .kpi-sub {
             font-size: 0.9em;
-            color: #aaa;
+            color: #9ca3af;
             margin-top: 8px;
             font-weight: 500;
         }
@@ -157,8 +169,8 @@
         }
 
         .kpi-2x2 .val-top { font-size: 2.2em; font-weight: bold; text-align: right; }
-        .kpi-2x2 .lbl-top { font-size: 0.9em; color: #aaa; text-align: left; font-weight: 500; }
-        .kpi-2x2 .lbl-btm { font-size: 0.9em; color: #aaa; text-align: left; font-weight: 500; }
+        .kpi-2x2 .lbl-top { font-size: 0.9em; color: #9ca3af; text-align: left; font-weight: 500; }
+        .kpi-2x2 .lbl-btm { font-size: 0.9em; color: #9ca3af; text-align: left; font-weight: 500; }
         .kpi-2x2 .val-btm { font-size: 1.5em; font-weight: bold; text-align: left; }
 
         .kpi-row:last-child {
@@ -170,11 +182,13 @@
         }
 
         .highlight {
-            color: #2196F3;
+            color: #4A90E2;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
 
         .warning {
-            color: #FFC107;
+            color: #d4af37; /* Gold */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
 
         /* Stats Table Styles */
@@ -184,14 +198,22 @@
             margin-top: 10px;
         }
 
-        .stats-table th,
+        .stats-table th {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #8b7355;
+            color: #d4af37;
+            text-transform: uppercase;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            background-color: #2a221a;
+        }
+
         .stats-table td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #333;
-        }
-
-        .stats-table tr:first-child th {
+            border-bottom: 1px solid #3e3226;
+            color: #e5e0d8;
         }
 
         .stats-table .text-right {
@@ -212,8 +234,26 @@
         }
 
         .stats-table tfoot tr {
+            background-color: #2a221a;
+        }
+
+        .stats-table tfoot tr td {
+            box-shadow: inset 0 1px 0 0 #8b7355;
             font-weight: bold;
-            background-color: #2a2a2a;
+            color: #d4af37;
+            font-family: 'Cinzel', serif;
+        }
+
+        .stats-table tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s;
+        }
+
+        .chart-container {
+            background-color: #181310;
+            border: 1px solid #5a4b3c;
+            padding: 15px;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -229,7 +269,12 @@
         <div class="kpi-grid">
             <!-- Match Info -->
             <div class="kpi-card">
-                <div class="kpi-value highlight"><span style="font-size: 0.7em; vertical-align: middle;">🕑</span> <span id="match-duration">--:--</span></div>
+                <div class="kpi-value highlight">
+                    <svg style="width: 28px; height: 28px; vertical-align: middle; margin-right: 4px; display: inline-block;" fill="none" stroke="#d4af37" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                    </svg>
+                    <span id="match-duration">--:--</span>
+                </div>
                 <div class="kpi-sub">
                     <span id="match-date">-- --- ----</span> @ <span id="match-time">--:--</span>
                 </div>
@@ -240,7 +285,7 @@
                     {% for p in meta.players %}
                     <div class="kpi-row">
                         <span style="font-weight: bold;">{{ p.civ }}</span>
-                        <span style="color: #bbb;">{{ p.name }}</span>
+                        <span style="color: #9ca3af;">{{ p.name }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -271,7 +316,7 @@
                 <!-- Group 1: Core Metrics -->
                 <div class="legend-group">
                     <div class="legend-item" onclick="toggleDataset(0, this)">
-                        <div class="legend-box" style="background-color: #2196F3;"></div> Villagers
+                        <div class="legend-box" style="background-color: #4A90E2;"></div> Villagers
                     </div>
                     <div class="legend-item" onclick="toggleDataset(1, this)">
                         <div class="legend-box" style="background-color: #F44336;"></div> Idle Villagers
@@ -298,7 +343,7 @@
                     </div>
                 </div>
             </div>
-            <div style="position: relative; height: 400px; width: 100%;">
+            <div class="chart-container" style="position: relative; height: 410px; width: 100%;">
                 <canvas id="matchChart"></canvas>
             </div>
         </div>
@@ -338,7 +383,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td class="category-gap">Total</td>
+                        <td class="category-gap">TOTAL</td>
                         <td class="text-right category-gap">{{ idle.total_vs_lost | default(0.0) | round | int }}</td>
                         <td class="text-right">{{ housing.total_housed_sec | default(0.0) | round | int }}s</td>
                         <td class="text-right category-gap">{{ housing.total_queued_sec | default(0.0) | round | int }}s</td>
@@ -437,7 +482,7 @@
                         ctx.stroke();
 
                         ctx.fillStyle = '#ffffff';
-                        ctx.font = '11px Segoe UI';
+                        ctx.font = '12px Roboto';
                         ctx.textAlign = 'center';
                         ctx.fillText(ev.age, xPos, top - 10);
                     }
@@ -507,8 +552,8 @@
                     {
                         label: 'Villagers',
                         data: popVils,
-                        borderColor: '#2196F3', // Blue
-                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        borderColor: '#4A90E2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
                         borderWidth: 2,
                         pointRadius: 0,
                         pointHoverRadius: 4,
@@ -561,7 +606,7 @@
                 maintainAspectRatio: false,
                 layout: {
                     padding: {
-                        top: 8
+                        top: 10
                     }
                 },
                 interaction: {
@@ -594,12 +639,12 @@
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#aaa', maxTicksLimit: 20 },
-                        grid: { color: '#333' }
+                        ticks: { color: '#9ca3af', maxTicksLimit: 20 },
+                        grid: { color: '#5a4b3c' }
                     },
                     y: {
-                        ticks: { color: '#aaa' },
-                        grid: { color: '#333' },
+                        ticks: { color: '#9ca3af' },
+                        grid: { color: '#5a4b3c' },
                         beginAtZero: true
                     }
                 }

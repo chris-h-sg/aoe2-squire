@@ -337,3 +337,9 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
     *   Relaxing the red color thresholds to improve stability on video compression artifacts inadvertently caused the engine to pick up red UI elements that appear for some civs (e.g. Koreans).
     *   By restricting the anchor scan area strictly to the top-center/right area (excluding the far right and top), we ignore UI noise.
     *   These boundaries work consistently across standard 16:9 and ultra-wide (21:9, 32:9) aspect ratios because the top-bar resource UI remains anchored.
+
+## Report Theming (May 8, 2026)
+
+### 1. Medieval-Inspired Visual Theme
+*   **Decision**: Styled the HTML report with a "medieval parchment" aesthetic — parchment background, dark wood panels, Cinzel serif headers, metallic gold accents, and Roboto for body/data text.
+*   **Reasoning**: The tool targets AoE2 players who want to improve their competitive performance. The design should feel approachable and evoke the medieval setting without closely mimicking the game's own UI. A parchment-and-wood palette achieves this while keeping data tables and charts clean and readable.

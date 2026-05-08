@@ -83,7 +83,7 @@ The report is generated as a standalone HTML file containing all necessary data 
 1.  **Consolidated Timeline**: Uses Chart.js to synchronize population datasets, housed status (background shading), age events (markers), and floating resources (top status lanes).
 2.  **Categorized Legend**: A custom HTML legend organizes metrics into Economy and Population groups with visibility toggling for each layer.
 3.  **Data Serialization**: Rust telemetry is meshed, sampled, and embedded as a JSON payload within the template.
-4.  **Styling**: Utilizes a dark-themed CSS layout with high-contrast visual indicators for performance gaps.
+4.  **Styling**: Utilizes a medieval parchment-themed CSS layout (parchment background, dark wood panels, Cinzel serif headers, Roboto body font) with high-contrast visual indicators for performance gaps.
 
 ## Long-Term Migration Note
 If at a later date we desire absolute strict compile-time type safety for our templates, we can migrate from `minijinja` to `askama`. Because both engines utilize the Jinja2 syntax family, the HTML templates will remain exactly the same. The only change required will be replacing the dynamic `minijinja::context!` in Rust with a `#[derive(Template)]` struct.
