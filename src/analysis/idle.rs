@@ -20,6 +20,7 @@ pub struct IdleReport {
     pub segments: Vec<IdleSegmentData>,
     pub age_vs_lost: HashMap<String, f64>,
     pub total_vs_lost: f64,
+    pub total_idle_duration_sec: f64,
 }
 
 pub fn analyze_idle(
@@ -31,6 +32,7 @@ pub fn analyze_idle(
     let segments = segment_game(rows, |r| r.idle_vils.parse::<u32>().ok());
 
     let mut report_segments = Vec::new();
+    let mut total_idle_duration_sec = 0.0;
 
     if verbose {
         // 1. Chronological Table
@@ -44,6 +46,10 @@ pub fn analyze_idle(
     for seg in &segments {
         let duration_sec = (seg.end_ms - seg.start_ms) as f64 / 1000.0;
         let vs_lost = duration_sec * seg.value as f64;
+
+        if seg.value > 0 {
+            total_idle_duration_sec += duration_sec;
+        }
 
         let annotation = match &seg.end_reason {
             SegmentEndReason::AgeResearch(age) => format!(" ({} Click)", age),
@@ -98,5 +104,6 @@ pub fn analyze_idle(
         segments: report_segments,
         age_vs_lost,
         total_vs_lost: total,
+        total_idle_duration_sec,
     })
 }

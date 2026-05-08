@@ -206,6 +206,7 @@ mod tests {
         let metadata = MatchMetadata {
             start_time: "2026-05-06 12:00:00".to_string(),
             duration_formatted: "35:00.000".to_string(),
+            duration_sec: 2100.0,
             players: vec![
                 PlayerInfo {
                     name: "Player 1".to_string(),
@@ -216,6 +217,8 @@ mod tests {
                     civ: "Britons".to_string(),
                 },
             ],
+            rec_owner_name: "Player 1".to_string(),
+            rec_owner_civ: "Franks".to_string(),
         };
 
         let chart_data = extract_chart_data(&[], &floating);

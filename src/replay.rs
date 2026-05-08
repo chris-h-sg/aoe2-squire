@@ -156,7 +156,10 @@ pub struct PlayerInfo {
 pub struct MatchMetadata {
     pub start_time: String,
     pub duration_formatted: String,
+    pub duration_sec: f64,
     pub players: Vec<PlayerInfo>,
+    pub rec_owner_name: String,
+    pub rec_owner_civ: String,
 }
 
 pub struct ReplayData {
@@ -535,10 +538,25 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         .unwrap();
     let start_time = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
 
+    let (rec_owner_name, rec_owner_civ) = player_names
+        .get(&(savegame.meta.rec_owner as u8))
+        .map(|name| {
+            let civ = player_infos
+                .iter()
+                .find(|p| &p.name == name)
+                .map(|p| p.civ.clone())
+                .unwrap_or_else(|| "Unknown".to_string());
+            (name.clone(), civ)
+        })
+        .unwrap_or_else(|| ("Unknown".to_string(), "Unknown".to_string()));
+
     let metadata = MatchMetadata {
         start_time,
         duration_formatted: format_time(current_ms),
+        duration_sec: current_ms as f64 / 1000.0,
         players: player_infos,
+        rec_owner_name,
+        rec_owner_civ,
     };
 
     Ok(ReplayData {

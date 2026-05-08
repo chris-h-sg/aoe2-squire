@@ -51,11 +51,26 @@ fn run_full_analysis(
         &floating_stats,
         &chart_data,
     )?;
-    let output_path = Path::new("output/report.html");
-    fs::write(output_path, report_html)?;
 
-    println!("Opening report in default browser...");
-    open::that(output_path)?;
+    // Construct filename: yyyymmdd-hhmmss-<player name>-<player civilization>.html
+    let date_part = replay_data
+        .metadata
+        .start_time
+        .replace('-', "")
+        .replace(':', "")
+        .replace(' ', "-");
+    let safe_player = replay_data.metadata.rec_owner_name.replace(' ', "_");
+    let safe_civ = replay_data.metadata.rec_owner_civ.replace(' ', "_");
+    let filename = format!("{}-{}-{}.html", date_part, safe_player, safe_civ);
+
+    let output_path = Path::new("output").join(filename);
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&output_path, report_html)?;
+
+    println!("Opening report: {}", output_path.display());
+    open::that(&output_path)?;
 
     println!("\n=== ANALYSIS COMPLETE ===");
     Ok(())
