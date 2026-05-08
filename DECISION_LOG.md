@@ -343,3 +343,15 @@ The project relies on several community-maintained resources for AoE2:DE unit, b
 ### 1. Medieval-Inspired Visual Theme
 *   **Decision**: Styled the HTML report with a "medieval parchment" aesthetic — parchment background, dark wood panels, Cinzel serif headers, metallic gold accents, and Roboto for body/data text.
 *   **Reasoning**: The tool targets AoE2 players who want to improve their competitive performance. The design should feel approachable and evoke the medieval setting without closely mimicking the game's own UI. A parchment-and-wood palette achieves this while keeping data tables and charts clean and readable.
+
+## Standalone Executable & Asset Embedding (May 8, 2026)
+
+### 1. Choice: `include_dir` for Folders, `include_str!` for Single Files
+*   **Decision**: Switched from filesystem loading of `ui_map.json` and OCR templates to compile-time embedding.
+*   **Reasoning**: 
+    *   Ensures a "Zero Setup" user experience. The player only needs to download the `.exe`.
+    *   Prevents accidental deletion of vital assets (like a single digit template) from breaking the OCR engine.
+    *   Maintains a minimal binary size (~4.4MB) despite embedding 11 images and various JSON/HTML/JS assets.
+*   **Implementation**: 
+    *   Used `include_dir` for the OCR template directory to avoid manual `include_bytes!` boilerplate.
+    *   Retained `#[cfg(debug_assertions)]` fallbacks for HTML templates to allow hot-reloading during development while ensuring static embedding in release builds.

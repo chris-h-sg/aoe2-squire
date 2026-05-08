@@ -22,6 +22,7 @@ aoe2rec = { path = "../aoe2rec-src/crates/aoe2rec" }
 binrw = "0.15.0"
 minijinja = "1.0"
 open = "5.0"
+include_dir = "0.7"
 
 
 [target.'cfg(windows)'.dependencies]

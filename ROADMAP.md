@@ -12,11 +12,11 @@ The immediate focus is to package the existing analyzers into an automated pipel
 4. ✅ **Master Orchestrator (Part 3): Integrated Analysis Pipeline:** 
     - Created a unified execution flow that programmatically runs the `mesher` and all three analyzers (Idle, Housing, Floating) in sequence without manual CLI intervention.
 5. ✅ **HTML Report Generation:** Generate a unified HTML report summarizing all findings, automatically opening in the default browser at the end of the pipeline. (Complete: Integrated multi-layered timeline with population, housing, and resource data)
-6. **Embed Assets & Data:** Move all external dependencies into the binary using `include_str!` or `include_bytes!` to ensure a single standalone `.exe`:
-    - CSV Data Files (`data/*.csv`)
+6. ✅ **Embed Assets & Data:** Move all external dependencies into the binary using `include_str!` or `include_dir` to ensure a single standalone `.exe`:
     - UI Mapping JSON (`ui_map.json`)
     - OCR PNG Templates (`research/templates/enormous_numbers/*.png`)
-7. **Executable Packaging:** Finalize the release build into a single standalone `.exe`.
+    - HTML Report & JS Assets (`templates/*`)
+7. ✅ **Executable Packaging:** Finalized the release build into a single standalone `.exe` using LTO and stripping for a minimal footprint.
 
 ---
 

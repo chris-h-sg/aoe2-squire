@@ -2,7 +2,49 @@ use super::canvas;
 use crate::constants::*;
 use crate::types::Templates;
 use image::GrayImage;
+use include_dir::{include_dir, Dir};
 use std::path::Path;
+
+static TEMPLATES_DIR: Dir<'_> =
+    include_dir!("$CARGO_MANIFEST_DIR/research/templates/enormous_numbers");
+
+/// Loads and pre-processes all digit templates from the embedded binary.
+pub fn load_embedded_templates() -> Templates {
+    let mut templates = Templates::new();
+
+    for file in TEMPLATES_DIR.files() {
+        let path = file.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("png") {
+            continue;
+        }
+
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_string();
+
+        let ch: char = if stem == "slash" {
+            '/'
+        } else if stem.len() == 1 {
+            stem.chars().next().unwrap()
+        } else {
+            continue;
+        };
+
+        let img = match image::load_from_memory(file.contents()) {
+            Ok(i) => i.to_luma8(),
+            Err(e) => {
+                eprintln!("Warning: failed to load embedded template {:?}: {}", path, e);
+                continue;
+            }
+        };
+
+        templates.insert(ch, canvas::prepare_canvas(&img));
+    }
+
+    templates
+}
 
 /// Loads and pre-processes all digit templates from `dir`.
 /// Each PNG is named "0.png" … "9.png" and "slash.png" (mapped to '/').

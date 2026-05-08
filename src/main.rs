@@ -109,12 +109,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let ui_map: types::UiMap = {
-        let data = std::fs::read_to_string("ui_map.json").expect("ui_map.json not found");
-        serde_json::from_str(&data).expect("failed to parse ui_map.json")
+        let data = include_str!("../ui_map.json");
+        serde_json::from_str(data).expect("failed to parse embedded ui_map.json")
     };
 
-    let templates_dir = Path::new("research/templates/enormous_numbers");
-    let templates = pipeline::matcher::load_templates(templates_dir);
+    let templates = pipeline::matcher::load_embedded_templates();
 
     if args.len() > 1 && args[1] == "--parse-replay" {
         if args.len() < 3 {

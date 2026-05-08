@@ -104,6 +104,20 @@ The analysis suite currently implements the following metrics:
 *   **Display**: Primary monitor must be active (DXGI does not support headless sessions).
 *   **Performance**: The capture loop is throttled to ~4 FPS to maintain <1% CPU impact.
 
+## Installation & Distribution
+
+The application is distributed as a **standalone executable**. 
+
+### Building from Source
+To generate the final single-file binary:
+```powershell
+cargo build --release
+```
+The file will be located at `target/release/rts-analyzer.exe`.
+
+### Distribution
+You can copy `rts-analyzer.exe` to any folder or machine. It does not require any additional asset files, templates, or configuration files to run, as everything is embedded directly into the binary.
+
 ## Data Acknowledgements
 This project utilizes community-standard data and mapping provided by:
 *   **Unit Statistics**: [unitstatistics.com](https://unitstatistics.com/age-of-empires2/)
