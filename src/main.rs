@@ -76,7 +76,39 @@ fn run_full_analysis(
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
+    // Set a panic hook to ensure we wait for user input even on unexpected crashes
+    std::panic::set_hook(Box::new(|panic_info| {
+        eprintln!("\n========================================");
+        eprintln!("A fatal error occurred (panic):");
+        eprintln!("{}", panic_info);
+        eprintln!("\nPlease report this error via Discord:");
+        eprintln!("https://discord.gg/k9DubjSJAQ");
+        eprintln!("========================================");
+        wait_for_user();
+    }));
+
+    if let Err(e) = run_app() {
+        eprintln!("\n========================================");
+        eprintln!("ERROR: {}", e);
+        eprintln!("\nPlease report this error via Discord:");
+        eprintln!("https://discord.gg/k9DubjSJAQ");
+        eprintln!("========================================");
+        wait_for_user();
+        std::process::exit(1);
+    }
+}
+
+fn wait_for_user() {
+    use std::io::{self, BufRead, Write};
+    println!("\nPress Enter to exit...");
+    let _ = io::stdout().flush();
+    let stdin = io::stdin();
+    let mut iterator = stdin.lock().lines();
+    let _ = iterator.next();
+}
+
+fn run_app() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
     let verbose = args
         .iter()
@@ -129,7 +161,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     if args.len() > 1 && args[1] != "--live" {
         let image_path = &args[1];
         let img = image::open(image_path)
-            .unwrap_or_else(|_| panic!("failed to load image: {}", image_path));
+            .map_err(|e| format!("failed to load image {}: {}", image_path, e))?;
         println!("Image: {}x{}", img.width(), img.height());
 
         match pipeline::process_frame(&img, &ui_map, &templates) {
@@ -156,7 +188,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 run_full_analysis(&telemetry, &replay, verbose, min_spike, max_duration_ms)?;
             }
             Ok(None) => println!("Capture loop ended without recording a complete session."),
-            Err(e) => eprintln!("Capture loop failed: {:?}", e),
+            Err(e) => return Err(e.into()),
         }
     }
 
