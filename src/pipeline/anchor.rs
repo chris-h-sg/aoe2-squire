@@ -62,10 +62,10 @@ mod tests {
         let height = 100;
         let mut img = RgbImage::new(width, height);
 
-        // Place 15 red pixels in a 3x5 block at x=77..82, y=2..5
+        // Place 15 red pixels in a 3x5 block at x=77..82, y=1..4
         // (x=81 is 19 pixels from the right edge)
-        // y=2 is within the scan area (1.5% to 5.0% of 100 = 1..5)
-        for y in 2..5 {
+        // y=1 is within the scan area (1.5% to 3.5% of 100 = 1..3)
+        for y in 1..4 {
             for x in 77..82 {
                 img.put_pixel(x, y, Rgb([255, 0, 0]));
             }
@@ -79,7 +79,7 @@ mod tests {
 
         // Test scale out of bounds: (100 - 75) / 10 = 2.5 (> 2.0)
         let mut img_high = RgbImage::new(width, height);
-        for y in 2..5 {
+        for y in 1..4 {
             for x in 71..76 {
                 img_high.put_pixel(x, y, Rgb([255, 0, 0]));
             }
@@ -90,7 +90,7 @@ mod tests {
         // Test scale out of bounds: (100 - 96) / 10 = 0.4 (< 0.5)
         // Note: x=96 is also outside the scan area (max 95), so this should return None.
         let mut img_low = RgbImage::new(width, height);
-        for y in 2..5 {
+        for y in 1..4 {
             for x in 96..100 {
                 img_low.put_pixel(x, y, Rgb([255, 0, 0]));
             }
