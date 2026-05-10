@@ -73,10 +73,10 @@ pub fn generate_merged_observations(
 
     // 2. Parse Replay
     let data = extract_events(replay_path)?;
-    let rec_owner = data.rec_owner;
+    let rec_player = data.rec_player;
     let mut events = data.events;
 
-    // Filter events to only the recorded player
+    // Filter events to only the POV player
     events.retain(|e| {
         let p_id = match e {
             ReplayEvent::TechResearch { player_id, .. } => *player_id,
@@ -85,7 +85,7 @@ pub fn generate_merged_observations(
             ReplayEvent::BuildingConstruction { player_id, .. } => *player_id,
             ReplayEvent::Deletion { player_id, .. } => *player_id,
         };
-        p_id as u32 == rec_owner
+        p_id as u32 == rec_player
     });
 
     // 3. Detect Game Speed & Offset (Two-Point Calibration)

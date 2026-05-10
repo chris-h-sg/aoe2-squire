@@ -218,8 +218,8 @@ mod tests {
                     civ: "Britons".to_string(),
                 },
             ],
-            rec_owner_name: "Player 1".to_string(),
-            rec_owner_civ: "Franks".to_string(),
+            rec_player_name: "Player 1".to_string(),
+            rec_player_civ: "Franks".to_string(),
         };
 
         let chart_data = extract_chart_data(&[], &floating);

@@ -59,8 +59,8 @@ fn run_full_analysis(
         .replace('-', "")
         .replace(':', "")
         .replace(' ', "-");
-    let safe_player = replay_data.metadata.rec_owner_name.replace(' ', "_");
-    let safe_civ = replay_data.metadata.rec_owner_civ.replace(' ', "_");
+    let safe_player = replay_data.metadata.rec_player_name.replace(' ', "_");
+    let safe_civ = replay_data.metadata.rec_player_civ.replace(' ', "_");
     let filename = format!("{}-{}-{}.html", date_part, safe_player, safe_civ);
 
     let output_path = Path::new("output").join(filename);

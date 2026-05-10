@@ -158,12 +158,12 @@ pub struct MatchMetadata {
     pub duration_formatted: String,
     pub duration_sec: f64,
     pub players: Vec<PlayerInfo>,
-    pub rec_owner_name: String,
-    pub rec_owner_civ: String,
+    pub rec_player_name: String,
+    pub rec_player_civ: String,
 }
 
 pub struct ReplayData {
-    pub rec_owner: u32,
+    pub rec_player: u32,
     pub player_names: HashMap<u8, String>,
     pub events: Vec<ReplayEvent>,
     pub metadata: MatchMetadata,
@@ -252,6 +252,15 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                 name: display_name,
                 civ: civ_name,
             });
+        }
+    }
+
+    // Ensure POV player is first in the list
+    let pov_id = savegame.zheader.replay.rec_player as u8;
+    if let Some(pov_name) = player_names.get(&pov_id) {
+        if let Some(pos) = player_infos.iter().position(|p| &p.name == pov_name) {
+            let pov_info = player_infos.remove(pos);
+            player_infos.insert(0, pov_info);
         }
     }
 
@@ -538,8 +547,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         .unwrap();
     let start_time = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
 
-    let (rec_owner_name, rec_owner_civ) = player_names
-        .get(&(savegame.meta.rec_owner as u8))
+    let (rec_player_name, rec_player_civ) = player_names
+        .get(&(savegame.zheader.replay.rec_player as u8))
         .map(|name| {
             let civ = player_infos
                 .iter()
@@ -555,12 +564,12 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         duration_formatted: format_time(current_ms),
         duration_sec: current_ms as f64 / 1000.0,
         players: player_infos,
-        rec_owner_name,
-        rec_owner_civ,
+        rec_player_name,
+        rec_player_civ,
     };
 
     Ok(ReplayData {
-        rec_owner: savegame.meta.rec_owner,
+        rec_player: savegame.zheader.replay.rec_player as u32,
         player_names,
         events,
         metadata,
@@ -569,10 +578,10 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
 
 pub fn print_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let data = extract_events(replay_path)?;
-    let rec_owner = data.rec_owner;
+    let rec_player = data.rec_player;
     let player_names = data.player_names;
     let events = data.events;
-    println!("Recorded by player ID: {}", rec_owner);
+    println!("POV Player ID: {}", rec_player);
 
     println!(
         "\n{:<12} | {:<20} | {:<10} | {:<28} | {:<28} | {:<22} | {:>5} | {:>5} | {:>5} | {:>5}",
