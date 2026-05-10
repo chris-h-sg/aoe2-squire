@@ -16,10 +16,10 @@ Based on research across the AoE2 community (Reddit, AoEZone, YouTube guides, an
 | **Poor Multi-tasking / Tunnel Vision**<br>*(Neglecting eco while fighting)* | 5 | 4 | 1 | Detect periods of high APM or combat (if parsing combat events) correlating with sudden spikes in floating resources or stagnant `population_vils`. | Advanced correlation logic linking combat proximity/intensity to macro-level economic drops. |
 
 ## Key Takeaways for RTS Analyzer Value:
-1. **The Basics are Paramount:** The highest impact features we can build will focus on fundamental macro mechanics (Idle TC, Floating Resources, Getting Housed). 
-2. **We have the right technical foundation:** Our current hybrid approach (Replay Parsing + Vision OCR) is perfectly positioned. Replay parsing gives us exact events (training, tech, buildings), while the vision pipeline provides the critical economic context (current pop, floating resources) to understand *why* those events happened or stalled.
-3. **High-Value Vision Expansions:** To push the analyzer to the next level, the most valuable additions to the DXGI capture pipeline would be:
-   - **Game Timer (F11 Clock):** Capturing the top-screen clock would allow flawless, absolute synchronization between our vision data and replay parser data, removing all guesswork.
-   - **Global Queue:** Would definitively solve the "Idle TC" detection problem by proving a villager is actively training.
-   - **Minimap:** Opens up entirely new coaching avenues for scouting and map control.
-4. **Data Infrastructure Needs:** To provide accurate contextual coaching, we will need to integrate a comprehensive **Civilization Tech Tree Data File**. This ensures we don't penalize a player for failing to train a specific counter unit or research a technology that their civilization doesn't possess.
+1. **The Basics are Paramount:** High-impact features focus on fundamental macro mechanics (Idle TC, Floating Resources, Getting Housed). 
+2. **Hybrid Architecture Utility:** The hybrid approach (Replay Parsing + Vision OCR) supports comprehensive analysis. Replay parsing provides exact events (training, tech, buildings), while the vision pipeline supplies the economic context (current pop, floating resources) necessary to evaluate event execution and stalling.
+3. **High-Value Vision Expansions:** To expand the analyzer's capabilities, additions to the DXGI capture pipeline include:
+   - **Game Timer (F11 Clock):** Capturing the top-screen clock enables absolute synchronization between vision data and replay parser data, removing synchronization heuristics.
+   - **Global Queue:** Resolves the "Idle TC" detection problem by verifying when a villager is actively training.
+   - **Minimap:** Enables features for evaluating scouting and map control.
+4. **Data Infrastructure Needs:** To provide accurate contextual coaching, a comprehensive **Civilization Tech Tree Data File** is required. This ensures the system does not penalize a player for failing to train a specific counter unit or research a technology that their civilization does not possess.

@@ -1,127 +1,107 @@
-# Project: RTS Analyzer
+# AoE2 Analyzer
 
-## Vision
-A cross-game RTS coaching tool that provides **performance feedback** immediately after a match ends. Unlike current tools that require manual uploads or watching replays, RTS Analyzer uses a local agent to generate a "Post-Game Report" once the match is over.
+An AoE2:DE coaching tool that provides performance feedback immediately after your match ends.
 
-## The Core Concept
-The "Hybrid Data Strategy":
-- **Screen Scraping:** Captures the "Current State" (resources, idle counts, villager allocation) during the game without touching memory.
-- **Replay Parsing:** Captures the "Deterministic Log" (tech timings, unit production) from the local `.aoe2record` or similar file as soon as the game finishes.
-- **Analysis:** Combines both to identify "Efficiency Gaps" (e.g., "You had the tech for faster gathering but your resource intake didn't rise, implying poor lumber camp placement").
+It highlights your main areas to improve, such as:
+  - **Villager Graph:** Your villager count over time, showing when you stopped producing or lost villagers.
+  - **Idle Villagers:** Total gather time lost due to idle villagers.
+  - **Housing Efficiency:** Time you spent blocked by your population limit or having more units in queue than available housing pop.
+  - **Floating Resources:** Identifies when you stockpile resources for too long. It is smart enough to ignore times when you are intentionally saving up for aging up or building castles.
 
-## Project Status
-- **Phase:** Release Prototype (Phase 5).
-- **Primary Goal:** Finalize the integrated analysis pipeline and prepare for a private prototype release.
-- **Status:** The Master Orchestrator is now fully automated. It handles the complete lifecycle: **Capture -> Replay Discovery -> Data Meshing -> Integrated Analysis**.
+### Match Report Example
 
-## Development
-The production pipeline is written in Rust. The project uses a modular library structure in `src/analysis/` to support both the integrated orchestrator and standalone CLI tools.
+<a href="report-sample.png"><img src="report-sample.png" alt="Sample Post-Game Report showing timeline and efficiency metrics" width="600"></a>
 
-### Running the Orchestrator
+In this example, the chart shows how the player (NotQuiteLegend) is managing their idle villagers well (red line) but could improve their villager production (blue line). They got housed once around 27:00 (red overlay) and floated a lot of gold and stone during Feudal Age (gold and grey bars at the top).
 
-By default, the application runs in **Orchestrator Mode**. It uses Windows DXGI (Desktop Duplication) to monitor your primary monitor and automatically manages the entire analysis lifecycle:
-1. **Waiting for Game:** The agent sits in a low-resource standby mode (showing a CLI spinner) until it detects the Age of Empires II in-game UI.
-2. **Automatic Recording:** Once the game starts, it streams telemetry to a timestamped CSV in the `logs/` directory.
-3. **Replay Discovery:** When the game ends, it automatically locates the corresponding `.aoe2record` file. If automated discovery fails (e.g., when watching an old replay), a **native Windows file picker** is launched, automatically targeting the most recently active profile folder.
-4. **Integrated Analysis:** The orchestrator immediately meshes the telemetry with the replay, runs the full analysis suite, and **generates an interactive HTML report**.
+### How It Works
 
-```powershell
-# Run the full automated orchestrator
-cargo run --release
+AoE2 Analyzer runs quietly in the background while you play and creates an interactive Post-Game Report as soon as your match finishes. 
 
-# Run with verbose output (shows full chronological tables)
-cargo run --release -- --verbose
-# OR:
-cargo run --release -- --v
+- **Automatic:** No need to upload files or watch replays manually.
+- **Zero Setup:** AoE2 Analyzer is a single standalone program. You don't need to install anything, edit configuration files, or even be connected to the internet.
+- **Passive & Safe:** AoE2 Analyzer only reads your screen visually to track resources. It never hooks into game memory or modifies files, ensuring there is zero risk of anti-cheat bans.
 
-### Reporting
+## Getting Started (For Players)
 
-After the analysis completes, the tool generates an interactive HTML report in `output/<timestamp>-<player>-<civ>.html` and launches it in your default browser. The report includes:
-- **Match Details:** Real-world start time, match duration, and player civilizations.
-- **Performance Metrics:** Comprehensive summaries of Idle Villagers, Housing Efficiency, and Floating Resources.
-
-### Manual Analysis Pipeline
-
-If you have existing telemetry and replay files, you can run the full integrated analysis pipeline manually using the `--analyze` flag:
-
-```powershell
-# Run the full analysis pipeline on existing files
-cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record"
-
-# Run manual analysis with verbose output
-cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record" --verbose
-# OR:
-cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record" --v
-
-# Override default smoothing sensitivity parameters
-cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record" --min-spike 3 --max-duration 2000
-```
-
-### Individual Analyzers (CLI)
-
-For debugging or specialized research, the individual analyzers are still available as standalone binaries. These operate on the `output/merged_observations.csv` generated by the `mesher`.
-
-```powershell
-# 1. Mesh the data (creates output/merged_observations.csv)
-cargo run --bin mesher "path/to/telemetry.csv" "path/to/match.aoe2record"
-
-# 2. Run specific analyzers (add --verbose, --v, or -v for full tables)
-cargo run --bin idle_analyzer -- --verbose
-cargo run --bin housing_analyzer -- --v
-cargo run --bin floating_analyzer -- -v
-```
-
-### Telemetry Logging
-While recording, the application persists telemetry data to timestamped CSV files in the `logs/` directory. This data is later synchronized with the discovered replay file for deep analysis.
-
-#### Static Image Mode
-You can still process a specific static image file by passing its path as an argument:
-
-```powershell
-# Example:
-cargo run -- test_bench/aoe2_4k.png
-```
-
-### Replay Parsing
-
-The analyzer can parse Age of Empires II: DE replay files (`.aoe2record`) to extract ground-truth gameplay events.
-
-```powershell
-# Extract all game events (techs, units, buildings) from a replay
-cargo run -- --parse-replay "path/to/your/match.aoe2record"
-```
-
-### Core Metrics
-
-The analysis suite currently implements the following metrics:
-
-1.  **Idle Villager Seconds (VS)**: Total lost productivity (Idle Villagers × Duration), broken down by game age.
-2.  **Housing Efficiency**: Total time spent "Housed" (at pop cap) vs. "Queued" (training units to bridge gaps).
-3.  **Floating Resources**: Total time spent exceeding resource thresholds for >30 seconds, with thresholds scaling by game age.
-
-### System Requirements (Live Capture)
+### System Requirements
 *   **Operating System**: Windows 10/11
-*   **Display**: Primary monitor must be active (DXGI does not support headless sessions).
-*   **Performance**: The capture loop is throttled to ~4 FPS to maintain <1% CPU impact.
+*   **Display**: Game is running on the primary monitor, 1920x1080 or larger.
+*   **Game:** Age of Empires II: Definitive Edition.
 
-## Installation & Distribution
+### Installation
+Simply download `rts-analyzer.exe` and place it anywhere on your computer. Everything the tool needs is included directly inside the file.
 
-The application is distributed as a **standalone executable**. 
+### How to Use
+1. **Start the Tool:** Run `rts-analyzer.exe` before or during your game. It will run quietly in the background with minimal CPU impact, waiting for the game to appear.
+2. **Play your Match:** The analyzer automatically detects when the game starts and records your gameplay data.
+3. **View the Report:** When the match ends, the tool finds your replay file, matches it with your screen data, and creates an `output/` folder with the HTML report. The report will open automatically in your web browser.
+   * *Note: If the tool cannot find your replay file, a window will pop up asking you to select the file yourself.*
+
+### Known Limitations
+The vision pipeline currently has a few limitations:
+*   **Pausing the Game:** Pausing currently breaks the sync between the visual clock and the replay timeline.
+*   **Alt-Tabbing:** If you alt-tab or minimize the game during a match, the visual data will be interrupted.
+*   **UI Mods:** Mods that change the position, color, or font of the top resource bar or population counts will break the recorder.
+*   **Replay POV:** Analysis is based on the player from whose point of view the replay was recorded.
+
+## Developer Guide (For Contributors)
+
+The analyzer uses a **"Hybrid Data Strategy"**:
+1. **Screen Scraping:** Records the "Current State" (resources, idle counts) while the game is running.
+2. **Replay Parsing:** Reads the game events (timings for units and technology) from the replay file after the match ends.
+3. **Data Meshing:** Combines both timelines to find "Efficiency Gaps" (for example, starting a technology research but failing to spend resources).
+
+For more details, see these documents:
+*   `DECISION_LOG.md`: Overall design and architectural choices.
+*   `TECHNICAL_SPEC.md`: Project requirements and technical details.
+*   `LOW_ELO_ISSUES.md`: Common player mistakes we're trying to help with (many not yet implemented).
 
 ### Building from Source
-To generate the final single-file binary:
+The main code is written in Rust.
 ```powershell
+# Generate the final single-file binary
 cargo build --release
 ```
-The file will be located at `target/release/rts-analyzer.exe`.
+*The output will be saved at `target/release/rts-analyzer.exe`.*
 
-### Distribution
-You can copy `rts-analyzer.exe` to any folder or machine. It does not require any additional asset files, templates, or configuration files to run, as everything is embedded directly into the binary.
+### Development Workflows
+
+**1. Running the Full Orchestrator:**
+```powershell
+# Run the automated background orchestrator
+cargo run --release
+
+# Run with detailed logs and tables
+cargo run --release -- --verbose
+```
+
+**2. Manual Analysis Pipeline:**
+If you already have a data CSV and a replay file from a past game, you can run the analysis directly:
+```powershell
+cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record"
+```
+
+**3. Individual Analyzers (CLI):**
+To test specific metrics, you can run analyzers on the `output/merged_observations.csv` file.
+```powershell
+# Create the merged data file
+cargo run --bin mesher "path/to/telemetry.csv" "path/to/match.aoe2record"
+
+# Run specific tests
+cargo run --bin idle_analyzer -- --verbose
+cargo run --bin housing_analyzer
+cargo run --bin floating_analyzer
+```
+
+**4. Replay Event Extraction:**
+Extract raw events from a replay file:
+```powershell
+cargo run -- --parse-replay "path/to/match.aoe2record"
+```
 
 ## Data Acknowledgements
-This project utilizes community-standard data and mapping provided by:
+This project uses community data from:
 *   **Unit Statistics**: [unitstatistics.com](https://unitstatistics.com/age-of-empires2/)
 *   **Object & Tech Tables**: [airef.github.io](https://airef.github.io/tables/objects.html)
 *   **Halfon Data**: [halfon.aoe2.se](https://halfon.aoe2.se/) and [SiegeEngineers/halfon](https://github.com/SiegeEngineers/halfon)
-
-

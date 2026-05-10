@@ -2,39 +2,7 @@
 
 This roadmap outlines the development path for the RTS Analyzer, prioritizing core metrics and automation to provide performance data to players, before expanding into complex computer vision features.
 
-## Immediate Priorities (Release Prototype)
-
-The immediate focus is to package the existing analyzers into an automated pipeline for the first private prototype release.
-
-1. ✅ **Remove Civilization Workarounds:** Removed the temporary Hindustani villager cost workaround, expecting standard civs only for a stable baseline.
-2. ✅ **Master Orchestrator (Part 1): Game State Automation:** Implemented UI anchor and field detection to automatically start/stop the capture loop, including a CLI spinner for user feedback.
-3. ✅ **Master Orchestrator (Part 2): Replay Discovery:** Implemented logic to locate the user's Steam SaveGame directory and identify the most recent `.aoe2record` file immediately after a match concludes. Added a **Manual Replay Selection** fallback (file picker) that automatically targets the most recently active profile folder.
-4. ✅ **Master Orchestrator (Part 3): Integrated Analysis Pipeline:** 
-    - Created a unified execution flow that programmatically runs the `mesher` and all three analyzers (Idle, Housing, Floating) in sequence without manual CLI intervention.
-    - **Refinement**: Implemented filtering to ignore replay events occurring after the final captured frame, supporting truncated watch sessions.
-5. ✅ **HTML Report Generation:** Generate a unified HTML report summarizing all findings, automatically opening in the default browser at the end of the pipeline. (Complete: Integrated multi-layered timeline with population, housing, and resource data)
-6. ✅ **Embed Assets & Data:** Move all external dependencies into the binary using `include_str!` or `include_dir` to ensure a single standalone `.exe`:
-    - UI Mapping JSON (`ui_map.json`)
-    - OCR PNG Templates (`research/templates/enormous_numbers/*.png`)
-    - HTML Report & JS Assets (`templates/*`)
-7. ✅ **Executable Packaging:** Finalized the release build into a single standalone `.exe` using LTO and stripping for a minimal footprint.
-
----
-
-## Completed
-
-*   ✅ **Data Synchronization Foundation:** *(complete — `mesher` binary)*
-    - A two-point linear calibration model aligns vision telemetry with `.aoe2record` events at sub-second precision. Output: `output/merged_observations.csv`.
-*   ✅ **Idle Villagers Tracking (Quick Win):** *(complete — `idle_analyzer` binary)*
-    - Reports villager-seconds (VS) lost per age with a full chronological segment log and age-research click annotations.
-*   ✅ **Getting "Housed" Penalties (Quick Win):** *(complete — `housing_analyzer` binary)*
-    - Reports seconds spent in `housed` and `queued` population states, broken down by game age.
-*   ✅ **Floating Resources Alerts (Quick Win):** *(complete — `floating_analyzer` binary)*
-    - Tracks resource banks using the vision pipeline and flags sustained periods (30s+) where resources exceed age-specific healthy thresholds.
-
----
-
-## Future & Uncategorized Enhancements
+## Future Enhancements
 
 Once the MVP is providing user value, development will shift toward expanding our data capture capabilities to unlock more complex coaching features.
 
@@ -44,16 +12,22 @@ Once the MVP is providing user value, development will shift toward expanding ou
 *   **Starting Resource Extraction:** Update the `aoe2rec` parser to correctly extract starting resources for the recorded player, replacing the current "first frame" heuristic with absolute ground truth.
 
 ### Vision Pipeline Expansions
-*   **Game Timer (F11) Capture:** Read the top-screen game clock to allow flawless, absolute synchronization between vision data and replay data, replacing heuristic syncing.
-*   **Global Queue Detection:** Read the top-left global queue to definitively prove when a unit (specifically villagers) or technology is actively in production.
+*   **Game Timer (F11) Capture:** Read the top-screen game clock to enable absolute synchronization between vision data and replay data, replacing heuristic syncing.
+*   **Global Queue Detection:** Read the top-left global queue to verify when a unit (specifically villagers) or technology is actively in production.
 *   **Current Age Detection:** Read the top-center UI element to determine exact Age-up completion times (rather than relying on queue timings).
 *   **Bottom Selection Panel Detection:** Ground-truth active building and unit counts when the player uses "Select All" hotkeys.
 
 ### Advanced Player Issue Analysis
+*   **APM Tracking:** Track and graph Actions Per Minute (APM) using the raw interaction events parsed from the replay file.
+*   **APM Breakdown:** Categorize player actions into Military (unit commands, combat micro) and Economic (building placement, gathering, unit queuing) to visualize where their attention is focused during different phases of the game.
 *   **Basic Idle TC Inference:** Combine the vision pipeline's `population_vils` count with the replay parser's villager queue events. If the villager count stagnates and no queue event is active, flag the TC as idle.
-*   **Delayed Economic Upgrades Analysis:** Track technology queue events and correlate them with Age Detection to penalize late essential upgrades (Double-Bit Axe, Horse Collar) fairly.
+*   **Delayed Economic Upgrades Analysis:** Track technology queue events and correlate them with Age Detection to penalize late essential upgrades (Double-Bit Axe, Horse Collar) accurately.
 *   **Poor Build Order Execution:** Compare player Age-up and construction sequences against a database of standard benchmarks.
 *   **Unit Counter Analysis:** Parse military queue events and use the Civ Tech Tree data to recommend available unit counters based on the opponent's composition.
+
+### Research Tasks
+*   **Gather Rate Database:** Compile a master JSON of base gather rates and tech multipliers.
+*   **AoE2 Object ID Sequence:** Investigate how the engine assigns IDs to foundations and units to enable exact mapping without explicit Interact actions.
 
 ---
 

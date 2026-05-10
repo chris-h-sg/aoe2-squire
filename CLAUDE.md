@@ -9,8 +9,6 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 - Python R&D (`research/`) is finished and remains the canonical reference.
 - The Rust production binary is fully functional, with a complete vision pipeline operating under 1% CPU overhead.
 - Master Orchestrator is operational, automating capture, replay discovery, data meshing, and analysis.
-- **Replay Discovery:** Automated lookup of the latest replay file with a **Smart Manual Fallback** (native file picker with recent profile auto-selection).
-- **Refinement:** The analysis pipeline now automatically filters out replay events that occur after the final captured frame, supporting truncated watch sessions.
 - **Reporting:** Interactive, offline-capable HTML reports are automatically generated and bundled with Chart.js for standalone use.
 
 ## Repo Layout
@@ -19,127 +17,17 @@ rts-analyzer/
 ├── CLAUDE.md               ← you are here
 ├── DECISION_LOG.md         ← all architectural decisions with rationale — read this
 ├── TECHNICAL_SPEC.md       ← product-level requirements
-├── Cargo.toml              ← Rust manifest (image 0.25, imageproc 0.25, windows 0.58, serde 1.0)
+├── Cargo.toml              ← Rust manifest
 ├── ui_map.json             ← element coordinates (baseline 1080p, scaled at runtime)
 ├── src/
-│   ├── main.rs             ← entry point: load ui_map.json + templates, run process_frame
-│   ├── constants.rs        ← all pipeline constants (mirrors poc_vision.py constants)
-│   ├── types.rs            ← UiMap, UiElement, Templates, Results
-│   ├── pipeline/           ← Vision pipeline implementation (DONE)
-│   │   ├── mod.rs, anchor.rs, filter.rs, segment.rs, canvas.rs, matcher.rs, interpolation.rs
+│   ├── main.rs             ← entry point
+│   ├── constants.rs        ← all pipeline constants
+│   ├── pipeline/           ← Vision pipeline implementation
 │   ├── capture/            ← DXGI screen capture implementation
-│   │   └── mod.rs
-│   ├── bin/                ← Standalone CLI tools (Orchestrator is in main.rs)
-│   │   ├── mesher.rs, idle_analyzer.rs, housing_analyzer.rs, floating_analyzer.rs
-│   ├── analysis.rs         ← shared metrics helpers & format utilities
-│   └── report.rs           ← HTML report generator (minijinja)
+│   ├── bin/                ← Standalone CLI tools
+│   ├── analysis.rs         ← shared metrics helpers
+│   └── report.rs           ← HTML report generator
 ├── templates/              ← HTML report templates
-│   ├── report.html         ← main template
-│   └── js/                 ← bundled JS libraries (Chart.js)
-├── test_bench/             ← reference screenshots + expected_values.json
-│   ├── aoe2_16x9.png       ← 1080p baseline
-│   ├── aoe2_16x9_min.png   ← 75% UI scale
-│   ├── aoe2_16x9_max.png   ← 125% UI scale
-│   ├── aoe2_16x10.png, aoe2_4k.png, aoe2_21x9.png, aoe2_32x9.png
-│   └── expected_values.json
-└── research/               ← Python R&D only, do not port code from here blindly
-    ├── poc_vision.py       ← canonical pipeline implementation to port
-    ├── poc_video.py        ← batch video processor (reference only)
-    ├── poc_capture.py      ← live capture validation (reference only)
-    ├── templates/enormous_numbers/   ← digit template PNGs (0-9 + slash)
-    ├── test_vision.py      ← run from repo root: python research/test_vision.py
-    ├── test_video.py       ← run from repo root: python research/test_video.py
-    └── test_interpolation.py ← run from repo root: python research/test_interpolation.py
+├── test_bench/             ← reference screenshots
+└── research/               ← Python R&D only (reference)
 ```
-
-## The Pipeline (port this to Rust)
-
-All logic lives in `research/poc_vision.py`. Read it. The stages:
-
-### 1. Anchor Detection & Scale (`detect_ui_scale`)
-- Crop top **5%** of frame.
-- Mask for red: **R >= 190, G/B < 60**.
-- **Density Check**: Requires ≥ **12** red pixels in a 10x10 box (left-and-down).
-- **Scale Bounds**: Must be within **0.5–2.0**.
-- `ui_scale = (frame_width - rightmost_red_x) / 263`.
-
-### 2. Region Cropping
-- Load `ui_map.json`. Each element has `x_px, y_px, w_px, h_px` at baseline 1080p.
-- Multiply all coords by `ui_scale` to get actual pixel coords.
-- Crop the region from the frame.
-
-### 3. Special Cases Before Digit Extraction
-- **`idle_vils`**: Check for yellow pixels first (`contains_yellow`). If none → value is `"0"`, skip extraction entirely. Yellow criteria: R>100, G>100, B < min(R,G)−50, |R−G| < 50.
-- **`population_total`**: Check for housed overlay (`mean(G)>150, mean(R)>150, mean(B)<100`). If detected → use overlay mode (background subtraction + normalize).
-
-### 4. Color Filtering (`apply_base_filter`)
-Standard mode (all fields except overlay):
-- Per-pixel: compute `max_channel − min_channel`. Keep pixel if diff ≤ 20 (grey tolerance).
-- Apply threshold: zero out pixels below brightness 5.
-- Output is single-channel (use `max(R,G,B)` as grey value, so yellow text maps to white).
-
-Overlay mode (`population_total` when housed):
-- Sample background color at pixel [2,2].
-- Subtract background from entire box (clamp to 0).
-- Convert subtracted image to greyscale, normalize 0→255, threshold at 30.
-
-### 5. Digit Segmentation (`step3_segment_into_digits`)
-- Run connected components on the filtered image.
-- Discard components with area < `15 * ui_scale²` or no pixel ≥ 230 brightness.
-- If a component is wider than tall (`w + 2 > h`): it's touching digits — recurse with tighter thresholds (increase brightness threshold by 10 up to 160, then decrease grey tolerance by 2 down to 2, then switch to 4-connectivity).
-- Sort surviving bounding boxes left-to-right.
-- Crop digit images from the **soft-filtered** output (not the strict segmentation image).
-
-### 6. Canvas Preparation (`prepare_canvas`)
-Per digit:
-- Scale height to `WORKING_HEIGHT = 36px` (preserve aspect ratio).
-- Find bounding box of actual content, center it in a `64×64` canvas.
-- Gaussian blur sigma=1.0.
-- Convert to float32 [0.0, 1.0].
-
-### 7. Matching (`match_digit_to_template`)
-- Pre-shift the input canvas 9 times (±1px in X and Y).
-- For each template (0–9 + `/`): compute minimum SSD across the 9 shifts.
-- Sort by SSD ascending → best match wins.
-- Tie-breaker: if winner is `0` and runner-up is `3/6/9` (or vice versa) and SSD margin < 20%:
-  - Compute horizontal symmetry score (`sum((canvas − hflip(canvas))²)`).
-  - `0` is symmetric (score < 40); `3/6/9` are asymmetric (score > 60). Swap if contradicted.
-
-### 8. Output
-Collect digit strings per element. Return dict structured as `{category: {sub_key: value_str}}` matching the `name.split('_')` convention (e.g. `"wood_total"` → `results["wood"]["total"]`).
-
-## Key Constants (from poc_vision.py)
-```
-RED_MASK_LOWER      = [0, 0, 201]  (BGR)
-RED_MASK_UPPER      = [60, 60, 255]
-BASELINE_MARGIN     = 263
-OUT_GREY_TOLERANCE  = 20
-OUT_BRIGHTNESS_THRESHOLD = 5
-SEG_GREY_TOLERANCE  = 30
-SEG_BRIGHTNESS_THRESHOLD = 100
-SEG_REQUIRED_BRIGHTNESS = 230
-BASELINE_MIN_AREA   = 15
-WORKING_HEIGHT      = 36
-CANVAS_SIZE         = 64
-BLUR_SIGMA          = 1.0
-WIGGLE_OFFSETS      = [-1, 0, 1]
-YELLOW_BLUE_MARGIN  = 50
-HOUSED_INTERPOLATION_TIMEOUT_MS = 1000
-QUEUED_INTERPOLATION_TIMEOUT_MS = 2000
-```
-
-## Rust Decisions (already locked — see DECISION_LOG)
-- **Crates**: `image = "0.25"` + `imageproc = "0.25"` for pixel ops. No `opencv-rs` (painful Windows setup).
-- **Screen capture**: `windows = "0.58"` with DXGI Desktop Duplication API features.
-- **No OpenCV**: every OpenCV call in the Python code maps to a simple array op or has a direct `imageproc` equivalent. The wiggle SSD uses only ±1px array shifts — no `warpAffine` needed.
-- **Single binary**, no runtime, target ~5MB exe.
-- **Channel ordering**: the `image` crate uses **RGB** (not BGR like OpenCV). All channel-order-sensitive code in `filter.rs` and `anchor.rs` accounts for this — R=index 0, G=1, B=2.
-
-## Validating the Port
-Run the Python tests to get ground-truth output for the same inputs:
-```
-python research/test_vision.py   # static screenshots
-python research/test_video.py    # video frame extraction
-python research/test_interpolation.py # priority-based state interpolation logic
-```
-Expected values are in `test_bench/expected_values.json`.
