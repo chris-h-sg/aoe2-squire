@@ -1,6 +1,6 @@
-# RTS Analyzer Roadmap
+# AoE2 Squire Roadmap
 
-This roadmap outlines the development path for the RTS Analyzer, prioritizing core metrics and automation to provide performance data to players, before expanding into complex computer vision features.
+This roadmap outlines the development path for the AoE2 Squire, prioritizing core metrics and automation to provide performance data to players, before expanding into complex computer vision features.
 
 ## Future Enhancements
 
@@ -8,7 +8,7 @@ Once the MVP is providing user value, development will shift toward expanding ou
 
 ### Core Automation & Fundamentals
 *   **Pause Detection:** Implement logic to detect game pauses (e.g., via menu detection or timer stagnation) to prevent temporal drift in the synchronization pipeline.
-*   **Civilization Tech Tree Data Integration:** Integrate a comprehensive data file defining what units and technologies each civilization has access to, preventing the analyzer from penalizing players for missing unavailable upgrades.
+*   **Civilization Tech Tree Data Integration:** Integrate a comprehensive data file defining what units and technologies each civilization has access to, preventing the tool from penalizing players for missing unavailable upgrades.
 *   **Starting Resource Extraction:** Update the `aoe2rec` parser to correctly extract starting resources for the recorded player, replacing the current "first frame" heuristic with absolute ground truth.
 
 ### Vision Pipeline Expansions

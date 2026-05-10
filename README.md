@@ -1,4 +1,4 @@
-# AoE2 Analyzer
+# AoE2 Squire
 
 An AoE2:DE coaching tool that provides performance feedback immediately after your match ends.
 
@@ -16,11 +16,11 @@ In this example, the chart shows how the player (NotQuiteLegend) is managing the
 
 ### How It Works
 
-AoE2 Analyzer runs quietly in the background while you play and creates an interactive Post-Game Report as soon as your match finishes. 
+AoE2 Squire runs quietly in the background while you play and creates an interactive Post-Game Report as soon as your match finishes. 
 
 - **Automatic:** No need to upload files or watch replays manually.
-- **Zero Setup:** AoE2 Analyzer is a single standalone program. You don't need to install anything, edit configuration files, or even be connected to the internet.
-- **Passive & Safe:** AoE2 Analyzer only reads your screen visually to track resources. It never hooks into game memory or modifies files, ensuring there is zero risk of anti-cheat bans.
+- **Zero Setup:** AoE2 Squire is a single standalone program. You don't need to install anything, edit configuration files, or even be connected to the internet.
+- **Passive & Safe:** AoE2 Squire only reads your screen visually to track resources. It never hooks into game memory or modifies files, ensuring there is zero risk of anti-cheat bans.
 
 ## Getting Started (For Players)
 
@@ -30,11 +30,11 @@ AoE2 Analyzer runs quietly in the background while you play and creates an inter
 *   **Game:** Age of Empires II: Definitive Edition.
 
 ### Installation
-Simply download `rts-analyzer.exe` and place it anywhere on your computer. Everything the tool needs is included directly inside the file.
+Simply download `aoe2-squire.exe` and place it anywhere on your computer. Everything the tool needs is included directly inside the file.
 
 ### How to Use
-1. **Start the Tool:** Run `rts-analyzer.exe` before or during your game. It will run quietly in the background with minimal CPU impact, waiting for the game to appear.
-2. **Play your Match:** The analyzer automatically detects when the game starts and records your gameplay data.
+1. **Start the Tool:** Run `aoe2-squire.exe` before or during your game. It will run quietly in the background with minimal CPU impact, waiting for the game to appear.
+2. **Play your Match:** AoE2 Squire automatically detects when the game starts and records your gameplay data.
 3. **View the Report:** When the match ends, the tool finds your replay file, matches it with your screen data, and creates an `output/` folder with the HTML report. The report will open automatically in your web browser.
    * *Note: If the tool cannot find your replay file, a window will pop up asking you to select the file yourself.*
 
@@ -47,7 +47,7 @@ The vision pipeline currently has a few limitations:
 
 ## Developer Guide (For Contributors)
 
-The analyzer uses a **"Hybrid Data Strategy"**:
+AoE2 Squire uses a **"Hybrid Data Strategy"**:
 1. **Screen Scraping:** Records the "Current State" (resources, idle counts) while the game is running.
 2. **Replay Parsing:** Reads the game events (timings for units and technology) from the replay file after the match ends.
 3. **Data Meshing:** Combines both timelines to find "Efficiency Gaps" (for example, starting a technology research but failing to spend resources).
@@ -63,7 +63,7 @@ The main code is written in Rust.
 # Generate the final single-file binary
 cargo build --release
 ```
-*The output will be saved at `target/release/rts-analyzer.exe`.*
+*The output will be saved at `target/release/aoe2-squire.exe`.*
 
 ### Development Workflows
 

@@ -1,11 +1,11 @@
 [package]
-name = "rts-analyzer"
+name = "aoe2-squire"
 version = "0.1.0"
 edition = "2021"
-default-run = "rts-analyzer"
+default-run = "aoe2-squire"
 
 [[bin]]
-name = "rts-analyzer"
+name = "aoe2-squire"
 path = "src/main.rs"
 
 [dependencies]

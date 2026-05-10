@@ -1,4 +1,4 @@
-use rts_analyzer::capture::bgra_to_rgb_image;
+use aoe2_squire::capture::bgra_to_rgb_image;
 use windows::core::{Interface, Result};
 use windows::Win32::Graphics::Direct3D::{
     D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1,

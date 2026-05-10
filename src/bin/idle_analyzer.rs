@@ -1,5 +1,5 @@
-use rts_analyzer::analysis::{idle, load_merged_observations};
-use rts_analyzer::types::MergedRow;
+use aoe2_squire::analysis::{idle, load_merged_observations};
+use aoe2_squire::types::MergedRow;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {

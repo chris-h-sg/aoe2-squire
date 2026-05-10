@@ -1,6 +1,6 @@
 # Low-to-Mid Elo (Below 1200) AoE2 Player Issues Analysis
 
-Based on research across the AoE2 community (Reddit, AoEZone, YouTube guides, and community forums), below is a synthesis of the most common issues hindering players below 1200 Elo. This table also outlines how our RTS Analyzer project can detect and help players correct these mistakes.
+Based on research across the AoE2 community (Reddit, AoEZone, YouTube guides, and community forums), below is a synthesis of the most common issues hindering players below 1200 Elo. This table also outlines how our AoE2 Squire project can detect and help players correct these mistakes.
 
 | Issue | Common | Impact | Viability | Approach | Features Needed |
 | :--- | :---: | :---: | :---: | :--- | :--- |
@@ -15,10 +15,10 @@ Based on research across the AoE2 community (Reddit, AoEZone, YouTube guides, an
 | **Poor Scouting / Map Awareness**<br>*(Not finding resources or enemy base)* | 5 | 3 | 1 | Very difficult to infer from replay parsing alone without full spatial awareness. | Capturing the **Minimap** (bottom right) could allow us to calculate the percentage of explored map over time, and flag "dark" areas. |
 | **Poor Multi-tasking / Tunnel Vision**<br>*(Neglecting eco while fighting)* | 5 | 4 | 1 | Detect periods of high APM or combat (if parsing combat events) correlating with sudden spikes in floating resources or stagnant `population_vils`. | Advanced correlation logic linking combat proximity/intensity to macro-level economic drops. |
 
-## Key Takeaways for RTS Analyzer Value:
+## Key Takeaways for AoE2 Squire Value:
 1. **The Basics are Paramount:** High-impact features focus on fundamental macro mechanics (Idle TC, Floating Resources, Getting Housed). 
 2. **Hybrid Architecture Utility:** The hybrid approach (Replay Parsing + Vision OCR) supports comprehensive analysis. Replay parsing provides exact events (training, tech, buildings), while the vision pipeline supplies the economic context (current pop, floating resources) necessary to evaluate event execution and stalling.
-3. **High-Value Vision Expansions:** To expand the analyzer's capabilities, additions to the DXGI capture pipeline include:
+3. **High-Value Vision Expansions:** To expand the tool's capabilities, additions to the DXGI capture pipeline include:
    - **Game Timer (F11 Clock):** Capturing the top-screen clock enables absolute synchronization between vision data and replay parser data, removing synchronization heuristics.
    - **Global Queue:** Resolves the "Idle TC" detection problem by verifying when a villager is actively training.
    - **Minimap:** Enables features for evaluating scouting and map control.

@@ -1,6 +1,6 @@
 use csv::{ReaderBuilder, StringRecord, WriterBuilder};
-use rts_analyzer::analysis::smoothing;
-use rts_analyzer::constants::{
+use aoe2_squire::analysis::smoothing;
+use aoe2_squire::constants::{
     CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
 };
 use std::env;

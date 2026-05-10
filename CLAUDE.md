@@ -1,4 +1,4 @@
-# RTS Analyzer — Project Context
+# AoE2 Squire — Project Context
 
 ## What We're Building
 A native Windows background tool that scrapes AoE2:DE resource/villager counts from the screen in real time and combines them with replay data to produce post-game efficiency coaching. Target: minimal CPU footprint (<1% to avoid impacting the game), no memory hooking, no anti-cheat risk.
@@ -13,7 +13,7 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 
 ## Repo Layout
 ```
-rts-analyzer/
+aoe2-squire/
 ├── CLAUDE.md               ← you are here
 ├── DECISION_LOG.md         ← all architectural decisions with rationale — read this
 ├── TECHNICAL_SPEC.md       ← product-level requirements

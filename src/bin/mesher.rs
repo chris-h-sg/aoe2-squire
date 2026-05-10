@@ -1,5 +1,5 @@
-use rts_analyzer::analysis::mesher;
-use rts_analyzer::constants::{
+use aoe2_squire::analysis::mesher;
+use aoe2_squire::constants::{
     CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
 };
 use std::env;

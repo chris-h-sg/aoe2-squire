@@ -58,6 +58,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
+name = "aoe2-squire"
+version = "0.1.0"
+dependencies = [
+ "aoe2rec",
+ "binrw",
+ "chrono",
+ "csv",
+ "image",
+ "imageproc",
+ "include_dir",
+ "minijinja",
+ "open",
+ "rfd",
+ "serde",
+ "serde_json",
+ "windows",
+]
+
+[[package]]
 name = "aoe2rec"
 version = "0.9.0"
 dependencies = [
@@ -1352,25 +1371,6 @@ name = "rgb"
 version = "0.8.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b34b781b31e5d73e9fbc8689c70551fd1ade9a19e3e28cfec8580a79290cc4"
-
-[[package]]
-name = "rts-analyzer"
-version = "0.1.0"
-dependencies = [
- "aoe2rec",
- "binrw",
- "chrono",
- "csv",
- "image",
- "imageproc",
- "include_dir",
- "minijinja",
- "open",
- "rfd",
- "serde",
- "serde_json",
- "windows",
-]
 
 [[package]]
 name = "rustix"

@@ -1,6 +1,6 @@
 # Decision Log
 
-This log captures the high-level architectural and design decisions of the RTS Analyzer. Detailed implementation notes (e.g., exact pixel thresholds, OCR parsing nuances) are codified and documented within the source code.
+This log captures the high-level architectural and design decisions of the AoE2 Squire. Detailed implementation notes (e.g., exact pixel thresholds, OCR parsing nuances) are codified and documented within the source code.
 
 ## Replay/Telemetry Sync
 

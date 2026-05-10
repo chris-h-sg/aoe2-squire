@@ -1,4 +1,4 @@
-use rts_analyzer::{pipeline, types};
+use aoe2_squire::{pipeline, types};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;

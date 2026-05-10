@@ -1,8 +1,8 @@
-use rts_analyzer::analysis::{floating, housing, idle, mesher};
-use rts_analyzer::constants::{
+use aoe2_squire::analysis::{floating, housing, idle, mesher};
+use aoe2_squire::constants::{
     CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
 };
-use rts_analyzer::{capture, pipeline, report, types};
+use aoe2_squire::{capture, pipeline, report, types};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -34,7 +34,7 @@ fn run_full_analysis(
     )?;
     println!("Successfully meshed {} rows.", merged.len());
 
-    let replay_data = rts_analyzer::replay::extract_events(replay_path)?;
+    let replay_data = aoe2_squire::replay::extract_events(replay_path)?;
 
     // 2. Run Analyzers
     let idle_stats = idle::analyze_idle(merged.iter().cloned(), verbose)?;
@@ -117,12 +117,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if args.len() > 1 && args[1] == "--parse-replay" {
         if args.len() < 3 {
-            eprintln!("Usage: rts-analyzer --parse-replay <path/to/replay.aoe2record>");
+            eprintln!("Usage: aoe2-squire --parse-replay <path/to/replay.aoe2record>");
             std::process::exit(1);
         }
         let replay_path = Path::new(&args[2]);
         println!("Parsing replay: {}", replay_path.display());
-        rts_analyzer::replay::print_events(replay_path)?;
+        aoe2_squire::replay::print_events(replay_path)?;
         return Ok(());
     }
 

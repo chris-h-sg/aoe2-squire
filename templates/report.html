@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | AoE2 Analyzer</title>
+    <title>{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | AoE2 Squire</title>
     <script>{{ chart_js_lib | safe }}</script>
     <style data-purpose="custom-fonts">
         @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap");
@@ -425,7 +425,7 @@
         
         // Update page title with duration
         const durationStr = formatDuration(matchDurationSec);
-        document.title = `{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | ${durationStr} | AoE2 Analyzer`;
+        document.title = `{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | ${durationStr} | AoE2 Squire`;
 
         const timeLabels = {{ chart.time_labels_json | safe }};
         const popVils = {{ chart.pop_vils_json | safe }};

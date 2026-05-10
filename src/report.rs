@@ -231,7 +231,7 @@ mod tests {
             "HTML should contain the player civilizations in the title"
         );
         assert!(
-            html.contains("AoE2 Analyzer"),
+            html.contains("AoE2 Squire"),
             "HTML should contain the app name in the title"
         );
         assert!(
