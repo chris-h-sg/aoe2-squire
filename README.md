@@ -10,7 +10,7 @@ It highlights your main areas to improve, such as:
 
 ### Match Report Example
 
-<a href="report-sample.png"><img src="report-sample.png" alt="Sample Post-Game Report showing timeline and efficiency metrics" width="600"></a>
+<a href="assets/report-sample.png"><img src="assets/report-sample.png" alt="Sample Post-Game Report showing timeline and efficiency metrics" width="600"></a>
 
 In this example, the chart shows how the player (NotQuiteLegend) is managing their idle villagers well (red line) but could improve their villager production (blue line). They got housed once around 27:00 (red overlay) and floated a lot of gold and stone during Feudal Age (gold and grey bars at the top).
 
@@ -31,6 +31,22 @@ AoE2 Squire runs quietly in the background while you play and creates an interac
 
 ### Installation
 Simply download `aoe2-squire.exe` and place it anywhere on your computer. Everything the tool needs is included directly inside the file.
+
+<details>
+<summary><b>Getting a Windows SmartScreen warning?</b></summary>
+
+After downloading AoE2 Squire, Windows SmartScreen might stop it from running because it's not signed by Microsoft.
+
+1. When you see the warning, click on **More info**.
+
+   <img src="assets/smartscreen-1.png" alt="SmartScreen warning showing More info highlighted" width="400">
+
+2. Verify that the Publisher is listed as **Unknown Publisher**. 
+   * **Important:** If it shows anything else, do not run the file, as it could be malware!
+   * If it shows "Unknown Publisher", it simply means the file isn't signed by Microsoft. Click **Run anyway** to start AoE2 Squire.
+
+   <img src="assets/smartscreen-2.png" alt="SmartScreen warning showing Unknown Publisher and Run anyway button" width="400">
+</details>
 
 ### How to Use
 1. **Start the Tool:** Run `aoe2-squire.exe` before or during your game. It will run quietly in the background with minimal CPU impact, waiting for the game to appear.
