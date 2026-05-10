@@ -159,6 +159,7 @@ pub struct MatchMetadata {
     pub players: Vec<PlayerInfo>,
     pub rec_player_name: String,
     pub rec_player_civ: String,
+    pub app_version: String,
 }
 
 pub struct ReplayData {
@@ -570,6 +571,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         players: player_infos,
         rec_player_name,
         rec_player_civ,
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
     };
 
     Ok(ReplayData {

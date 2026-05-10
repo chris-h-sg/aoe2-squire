@@ -255,6 +255,23 @@
             padding: 15px;
             border-radius: 4px;
         }
+
+        .report-footer {
+            text-align: center;
+            margin-top: 15px;
+            padding-bottom: 20px;
+            font-size: 0.85em;
+            color: #2a221a;
+        }
+
+        .report-footer a {
+            color: #9c7c25;
+            text-decoration: none;
+        }
+
+        .report-footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -394,6 +411,10 @@
                     </tr>
                 </tfoot>
             </table>
+        </div>
+
+        <div class="report-footer">
+            Created by <a href="https://github.com/chris-h-sg/aoe2-squire" target="_blank">AoE2 Squire</a> version {{ meta.app_version }} | <a href="https://discord.gg/k9DubjSJAQ" target="_blank">Give Feedback</a> on Discord!
         </div>
     </div>
 

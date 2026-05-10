@@ -220,6 +220,7 @@ mod tests {
             ],
             rec_player_name: "Player 1".to_string(),
             rec_player_civ: "Franks".to_string(),
+            app_version: "0.1.0".to_string(),
         };
 
         let chart_data = extract_chart_data(&[], &floating);
