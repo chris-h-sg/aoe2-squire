@@ -13,7 +13,7 @@ pub const RED_PIXEL_MIN_COUNT: usize = 12;
 pub const ANCHOR_MIN_X: f64 = 0.5;
 pub const ANCHOR_MAX_X: f64 = 0.95;
 pub const ANCHOR_MIN_Y: f64 = 0.015;
-pub const ANCHOR_MAX_Y: f64 = 0.05;
+pub const ANCHOR_MAX_Y: f64 = 0.035;
 
 pub const UI_SCALE_MIN: f64 = 0.5;
 pub const UI_SCALE_MAX: f64 = 2.0;

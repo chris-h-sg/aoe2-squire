@@ -17,7 +17,7 @@ BASELINE_MARGIN = 263
 ANCHOR_MIN_X = 0.5
 ANCHOR_MAX_X = 0.95
 ANCHOR_MIN_Y = 0.015
-ANCHOR_MAX_Y = 0.05
+ANCHOR_MAX_Y = 0.035
 
 # --- Extraction Clean-up ---
 OUT_GREY_TOLERANCE = 30
@@ -60,6 +60,8 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
     y_max = int(h * ANCHOR_MAX_Y)
     x_min_scan = int(w * ANCHOR_MIN_X)
     x_max_scan = int(w * ANCHOR_MAX_X)
+    
+    print(f"Anchor Scan Box: x=[{x_min_scan}, {x_max_scan}], y=[{y_min}, {y_max}]")
     
     crop = img[y_min:y_max, x_min_scan:x_max_scan]
 
