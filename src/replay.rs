@@ -71,7 +71,7 @@ type ReferenceData = (
 );
 
 fn parse_csv_map(
-    path: &str,
+    content: &str,
     id_col: usize,
     name_col: usize,
     cost_start_col: Option<usize>,
@@ -82,7 +82,6 @@ fn parse_csv_map(
     let mut cost_map = HashMap::new();
     let mut building_map = HashMap::new();
 
-    let content = std::fs::read_to_string(path)?;
     let mut rdr = csv::ReaderBuilder::new()
         .flexible(true)
         .from_reader(content.as_bytes());
@@ -182,13 +181,18 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     println!("Build: {:?}", savegame.zheader.build);
 
     // Load reference data
+    let units_csv = include_str!("../data/units.csv");
+    let techs_csv = include_str!("../data/techs.csv");
+    let buildings_csv = include_str!("../data/buildings.csv");
+    let civs_csv = include_str!("../data/civilizations.csv");
+
     let (unit_map, unit_cost_map, unit_to_b_raw) =
-        parse_csv_map("data/units.csv", 0, 1, Some(6), Some(7), 3)?;
+        parse_csv_map(units_csv, 0, 1, Some(6), Some(7), 3)?;
     let (tech_map, tech_cost_map, tech_to_b_raw) =
-        parse_csv_map("data/techs.csv", 0, 1, Some(2), Some(6), 4)?;
+        parse_csv_map(techs_csv, 0, 1, Some(2), Some(6), 4)?;
     let (building_map, building_cost_map, _) =
-        parse_csv_map("data/buildings.csv", 0, 1, Some(4), None, 4)?;
-    let (civ_map, _, _) = parse_csv_map("data/civilizations.csv", 0, 1, None, None, 0)?;
+        parse_csv_map(buildings_csv, 0, 1, Some(4), None, 4)?;
+    let (civ_map, _, _) = parse_csv_map(civs_csv, 0, 1, None, None, 0)?;
 
     // Map building IDs to names for easier lookup
     let unit_to_b_map: HashMap<u32, String> = unit_to_b_raw
