@@ -58,7 +58,7 @@ After downloading AoE2 Squire, Windows SmartScreen might stop it from running be
 The vision pipeline currently has a few limitations:
 *   **Pausing the Game:** Pausing currently breaks the sync between the visual clock and the replay timeline.
 *   **Alt-Tabbing:** If you alt-tab or minimize the game during a match, the visual data will be interrupted.
-*   **UI Mods:** Mods that change the position, color, or font of the top resource bar or population counts will break the recorder.
+*   **UI Mods:** Mods that change the position of the top resource bar or population counts will break the recorder. `Anne_HK - Better Resource Panel and Idle Villager Icon` is supported.
 *   **Replay POV:** Analysis is based on the player from whose point of view the replay was recorded.
 
 ## Developer Guide (For Contributors)

@@ -21,6 +21,14 @@ ANCHOR_MAX_Y = 0.035
 UI_SCALE_MIN = 0.5
 UI_SCALE_MAX = 2.0
 
+# --- Mod Support ---
+ANNE_HK_PIXEL_MIN_COUNT = 12
+ANNE_HK_COLOR_DIFF_THRESHOLD = 150  # R and G must be this much higher than B
+ANNE_HK_Y_ADJUST_FACTOR = 0.6       # Villager boxes expanded up by 60%
+ANNE_HK_IDLE_W_ADJUST_FACTOR = 0.4   # Idle vils box expanded width by 20%
+ANNE_HK_IDLE_RED_MIN = 150          # Red indicator threshold
+ANNE_HK_IDLE_GB_MAX = 10            # Max Green/Blue for the red indicator
+
 # --- Extraction Clean-up ---
 OUT_GREY_TOLERANCE = 30
 OUT_BRIGHTNESS_THRESHOLD = 5
@@ -113,12 +121,19 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
 # 2. EXTRACTION & SEGMENTATION
 # ==========================================
 
-def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allow_yellow=False):
+def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allow_yellow=False, ignore_color=False):
     """
-    Filter by greyness and brightness to isolate white text.
+    Filter by greyness and brightness to isolate text.
+    ignore_color: If True, bypass color-based filtering (greyscale only).
     """
     if img is None or img.size == 0:
         return np.zeros((1, 1), dtype=np.uint8)
+
+    if ignore_color:
+        # Convert to greyscale as requested for mod detection
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, cleaned = cv2.threshold(gray, brightness_thresh, 255, cv2.THRESH_TOZERO)
+        return cleaned
 
     if overlay_mode:
         # Detect overlay color from a near-black background pixel (top-left)
@@ -207,15 +222,46 @@ def contains_yellow(img, min_brightness=100, blue_margin=50, rg_similarity=50):
     # Return True if any yellow pixels found
     return np.any(is_yellow)
 
-def step2_cleanup_box(box_img, overlay_mode=False, allow_yellow=False):
+def contains_red(img):
+    """
+    Checks if the box contains red pixels (Anne_HK mod idle villager indicator).
+    Red is detected by: high R value, very low G and B values.
+    """
+    if img is None or len(img.shape) < 3:
+        return False
+    
+    b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+    
+    is_red = (r > ANNE_HK_IDLE_RED_MIN) & (g < ANNE_HK_IDLE_GB_MAX) & (b < ANNE_HK_IDLE_GB_MAX)
+    return np.any(is_red)
+
+def detect_anne_hk_mod(img):
+    """
+    Detects 'Anne_HK resource panels' mod by checking for specific color patterns in wood_vils box.
+    Check if it contains enough pixels where R and G are significantly higher than B.
+    """
+    if img is None or len(img.shape) < 3:
+        return False
+    
+    # BGR channels
+    b = img[:, :, 0].astype(np.int16)
+    g = img[:, :, 1].astype(np.int16)
+    r = img[:, :, 2].astype(np.int16)
+    
+    mask = (r - b > ANNE_HK_COLOR_DIFF_THRESHOLD) & (g - b > ANNE_HK_COLOR_DIFF_THRESHOLD)
+    count = np.sum(mask)
+    
+    return count >= ANNE_HK_PIXEL_MIN_COUNT
+
+def step2_cleanup_box(box_img, overlay_mode=False, allow_yellow=False, ignore_color=False):
     """
     Produces a high-quality soft-filtered output image for the matcher.
     """
     # Higher threshold for normalized Blue (30) to avoid background noise
     threshold = OUT_BRIGHTNESS_THRESHOLD if not overlay_mode else 30
-    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
+    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
 
-def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False):
+def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False, ignore_color=False):
     """
     Finds digit bounding boxes using strict iterative filtering on the original BGR,
     then crops the final digits from the cleaner 'out_img'.
@@ -224,7 +270,7 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
     
     def get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x=0, offset_y=0, connectivity=8):
         # Step 1: Filter and find connected components
-        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
+        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
         binary = (seg > 0).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
         
@@ -234,7 +280,8 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
             if stats[i, cv2.CC_STAT_AREA] >= min_area:
                 # Check if component has at least one bright pixel
                 x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-                if np.max(seg[y:y+h, x:x+w][labels[y:y+h, x:x+w] == i]) >= SEG_REQUIRED_BRIGHTNESS:
+                req_bright = SEG_REQUIRED_BRIGHTNESS if not ignore_color else 150
+                if np.max(seg[y:y+h, x:x+w][labels[y:y+h, x:x+w] == i]) >= req_bright:
                     valid_indices.append(i)
 
         if not valid_indices:
@@ -283,13 +330,13 @@ def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False
         
     return digits, digit_boxes
 
-def extract_digits(box_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False):
+def extract_digits(box_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False, ignore_color=False):
     """
     Wrapper that performs cleanup and segmentation.
     Returns list of cleaned digit images.
     """
-    out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
-    digits, _ = step3_segment_into_digits(box_img, out_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
+    out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
+    digits, _ = step3_segment_into_digits(box_img, out_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
     return digits
 
 # ==========================================
@@ -454,13 +501,39 @@ def process_frame(img, ui_map, templates, verbose=True):
     results = {}
     pop_color = "white"
     
-    # 2. Process each element
+    # 2. Mod Detection: Anne_HK resource panels
+    # Detect once before processing elements
+    anne_hk_active = False
+    wood_vils_coords = ui_map.get('elements', {}).get('wood_vils')
+    if wood_vils_coords:
+        x = int(wood_vils_coords['x_px'] * ui_scale)
+        y = int(wood_vils_coords['y_px'] * ui_scale)
+        w = int(wood_vils_coords['w_px'] * ui_scale)
+        h = int(wood_vils_coords['h_px'] * ui_scale)
+        if x+w <= img.shape[1] and y+h <= img.shape[0]:
+            if detect_anne_hk_mod(img[y:y+h, x:x+w]):
+                anne_hk_active = True
+                if verbose:
+                    print("    [Anne_HK resource panels] mod detected!")
+
+    # 3. Process each element
     for name, coords in ui_map.get('elements', {}).items():
         value_str = ""
         x = int(coords['x_px'] * ui_scale)
         y = int(coords['y_px'] * ui_scale)
         w = int(coords['w_px'] * ui_scale)
         h = int(coords['h_px'] * ui_scale)
+        
+        # Mod Adjustment: Anne_HK villager numbers are larger and shifted upwards
+        if anne_hk_active and name.endswith("_vils"):
+            y_adj = int(h * ANNE_HK_Y_ADJUST_FACTOR)
+            y = max(0, y - y_adj)
+            h = h + y_adj
+            
+            # Expanded width for idle vils to handle 3 digits (e.g. 103)
+            if name == "idle_vils":
+                w_adj = int(w * ANNE_HK_IDLE_W_ADJUST_FACTOR)
+                w = w + w_adj
         
         # Valid crop check
         if x+w > img.shape[1] or y+h > img.shape[0]:
@@ -473,6 +546,10 @@ def process_frame(img, ui_map, templates, verbose=True):
         # Select processing modes
         overlay_mode = False
         allow_yellow = False
+        ignore_color = False
+
+        if anne_hk_active and name.endswith("_vils"):
+            ignore_color = True
 
         # Population Total Shortcut: Check for Housed overlay and enable Yellow Font detection
         if name == "population_total":
@@ -488,15 +565,17 @@ def process_frame(img, ui_map, templates, verbose=True):
                 state_desc = "overlay" if pop_color == "overlay" else "yellow text"
                 print(f"    Housed state ({state_desc}) detected for {name}!")
 
-        # Special Case: Idle Villagers are 0 if the icon is grey (not yellow)
+        # Special Case: Idle Villagers are 0 if the icon is not active
         if name == "idle_vils":
-            if not contains_yellow(box_img):
+            is_active = contains_red(box_img) if anne_hk_active else contains_yellow(box_img)
+            
+            if not is_active:
                 value_str = "0"
                 digits = []
-                debug_details = ["YellowCheck:0"]
+                debug_details = ["ActiveCheck:0"]
             else:
                 # Extract digits
-                digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
+                digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
                 
                 # Match digits
                 value_str = ""
@@ -505,9 +584,14 @@ def process_frame(img, ui_map, templates, verbose=True):
                     char, ssd, info = match_digit_to_template(d_img, templates)
                     value_str += char
                     debug_details.append(f"{char}({ssd:.1f}{info})")
+                
+                # If no digits found for idle_vils but we bypassed the yellow check, it's 0
+                if not digits and anne_hk_active:
+                    value_str = "0"
+                    debug_details = ["AnneHK:0"]
         else:
             # Extract digits
-            digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow)
+            digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
             
             # Match digits
             value_str = ""

@@ -56,7 +56,10 @@ class TestVisionSystem(unittest.TestCase):
             "aoe2_32x9.png",
             "housed_no_overlay.png",
             "housed_overlay.png",
-            "aoe2_1366x768-modded.png"
+            "aoe2_1366x768_Anne_HK.png",
+            "aoe2_16x9_Anne_HK.png",
+            "aoe2_16x9_Anne_HK-no-idle.png",
+            "aoe2_16x9_Anne_HK-103-idle.png"
         }
 
     def test_extract_digits_count_parameterized(self):

@@ -127,28 +127,97 @@
                 "vils": "1"
             }
         },
-        "modded_1366x768": {
+        "Anne_HK_1366x768": {
             "wood": {
-                "total": "200"
+                "total": "200",
+                "vils": "0"
             },
             "food": {
-                "total": "200"
+                "total": "200",
+                "vils": "0"
             },
             "gold": {
-                "total": "100"
+                "total": "100",
+                "vils": "0"
             },
             "stone": {
-                "total": "200"
+                "total": "200",
+                "vils": "0"
             },
             "population": {
+                "vils": "6",
                 "total": "8",
-                "housing": "10"
+                "housing": "10",
+                "color": "white"
+            },
+            "idle": {
+                "vils": "6"
+            }
+        },
+        "baseline_1080p_no_idle": {
+            "wood": {
+                "vils": "17",
+                "total": "18249"
+            },
+            "food": {
+                "vils": "25",
+                "total": "16800"
+            },
+            "gold": {
+                "vils": "8",
+                "total": "10000"
+            },
+            "stone": {
+                "vils": "9",
+                "total": "3400"
+            },
+            "population": {
+                "vils": "64",
+                "total": "64",
+                "housing": "75",
+                "color": "white"
+            },
+            "idle": {
+                "vils": "0"
+            }
+        },
+        "baseline_1080p_103_idle": {
+            "wood": {
+                "vils": "0",
+                "total": "18199"
+            },
+            "food": {
+                "vils": "0",
+                "total": "15000"
+            },
+            "gold": {
+                "vils": "0",
+                "total": "10000"
+            },
+            "stone": {
+                "vils": "0",
+                "total": "3400"
+            },
+            "population": {
+                "vils": "103",
+                "total": "103",
+                "housing": "125",
+                "color": "red"
+            },
+            "idle": {
+                "vils": "103"
             }
         }
     },
     "images": {
         "aoe2_16x9.png": {
             "use_value_set": "baseline_1080p"
+        },
+        "aoe2_16x9_Anne_HK.png": {
+            "use_value_set": "baseline_1080p"
+        },
+        "aoe2_16x9_Anne_HK-no-idle.png": {
+            "use_value_set": "baseline_1080p_no_idle"
         },
         "aoe2_16x9_max.png": {
             "use_value_set": "baseline_1080p"
@@ -177,8 +246,8 @@
         "housed_no_overlay.png": {
             "use_value_set": "housed_no_overlay"
         },
-        "aoe2_1366x768-modded.png": {
-            "use_value_set": "modded_1366x768"
+        "aoe2_1366x768_Anne_HK.png": {
+            "use_value_set": "Anne_HK_1366x768"
         }
     }
 }

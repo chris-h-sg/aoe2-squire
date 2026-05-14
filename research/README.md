@@ -75,8 +75,8 @@ The extraction process follows an optimized 4-stage pipeline:
         - **Mode Switch**: If no bright white pixels are present in a box, the filter automatically allows "Yellowish" pixels (`R>100, G>100, B < max-15`).
         - **Max-Channel Grayscale**: Instead of standard conversion, the system uses `max(R,G,B)` for the final grayscale image. This ensures bright yellow digits become pure white, matching standard templates perfectly.
     - **Idle Villager Short-Circuit**: 
-        - Before full extraction, `idle_vils` box is checked for **Yellow Pixels** (`contains_yellow`).
-        - If no yellow is found (grey icon), the value is immediately returned as "0".
+        - Before full extraction, `idle_vils` box is checked for active indicators (**Yellow Pixels** in vanilla, **Red Pixels** in Anne_HK UI).
+        - If no active indicator is found, the value is immediately returned as "0".
         - This provides a **100-400x speedup** for this common case and prevents mismatched noise.
     - **Final Cleanup**: Applies a soft filter (`OUT_BRIGHTNESS_THRESHOLD=5`) to remove background noise while preserving anti-aliased text edges.
         - **Brightness Filter**: Discards any detected component that does not contain at least one pixel above `SEG_REQUIRED_BRIGHTNESS` (230). This prevents dim background artifacts from being identified as digits.

@@ -82,3 +82,11 @@ This log captures the high-level architectural and design decisions of the AoE2 
 ### 3. Manual Replay Selection Fallback
 *   **Decision**: Provide a Windows file chooser fallback when automated replay discovery fails, defaulting to the most recently modified savegame directory.
 *   **Reasoning**: Handles edge cases for advanced users (casters, analysts) where the replay file might be manipulated before the capture starts, without breaking the automated flow.
+
+## UI Mod Support
+
+### 1. Dynamic Mod Detection (Anne_HK)
+*   **Decision**: Detect `Anne_HK resource panels` via pixel-color signatures in the wood villager panel and automatically adjust the vision pipeline.
+*   **Reasoning**: 
+    *   Many competitive players use this mod that changes text colors and clears out panel backgrounds.
+    *   By detecting the mod once per frame, we can switch to an "Ignore Color" (Greyscale) extraction mode and adjust bounding box heights to accommodate larger modded fonts, without requiring the user to switch profiles or configuration files manually.
