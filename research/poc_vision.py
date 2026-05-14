@@ -4,7 +4,19 @@ import json
 import os
 import argparse
 import time
-from pathlib import Path
+
+"""
+AoE2 Squire Vision Pipeline (Proof of Concept)
+----------------------------------------------
+This script implements a scale-invariant vision pipeline for extracting 
+game state from Age of Empires II: Definitive Edition.
+
+ARCHITECTURAL PHILOSOPHY: "Detect First, Extract Second"
+1. CALIBRATION: Detect UI scale and mod-specific geometry using fixed anchors (e.g., Red UI elements).
+2. ANCHORING: Use a reference box (Wood) to find the vertical baseline of digits.
+3. NORMALIZATION: Clip boxes to the detected baseline to ensure digits are vertically centered.
+4. ROBUST OCR: Combine anchoring with standard vertical wiggle to maintain 100% accuracy across all resolutions.
+"""
 
 # ==========================================
 # CONSTANTS & CONFIGURATION
@@ -13,7 +25,6 @@ from pathlib import Path
 # --- Scale Detection ---
 RED_PIXEL_MIN_COUNT = 12
 RED_DIFF_THRESHOLD = 140     # Red must be this much higher than Green and Blue
-BASELINE_MARGIN = 263
 ANCHOR_MIN_X = 0.5
 ANCHOR_MAX_X = 0.95
 ANCHOR_MIN_Y = 0.015
@@ -21,17 +32,13 @@ ANCHOR_MAX_Y = 0.035
 UI_SCALE_MIN = 0.5
 UI_SCALE_MAX = 2.0
 
-# --- Mod Support ---
+# --- Mod Support (Anne_HK) ---
 ANNE_HK_PIXEL_MIN_COUNT = 12
 ANNE_HK_COLOR_DIFF_THRESHOLD = 150  # R and G must be this much higher than B
 ANNE_HK_Y_ADJUST_FACTOR = 0.6       # Villager boxes expanded up by 60%
-ANNE_HK_IDLE_W_ADJUST_FACTOR = 0.4   # Idle vils box expanded width by 20%
+ANNE_HK_IDLE_W_ADJUST_FACTOR = 0.4   # Idle vils box expanded width by 40%
 ANNE_HK_IDLE_RED_MIN = 150          # Red indicator threshold
 ANNE_HK_IDLE_GB_MAX = 10            # Max Green/Blue for the red indicator
-
-# --- Extraction Clean-up ---
-OUT_GREY_TOLERANCE = 30
-OUT_BRIGHTNESS_THRESHOLD = 5
 
 # --- Segmentation ---
 SEG_GREY_TOLERANCE = 30
@@ -39,109 +46,103 @@ SEG_BRIGHTNESS_THRESHOLD = 100
 SEG_REQUIRED_BRIGHTNESS = 230
 BASELINE_MIN_AREA = 15
 
+# --- Extraction Cleanup ---
+OUT_GREY_TOLERANCE = 30
+OUT_BRIGHTNESS_THRESHOLD_DEFAULT = 5
+OUT_BRIGHTNESS_THRESHOLD_OVERLAY = 30
+
 # --- Matching ---
 WORKING_HEIGHT = 36
 CANVAS_SIZE = 64
 BLUR_SIGMA = 1.0
 OFFSETS = [-1, 0, 1]
 
-# Pre-computed translation matrices for Wiggle SSD
-WIGGLE_MATRICES = [
-    np.float32([[1, 0, dx], [0, 1, dy]])
-    for dy in OFFSETS
-    for dx in OFFSETS
-]
+# --- OCR Tie-Breaker (0 vs 3/6/9) ---
+TB_SSD_MARGIN = 0.20        # SSD difference must be within 20% for tie-breaker
+TB_SYM_ZERO_MAX = 60        # Max symmetry score for a '0'
+TB_SYM_ASYM_MIN = 40        # Min symmetry score for asymmetric digits
+TB_ASYM_CHARS = {'3', '6', '9'}
+
+# --- Scale Detection ---
+BASELINE_MARGIN_PX = 263    # Standard 1080p right-side margin
 
 # ==========================================
-# 1. UI SCALE DETECTION
+# 1. VISION UTILITIES (DETECTORS & FILTERS)
 # ==========================================
 
-def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
+def detect_ui_scale(img, baseline_margin=263):
     """
-    Detects the UI scale based on the right-side margin of red UI elements.
-    Ported from src/pipeline/anchor.rs to ensure parity with Rust.
+    Detects the UI scale by finding the right-most edge of the top-bar UI (red background).
+    The distance from the right edge of the screen to this UI element is constant in 
+    screen-space at 100% scale (263px). We use this to calculate the current scaling factor.
     """
-    if img is None:
-        return None
-
+    if img is None: return None
     h, w, _ = img.shape
+    y_min_scan, y_max_scan = int(h * ANCHOR_MIN_Y), min(h - 1, int(h * ANCHOR_MAX_Y))
+    x_min_scan, x_max_scan = int(w * ANCHOR_MIN_X), min(w - 1, int(w * ANCHOR_MAX_X))
     
-    # Calculate scan boundaries
-    y_min_scan = int(h * ANCHOR_MIN_Y)
-    y_max_scan = min(h - 1, int(h * ANCHOR_MAX_Y))
-    x_min_scan = int(w * ANCHOR_MIN_X)
-    x_max_scan = min(w - 1, int(w * ANCHOR_MAX_X))
-    
-    # Convert to RGB for parity with Rust 'image' crate logic
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
     best_rightmost_x = None
-    best_y = None
 
     for y in range(y_min_scan, y_max_scan + 1):
         for x in range(x_min_scan, x_max_scan + 1):
             r, g, b = img_rgb[y, x]
-            
-            # Red must be at least RED_DIFF_THRESHOLD greater than both Green and Blue
             if (int(r) - int(g) >= RED_DIFF_THRESHOLD) and (int(r) - int(b) >= RED_DIFF_THRESHOLD):
-                # Density check: count red pixels in a 10x10 box extending to the left and down
                 x_start = max(x_min_scan, x - 9)
                 y_end = min(y_max_scan, y + 9)
-
-                # Sub-scan the 10x10 area
                 sub_area = img_rgb[y : y_end + 1, x_start : x + 1]
                 
-                # Vectorized difference check
-                r_chan = sub_area[:, :, 0].astype(np.int16)
-                g_chan = sub_area[:, :, 1].astype(np.int16)
-                b_chan = sub_area[:, :, 2].astype(np.int16)
-                r_mask = (r_chan - g_chan >= RED_DIFF_THRESHOLD) & \
-                         (r_chan - b_chan >= RED_DIFF_THRESHOLD)
+                r_chan, g_chan, b_chan = sub_area[:, :, 0].astype(np.int16), sub_area[:, :, 1].astype(np.int16), sub_area[:, :, 2].astype(np.int16)
+                r_mask = (r_chan - g_chan >= RED_DIFF_THRESHOLD) & (r_chan - b_chan >= RED_DIFF_THRESHOLD)
                 
-                count = np.sum(r_mask)
-
-                if count >= RED_PIXEL_MIN_COUNT:
+                if np.sum(r_mask) >= RED_PIXEL_MIN_COUNT:
                     if best_rightmost_x is None or x > best_rightmost_x:
                         best_rightmost_x = x
-                        best_y = y
 
-    if best_rightmost_x is None:
-        return None
-        
-    print(f"Anchor found at: x={best_rightmost_x}, y={best_y}")
-    margin_px = w - best_rightmost_x
-    ui_scale = margin_px / baseline_margin
+    if best_rightmost_x is None: return None
+    ui_scale = (w - best_rightmost_x) / baseline_margin
+    return ui_scale if UI_SCALE_MIN <= ui_scale <= UI_SCALE_MAX else None
 
-    if not (UI_SCALE_MIN <= ui_scale <= UI_SCALE_MAX):
-        return None
+def detect_anne_hk_mod(img):
+    """Detects 'Anne_HK resource panels' mod by checking for specific color patterns."""
+    if img is None or len(img.shape) < 3: return False
+    b, g, r = img[:, :, 0].astype(np.int16), img[:, :, 1].astype(np.int16), img[:, :, 2].astype(np.int16)
+    mask = (r - b > ANNE_HK_COLOR_DIFF_THRESHOLD) & (g - b > ANNE_HK_COLOR_DIFF_THRESHOLD)
+    return np.sum(mask) >= ANNE_HK_PIXEL_MIN_COUNT
 
-    return ui_scale
+def detect_housed_overlay(img):
+    """Detects the bright yellow background overlay used when a player is housed."""
+    if img is None or len(img.shape) < 3: return False
+    return np.mean(img[:, :, 1]) > 150 and np.mean(img[:, :, 2]) > 150 and np.mean(img[:, :, 0]) < 100
 
-# ==========================================
-# 2. EXTRACTION & SEGMENTATION
-# ==========================================
+def contains_yellow(img, min_brightness=100, blue_margin=50, rg_similarity=50):
+    """Checks if the box contains yellow pixels (active idle vils icon)."""
+    if img is None or len(img.shape) < 3: return False
+    b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+    is_yellow = (g > min_brightness) & (r > min_brightness) & \
+                (b < (g.astype(np.int16) - blue_margin)) & \
+                (b < (r.astype(np.int16) - blue_margin)) & \
+                (np.abs(r.astype(np.int16) - g.astype(np.int16)) < rg_similarity)
+    return np.any(is_yellow)
+
+def contains_red(img):
+    """Checks if the box contains red pixels (Anne_HK mod idle vils indicator)."""
+    if img is None or len(img.shape) < 3: return False
+    b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+    is_red = (r > ANNE_HK_IDLE_RED_MIN) & (g < ANNE_HK_IDLE_GB_MAX) & (b < ANNE_HK_IDLE_GB_MAX)
+    return np.any(is_red)
 
 def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allow_yellow=False, ignore_color=False):
-    """
-    Filter by greyness and brightness to isolate text.
-    ignore_color: If True, bypass color-based filtering (greyscale only).
-    """
-    if img is None or img.size == 0:
-        return np.zeros((1, 1), dtype=np.uint8)
-
+    """Filters image by greyness and brightness to isolate text."""
+    if img is None or img.size == 0: return np.zeros((1, 1), dtype=np.uint8)
     if ignore_color:
-        # Convert to greyscale as requested for mod detection
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, cleaned = cv2.threshold(gray, brightness_thresh, 255, cv2.THRESH_TOZERO)
         return cleaned
 
     if overlay_mode:
-        # Detect overlay color from a near-black background pixel (top-left)
-        # Ensure we have enough pixels for [2,2]
         h, w = img.shape[:2]
-        if h < 3 or w < 3:
-            return np.zeros((h, w), dtype=np.uint8)
-            
+        if h < 3 or w < 3: return np.zeros((h, w), dtype=np.uint8)
         bg_color = img[2, 2].astype(np.int16)
         subtracted = np.clip(img.astype(np.int16) - bg_color, 0, 255).astype(np.uint8)
         gray_sub = cv2.cvtColor(subtracted, cv2.COLOR_BGR2GRAY)
@@ -150,20 +151,12 @@ def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allo
         return cleaned
 
     if len(img.shape) == 3:
-        # BGR Channels
         b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-        max_val = np.max(img, axis=2).astype(np.int16)
-        min_val = np.min(img, axis=2).astype(np.int16)
-        diff = max_val - min_val
-        
-        to_keep = (diff <= grey_tol)
-        
+        max_val, min_val = np.max(img, axis=2).astype(np.int16), np.min(img, axis=2).astype(np.int16)
+        to_keep = (max_val - min_val <= grey_tol)
         if allow_yellow:
-            rg_diff = np.abs(r.astype(np.int16) - g.astype(np.int16))
-            is_yellow = (r > 150) & (g > 150) & (rg_diff < 50) & (b < max_val - 15)
-            if np.any(is_yellow):
-                to_keep |= is_yellow
-        
+            is_yellow = (r > 150) & (g > 150) & (np.abs(r.astype(np.int16) - g.astype(np.int16)) < 50) & (b < max_val - 15)
+            to_keep |= is_yellow
         filtered = np.zeros(max_val.shape, dtype=np.uint8)
         filtered[to_keep] = max_val.astype(np.uint8)[to_keep]
     else:
@@ -172,539 +165,427 @@ def apply_base_filter(img, grey_tol, brightness_thresh, overlay_mode=False, allo
     _, cleaned = cv2.threshold(filtered, brightness_thresh, 255, cv2.THRESH_TOZERO)
     return cleaned
 
-def detect_housed_overlay(img):
-    """Detects the bright yellow background overlay used when a player is housed."""
-    if img is None or len(img.shape) < 3:
-        return False
-    # The overlay background is very bright in Green and Red (mean > 150)
-    # and significantly darker in Blue (mean < 100).
-    mean_g = np.mean(img[:, :, 1])
-    mean_r = np.mean(img[:, :, 2])
-    mean_b = np.mean(img[:, :, 0])
-    return mean_g > 150 and mean_r > 150 and mean_b < 100
-
-def contains_yellow(img, min_brightness=100, blue_margin=50, rg_similarity=50):
-    """
-    Checks if the box contains yellow pixels (indicating active idle villagers icon).
-    Yellow is detected by: high R and G values, low B value, R and G similar.
-    
-    Args:
-        min_brightness: Minimum value for R and G channels (default 100)
-        blue_margin: How much lower B must be than R and G (default 50)
-        rg_similarity: Maximum difference between R and G (default 50)
-    
-    Returns:
-        True if any yellow pixels found, False otherwise (grey icon = 0 idle vils)
-    """
-    if img is None or len(img.shape) < 3:
-        return False
-    
-    # Extract BGR channels
-    b_channel = img[:, :, 0]
-    g_channel = img[:, :, 1]
-    r_channel = img[:, :, 2]
-    
-    # Yellow detection criteria
-    # 1. G and R must be bright
-    bright_g = g_channel > min_brightness
-    bright_r = r_channel > min_brightness
-    
-    # 2. B must be significantly lower than both G and R
-    b_lower_than_g = b_channel < (g_channel - blue_margin)
-    b_lower_than_r = b_channel < (r_channel - blue_margin)
-    
-    # 3. R and G should be similar (both high for yellow)
-    rg_similar = np.abs(r_channel.astype(np.int16) - g_channel.astype(np.int16)) < rg_similarity
-    
-    # Combine all criteria
-    is_yellow = bright_g & bright_r & b_lower_than_g & b_lower_than_r & rg_similar
-    
-    # Return True if any yellow pixels found
-    return np.any(is_yellow)
-
-def contains_red(img):
-    """
-    Checks if the box contains red pixels (Anne_HK mod idle villager indicator).
-    Red is detected by: high R value, very low G and B values.
-    """
-    if img is None or len(img.shape) < 3:
-        return False
-    
-    b, g, r = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-    
-    is_red = (r > ANNE_HK_IDLE_RED_MIN) & (g < ANNE_HK_IDLE_GB_MAX) & (b < ANNE_HK_IDLE_GB_MAX)
-    return np.any(is_red)
-
-def detect_anne_hk_mod(img):
-    """
-    Detects 'Anne_HK resource panels' mod by checking for specific color patterns in wood_vils box.
-    Check if it contains enough pixels where R and G are significantly higher than B.
-    """
-    if img is None or len(img.shape) < 3:
-        return False
-    
-    # BGR channels
-    b = img[:, :, 0].astype(np.int16)
-    g = img[:, :, 1].astype(np.int16)
-    r = img[:, :, 2].astype(np.int16)
-    
-    mask = (r - b > ANNE_HK_COLOR_DIFF_THRESHOLD) & (g - b > ANNE_HK_COLOR_DIFF_THRESHOLD)
-    count = np.sum(mask)
-    
-    return count >= ANNE_HK_PIXEL_MIN_COUNT
-
-def step2_cleanup_box(box_img, overlay_mode=False, allow_yellow=False, ignore_color=False):
-    """
-    Produces a high-quality soft-filtered output image for the matcher.
-    """
-    # Higher threshold for normalized Blue (30) to avoid background noise
-    threshold = OUT_BRIGHTNESS_THRESHOLD if not overlay_mode else 30
-    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
-
-def step3_segment_into_digits(box_img, out_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False, ignore_color=False):
-    """
-    Finds digit bounding boxes using strict iterative filtering on the original BGR,
-    then crops the final digits from the cleaner 'out_img'.
-    """
-    min_area = int(BASELINE_MIN_AREA * (ui_scale ** 2))
-    
-    def get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x=0, offset_y=0, connectivity=8):
-        # Step 1: Filter and find connected components
-        seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
-        binary = (seg > 0).astype(np.uint8)
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
-        
-        # Filter components by minimum area and brightness
-        valid_indices = []
-        for i in range(1, num_labels):
-            if stats[i, cv2.CC_STAT_AREA] >= min_area:
-                # Check if component has at least one bright pixel
-                x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-                req_bright = SEG_REQUIRED_BRIGHTNESS if not ignore_color else 150
-                if np.max(seg[y:y+h, x:x+w][labels[y:y+h, x:x+w] == i]) >= req_bright:
-                    valid_indices.append(i)
-
-        if not valid_indices:
-            return []
-
-        img_h, img_w = roi_bgr.shape[:2]
-
-        # Case A: Stall (1 wide blob, same size as parent)
-        if len(valid_indices) == 1:
-            idx = valid_indices[0]
-            w, h = stats[idx, cv2.CC_STAT_WIDTH], stats[idx, cv2.CC_STAT_HEIGHT]
-            
-            if w == img_w and h == img_h and (w + 2 > h):
-                if brightness_threshold < 160:
-                    return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold + 10, offset_x, offset_y, connectivity)
-                if grey_tolerance > 2:
-                    return get_components_recursive(roi_bgr, grey_tolerance - 2, brightness_threshold, offset_x, offset_y, connectivity)
-                if connectivity == 8:
-                    return get_components_recursive(roi_bgr, grey_tolerance, brightness_threshold, offset_x, offset_y, 4)
-                return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]
-
-        # Case B: Standard Processing
-        results = []
-        for i in valid_indices:
-            x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
-            
-            if w + 2 > h:
-                # Too wide, mask neighbor pixels and recurse
-                isolated_roi = roi_bgr[y:y+h, x:x+w].copy()
-                isolated_roi[labels[y:y+h, x:x+w] != i] = 0
-                results.extend(get_components_recursive(isolated_roi, grey_tolerance, brightness_threshold, offset_x + x, offset_y + y, connectivity))
-            else:
-                results.append({'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h})
-                
-        return results
-
-    # 1. Find the bounding boxes
-    digit_boxes = get_components_recursive(box_img, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD)
-    digit_boxes.sort(key=lambda d: d['x'])
-    
-    # 2. Crop from the clean image
-    digits = []
-    for db in digit_boxes:
-        crop = out_img[db['y'] : db['y']+db['h'], db['x'] : db['x']+db['w']]
-        digits.append(crop)
-        
-    return digits, digit_boxes
-
-def extract_digits(box_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False, ignore_color=False):
-    """
-    Wrapper that performs cleanup and segmentation.
-    Returns list of cleaned digit images.
-    """
-    out_img = step2_cleanup_box(box_img, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
-    digits, _ = step3_segment_into_digits(box_img, out_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
-    return digits
+def cleanup_box(box_img, overlay_mode=False, allow_yellow=False, ignore_color=False):
+    """Produces a clean output image for the matcher."""
+    thresh = OUT_BRIGHTNESS_THRESHOLD_OVERLAY if overlay_mode else OUT_BRIGHTNESS_THRESHOLD_DEFAULT
+    return apply_base_filter(box_img, OUT_GREY_TOLERANCE, thresh, overlay_mode, allow_yellow, ignore_color)
 
 # ==========================================
-# 3. MATCHING LOGIC
+# 2. MATCHING LOGIC
 # ==========================================
 
 def calculate_h_symmetry(canvas):
-    """Calculates horizontal symmetry score (lower is more symmetric)."""
-    flipped = cv2.flip(canvas, 1) # 1 = horizontal flip
+    """
+    Calculates a horizontal symmetry score.
+    Used as a tie-breaker between '0' and asymmetric digits ('3', '6', '9') 
+    when their SSD scores are too close to call.
+    """
+    flipped = cv2.flip(canvas, 1)
     diff = canvas - flipped
     return np.sum(diff * diff)
 
 def prepare_canvas(img, target_h):
     """Scales, centers by bounding box, and blurs an image into a fixed canvas."""
     h_orig, w_orig = img.shape
-    if h_orig == 0 or w_orig == 0:
-        return np.zeros((CANVAS_SIZE, CANVAS_SIZE), dtype=np.float32)
+    if h_orig == 0 or w_orig == 0: return np.zeros((CANVAS_SIZE, CANVAS_SIZE), dtype=np.float32)
 
-    # 1. Upscale
     scale = target_h / h_orig
     new_w = max(1, int(w_orig * scale))
-    # Rust uses CatmullRom (Cubic) for upscaling and Triangle (Bilinear) for downscaling
     interp = cv2.INTER_CUBIC if scale > 1 else cv2.INTER_LINEAR
     upscaled = cv2.resize(img, (new_w, target_h), interpolation=interp)
     
-    # 2. Find bounding box of the actual content
     _, thresh = cv2.threshold(upscaled, 1, 255, cv2.THRESH_BINARY)
     coords = cv2.findNonZero(thresh)
-    if coords is None:
-        return np.zeros((CANVAS_SIZE, CANVAS_SIZE), dtype=np.float32)
+    if coords is None: return np.zeros((CANVAS_SIZE, CANVAS_SIZE), dtype=np.float32)
     
     x, y, w, h = cv2.boundingRect(coords)
     crop = upscaled[y:y+h, x:x+w]
     
-    # 3. Center in canvas based on GEOMETRIC center of bounding box
     canvas = np.zeros((CANVAS_SIZE, CANVAS_SIZE), dtype=np.uint8)
-    off_x = (CANVAS_SIZE - w) // 2
-    off_y = (CANVAS_SIZE - h) // 2
-    
-    # Safety check for bounds
     if h > CANVAS_SIZE or w > CANVAS_SIZE:
-        # Resize again if it still doesn't fit (rare edge case)
         scale_fit = min(CANVAS_SIZE/h, CANVAS_SIZE/w)
         crop = cv2.resize(crop, None, fx=scale_fit, fy=scale_fit, interpolation=cv2.INTER_AREA)
         h, w = crop.shape
-        off_x = (CANVAS_SIZE - w) // 2
-        off_y = (CANVAS_SIZE - h) // 2
         
+    off_x, off_y = (CANVAS_SIZE - w) // 2, (CANVAS_SIZE - h) // 2
     canvas[off_y:off_y+h, off_x:off_x+w] = crop
     
-    # 4. Blur and convert to float (0.0 to 1.0)
     canvas_f = canvas.astype(np.float32) / 255.0
-    blurred = cv2.GaussianBlur(canvas_f, (0, 0), BLUR_SIGMA)
-    return blurred
+    return cv2.GaussianBlur(canvas_f, (0, 0), BLUR_SIGMA)
 
 def load_templates(templates_dir):
     """Loads and pre-processes digit templates."""
     templates = {}
-    if not os.path.exists(templates_dir):
-        print(f"Template directory {templates_dir} not found!")
-        return templates
-
+    if not os.path.exists(templates_dir): return templates
     for filename in os.listdir(templates_dir):
         if filename.endswith(".png"):
-            char = filename.replace(".png", "")
-            if char == "slash":
-                char = "/"
+            char = filename.replace(".png", "").replace("slash", "/")
             img = cv2.imread(os.path.join(templates_dir, filename), cv2.IMREAD_GRAYSCALE)
             if img is not None:
-                # Pre-process template into canvas now to save time later
                 templates[char] = prepare_canvas(img, WORKING_HEIGHT)
     return templates
 
 def match_digit_to_template(digit_img, processed_templates):
     """
-    Matches a digit image using 'Wiggle SSD' and 'Symmetry Tie-Breaker'.
-    OPTIMIZATION: Pre-warps the input digit (9 shifts) instead of every template (11*9 shifts).
-    Returns (best_char, confidence, debug_info).
+    Matches an extracted digit against the template library using a two-stage process:
+    
+    1. Wiggle SSD: Calculates the Sum of Squared Differences (SSD) across a small 3x3 
+       pixel grid (wiggle) to find the best alignment.
+       
+    2. Symmetry Tie-Breaker: If the match is a '0' but has low symmetry (as determined 
+       by TB_SYM_ZERO_MAX), it favors asymmetric candidates like '3', '6', or '9'.
     """
     input_canvas = prepare_canvas(digit_img, WORKING_HEIGHT)
-    
-    # 1. Pre-compute 9 shifted versions of the input canvas
-    # We invert the offsets because shifting Input LEFT is equivalent to shifting Template RIGHT.
     shifted_inputs = []
-    # Prioritize (0,0) by putting it first might be nice, but we need all 9 anyway for best_ssd
-    # OFFSETS = [-1, 0, 1]
     
-    for dy in OFFSETS:
+    y_offsets = OFFSETS
+    for dy in y_offsets:
         for dx in OFFSETS:
-            # Shift Input by (-dx, -dy)
             M = np.float32([[1, 0, -dx], [0, 1, -dy]])
-            shifted = cv2.warpAffine(input_canvas, M, (CANVAS_SIZE, CANVAS_SIZE))
-            shifted_inputs.append(shifted)
+            shifted_inputs.append(cv2.warpAffine(input_canvas, M, (CANVAS_SIZE, CANVAS_SIZE)))
 
     all_matches = []
-    
-    # 2. Compare against all templates
     for char, template_canvas in processed_templates.items():
-        best_ssd = float('inf')
-        
-        # Check against all 9 pre-shifted inputs
-        for shifted_input in shifted_inputs:
-            diff = shifted_input - template_canvas
-            ssd = np.sum(diff * diff)
-            if ssd < best_ssd:
-                best_ssd = ssd
-        
+        best_ssd = min(np.sum((si - template_canvas)**2) for si in shifted_inputs)
         all_matches.append((best_ssd, char))
     
     all_matches.sort()
-    
-    if not all_matches:
-        return "?", 0.0, "No Templates"
+    if not all_matches: return "?", 0.0, "No Templates"
 
-    # Tie-Breaker Logic
     tb_info = ""
     if len(all_matches) > 1:
         best_ssd, best_char = all_matches[0]
         second_ssd, second_char = all_matches[1]
         
-        asym_chars = {'3', '6', '9'}
-        is_conflict = (best_char == '0' and second_char in asym_chars) or \
-                      (best_char in asym_chars and second_char == '0')
+        is_conflict = (best_char == '0' and second_char in TB_ASYM_CHARS) or \
+                      (best_char in TB_ASYM_CHARS and second_char == '0')
         
-        # Trigger if SSD difference is less than 20% of the winner
-        if is_conflict and (second_ssd - best_ssd < best_ssd * 0.20):
+        if is_conflict and (second_ssd - best_ssd < best_ssd * TB_SSD_MARGIN):
             sym_score = calculate_h_symmetry(input_canvas)
-            
-            # 1. Identified as 0 but is asymmetric (SymH > 60) -> Swap to 3/6/9
-            if best_char == '0' and sym_score > 60:
-                all_matches[0], all_matches[1] = all_matches[1], all_matches[0]
-                tb_info = f"[SwapH:{sym_score:.1f}]"
-            # 2. Identified as 3/6/9 but is symmetric (SymH < 40) -> Swap to 0
-            elif best_char in asym_chars and sym_score < 40:
+            if (best_char == '0' and sym_score > TB_SYM_ZERO_MAX) or \
+               (best_char in TB_ASYM_CHARS and sym_score < TB_SYM_ASYM_MIN):
                 all_matches[0], all_matches[1] = all_matches[1], all_matches[0]
                 tb_info = f"[SwapH:{sym_score:.1f}]"
             else:
                 tb_info = f"[TrustH:{sym_score:.1f}]"
     
-    final_best_ssd, final_best_char = all_matches[0]
-    return final_best_char, final_best_ssd, tb_info
+    return all_matches[0][1], all_matches[0][0], tb_info
 
-# ==========================================
-# 4. MAIN PIPELINE
-# ==========================================
-
-def process_frame(img, ui_map, templates, verbose=True):
-    """
-    Process a single frame (numpy array) and extract all UI elements.
-    Returns a dictionary with extracted values.
-    """
-    if img is None:
-        return None
-
-    # 1. Detect Scale
-    ui_scale = detect_ui_scale(img)
-    if ui_scale is None:
-        if verbose:
-            print("[no anchor] Red UI reference not found — game not visible or UI changed.")
-        return {}
-
-    results = {}
-    pop_color = "white"
+def calculate_ssd_for_char(digit_img, char, templates):
+    """Calculates the best Wiggle SSD for a specific character template."""
+    if char not in templates: return float('inf')
+    input_canvas = prepare_canvas(digit_img, WORKING_HEIGHT)
+    template_canvas = templates[char]
     
-    # 2. Mod Detection: Anne_HK resource panels
-    # Detect once before processing elements
-    anne_hk_active = False
-    wood_vils_coords = ui_map.get('elements', {}).get('wood_vils')
-    if wood_vils_coords:
-        x = int(wood_vils_coords['x_px'] * ui_scale)
-        y = int(wood_vils_coords['y_px'] * ui_scale)
-        w = int(wood_vils_coords['w_px'] * ui_scale)
-        h = int(wood_vils_coords['h_px'] * ui_scale)
-        if x+w <= img.shape[1] and y+h <= img.shape[0]:
-            if detect_anne_hk_mod(img[y:y+h, x:x+w]):
-                anne_hk_active = True
-                if verbose:
-                    print("    [Anne_HK resource panels] mod detected!")
+    best_ssd = float('inf')
+    y_offsets = OFFSETS
+    for dy in y_offsets:
+        for dx in OFFSETS:
+            M = np.float32([[1, 0, -dx], [0, 1, -dy]])
+            shifted = cv2.warpAffine(input_canvas, M, (CANVAS_SIZE, CANVAS_SIZE))
+            ssd = np.sum((shifted - template_canvas)**2)
+            if ssd < best_ssd:
+                best_ssd = ssd
+    return best_ssd
 
-    # 3. Process each element
-    for name, coords in ui_map.get('elements', {}).items():
-        value_str = ""
-        x = int(coords['x_px'] * ui_scale)
-        y = int(coords['y_px'] * ui_scale)
-        w = int(coords['w_px'] * ui_scale)
-        h = int(coords['h_px'] * ui_scale)
+# ==========================================
+# 3. SEGMENTATION ENGINE
+# ==========================================
+
+def get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold, 
+                             overlay_mode=False, allow_yellow=False, ignore_color=False, 
+                             offset_x=0, offset_y=0, connectivity=8, required_brightness=230):
+    """
+    Finds connected components in a box. If a component is unusually wide (indicating 
+    overlapping digits), it recursively re-segments that sub-region with stricter 
+    thresholds to force a split.
+    """
+    min_area = int(BASELINE_MIN_AREA * (ui_scale ** 2))
+    req_bright = required_brightness if not ignore_color else 150
+    
+    seg = apply_base_filter(roi_bgr, grey_tolerance, brightness_threshold, overlay_mode, allow_yellow, ignore_color)
+    binary = (seg > 0).astype(np.uint8)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=connectivity)
+    
+    valid_indices = []
+    for i in range(1, num_labels):
+        if stats[i, cv2.CC_STAT_AREA] >= min_area:
+            x, y, w, h = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
+            # Check if component has at least one bright pixel
+            component_mask = (labels[y:y+h, x:x+w] == i)
+            if np.any(component_mask):
+                if np.max(seg[y:y+h, x:x+w][component_mask]) >= req_bright:
+                    valid_indices.append(i)
+
+    if not valid_indices: return []
+
+    img_h, img_w = roi_bgr.shape[:2]
+    if len(valid_indices) == 1:
+        idx = valid_indices[0]
+        w, h = stats[idx, cv2.CC_STAT_WIDTH], stats[idx, cv2.CC_STAT_HEIGHT]
+        if w == img_w and h == img_h and (w + 2 > h):
+            if brightness_threshold < 160:
+                return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold + 10, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+            if grey_tolerance > 2:
+                return get_components_recursive(roi_bgr, ui_scale, grey_tolerance - 2, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+            if connectivity == 8:
+                return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, 4, required_brightness)
+            return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]
+
+    results = []
+    for i in valid_indices:
+        x, y, w, h = stats[i, 0], stats[i, 1], stats[i, 2], stats[i, 3]
+        if w + 2 > h:
+            isolated_roi = roi_bgr[y:y+h, x:x+w].copy()
+            isolated_roi[labels[y:y+h, x:x+w] != i] = 0
+            results.extend(get_components_recursive(isolated_roi, ui_scale, grey_tolerance, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x + x, offset_y + y, connectivity, required_brightness))
+        else:
+            results.append({'x': offset_x + x, 'y': offset_y + y, 'w': w, 'h': h})
+    return results
+
+def segment_box(box_img, out_img, ui_scale, overlay_mode=False, bright_threshold=230, allow_yellow=False, ignore_color=False):
+    """
+    Segments a processed box image into individual digit components.
+    Uses recursive connected components analysis for robust extraction.
+    """
+    boxes = get_components_recursive(box_img, ui_scale, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD, 
+                                     overlay_mode, allow_yellow, ignore_color, required_brightness=bright_threshold)
+    boxes.sort(key=lambda d: d['x'])
+    
+    digits = []
+    for db in boxes:
+        y, h = db['y'], db['h']
+        digits.append(out_img[y : y+h, db['x'] : db['x']+db['w']])
+    return digits, boxes
+
+def extract_digits(box_img, ui_scale=1.0, overlay_mode=False, allow_yellow=False, ignore_color=False):
+    """Wrapper for cleanup and segmentation (backwards compatibility)."""
+    out_img = cleanup_box(box_img, overlay_mode, allow_yellow, ignore_color)
+    digits, _ = segment_box(box_img, out_img, ui_scale, overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
+    return digits
+
+# ==========================================
+# 4. VISION PIPELINE
+# ==========================================
+
+class ExtractorPipeline:
+    def __init__(self, ui_map, bright_threshold=230):
+        self.ui_map = ui_map
+        self.bright_thresh = bright_threshold
+        self.ui_scale = 1.0
+        self.anne_hk_active = False
+        self.ref_h = None
+        self.ref_y = None
+        self.vil_ref_h = None
+        self.vil_ref_y = None
+
+    def calibrate(self, img):
+        """
+        Calibrates the pipeline by detecting:
+        1. UI Scale: Using the red top-bar anchor.
+        2. Active Mods: Checking for 'Anne_HK' color signatures.
+        3. Vertical Baselines: Detecting the exact height and Y-offset of digits 
+           using 'wood_total' and 'wood_vils' as reference anchors.
+        """
+        self.ui_scale = detect_ui_scale(img, self.ui_map.get('baseline_margin', BASELINE_MARGIN_PX))
+        if self.ui_scale is None: 
+            self.ui_scale = 1.0 # Fallback
+            return False
         
-        # Mod Adjustment: Anne_HK villager numbers are larger and shifted upwards
-        if anne_hk_active and name.endswith("_vils"):
-            y_adj = int(h * ANNE_HK_Y_ADJUST_FACTOR)
-            y = max(0, y - y_adj)
-            h = h + y_adj
+        # Mod detection
+        wood_vils_coords = self.ui_map.get('elements', {}).get('wood_vils')
+        if wood_vils_coords:
+            x, y, w, h = self._get_raw_coords("wood_vils", wood_vils_coords)
+            if detect_anne_hk_mod(img[y:y+h, x:x+w]):
+                self.anne_hk_active = True
+        
+        # Reference metrics from wood_total (Primary Resource Digits)
+        wood_total_coords = self.ui_map.get('elements', {}).get('wood_total')
+        if wood_total_coords:
+            self.ref_h, self.ref_y = self._detect_baseline(img, "wood_total", wood_total_coords)
             
-            # Expanded width for idle vils to handle 3 digits (e.g. 103)
-            if name == "idle_vils":
-                w_adj = int(w * ANNE_HK_IDLE_W_ADJUST_FACTOR)
-                w = w + w_adj
+        # Reference metrics from wood_vils (Villager Digits)
+        if wood_vils_coords:
+            self.vil_ref_h, self.vil_ref_y = self._detect_baseline(img, "wood_vils", wood_vils_coords)
+            
+        return True
+
+    def _detect_baseline(self, img, name, coords):
+        """
+        Finds the vertical baseline (height and Y-offset) of digits in a box.
+        Uses the union of all detected digit spans to ensure the baseline reflects 
+        the tallest digit, preventing over-clipping when short digits (like '1') 
+        are present in the reference box.
+        """
+        x, y, w, h = self._get_raw_coords(name, coords)
         
-        # Valid crop check
-        if x+w > img.shape[1] or y+h > img.shape[0]:
-            if verbose:
-                print(f"Skipping {name}: Coordinates out of bounds")
-            continue
+        # Apply mod adjustments if needed
+        if self.anne_hk_active and name.endswith("_vils"):
+            y_adj = int(h * ANNE_HK_Y_ADJUST_FACTOR)
+            y, h = max(0, y - y_adj), h + y_adj
             
         box_img = img[y:y+h, x:x+w].copy()
+        ignore_color = (self.anne_hk_active and name.endswith("_vils"))
+        out_img = cleanup_box(box_img, ignore_color=ignore_color)
+        digits, boxes = segment_box(box_img, out_img, self.ui_scale, bright_threshold=self.bright_thresh, ignore_color=ignore_color)
         
-        # Select processing modes
-        overlay_mode = False
-        allow_yellow = False
-        ignore_color = False
+        if boxes:
+            y_min = min(b['y'] for b in boxes)
+            y_max = max(b['y'] + b['h'] for b in boxes)
+            return (y_max - y_min), y_min
+        return None, None
 
-        if anne_hk_active and name.endswith("_vils"):
-            ignore_color = True
+    def _get_raw_coords(self, name, coords):
+        return (int(coords['x_px'] * self.ui_scale), int(coords['y_px'] * self.ui_scale),
+                int(coords['w_px'] * self.ui_scale), int(coords['h_px'] * self.ui_scale))
 
-        # Population Total Shortcut: Check for Housed overlay and enable Yellow Font detection
-        if name == "population_total":
-            overlay_mode = detect_housed_overlay(box_img)
-            allow_yellow = True
-            
-            if overlay_mode:
-                pop_color = "overlay"
-            elif contains_yellow(box_img):
-                pop_color = "yellow"
-                
-            if pop_color != "white" and verbose:
-                state_desc = "overlay" if pop_color == "overlay" else "yellow text"
-                print(f"    Housed state ({state_desc}) detected for {name}!")
-
-        # Special Case: Idle Villagers are 0 if the icon is not active
+    def get_element_coords(self, name, coords):
+        """Calculates final coordinates with mods and vertical clipping."""
+        x, y, w, h = self._get_raw_coords(name, coords)
+        
+        # 1. Mod Adjustment
+        if self.anne_hk_active and name.endswith("_vils"):
+            y_adj = int(h * ANNE_HK_Y_ADJUST_FACTOR)
+            y, h = max(0, y - y_adj), h + y_adj
+            if name == "idle_vils": w += int(w * ANNE_HK_IDLE_W_ADJUST_FACTOR)
+        
+        # 2. Vertical Anchoring: Use detected baselines for all boxes except idle_vils
+        clipped = False
+        target_ref = None
+        
         if name == "idle_vils":
-            is_active = contains_red(box_img) if anne_hk_active else contains_yellow(box_img)
-            
-            if not is_active:
-                value_str = "0"
-                digits = []
-                debug_details = ["ActiveCheck:0"]
-            else:
-                # Extract digits
-                digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
-                
-                # Match digits
-                value_str = ""
-                debug_details = []
-                for d_img in digits:
-                    char, ssd, info = match_digit_to_template(d_img, templates)
-                    value_str += char
-                    debug_details.append(f"{char}({ssd:.1f}{info})")
-                
-                # If no digits found for idle_vils but we bypassed the yellow check, it's 0
-                if not digits and anne_hk_active:
-                    value_str = "0"
-                    debug_details = ["AnneHK:0"]
+            pass # Exception: Idle indicator is dynamic and requires flexible vertical matching
+        elif name.endswith("_vils"):
+            target_ref = (self.vil_ref_y, self.vil_ref_h)
         else:
-            # Extract digits
-            digits = extract_digits(box_img, ui_scale, overlay_mode=overlay_mode, allow_yellow=allow_yellow, ignore_color=ignore_color)
+            target_ref = (self.ref_y, self.ref_h)
+
+        if target_ref and target_ref[1] is not None:
+            y, h, clipped = y + target_ref[0], target_ref[1], True
             
-            # Match digits
-            value_str = ""
-            debug_details = []
+        return x, y, w, h, clipped
+
+    def process_box(self, img, name, coords):
+        """Orchestrates extraction, cleanup, and segmentation for a box."""
+        x, y, w, h, clipped = self.get_element_coords(name, coords)
+        if x+w > img.shape[1] or y+h > img.shape[0]: return None, [], [], clipped
+        
+        box_img = img[y:y+h, x:x+w].copy()
+        overlay_mode, allow_yellow, ignore_color = False, False, False
+        if self.anne_hk_active and name.endswith("_vils"): ignore_color = True
+        if name == "population_total": overlay_mode, allow_yellow = detect_housed_overlay(box_img), True
+
+        out_img = cleanup_box(box_img, overlay_mode, allow_yellow, ignore_color)
+        
+        if name == "idle_vils":
+            if not (contains_red(box_img) if self.anne_hk_active else contains_yellow(box_img)):
+                return box_img, [], [], clipped
+                
+        digits, digit_boxes = segment_box(box_img, out_img, self.ui_scale, overlay_mode, 
+                                          self.bright_thresh, allow_yellow, ignore_color)
+        return box_img, digits, digit_boxes, clipped
+
+    def run(self, img, templates, verbose=False):
+        """
+        Orchestrates the full extraction for a single frame.
+        Iterates through all elements defined in the UI map, extracts their images, 
+        performs OCR, and maps the results into a structured JSON-like dictionary.
+        """
+        if not self.calibrate(img):
+            if verbose: print("[no anchor] Red UI reference not found.")
+            return {}
+
+        if verbose:
+            if self.anne_hk_active: print("    [Anne_HK resource panels] mod detected!")
+            if self.ref_h: print(f"    Reference digit height: {self.ref_h}px")
+
+        results = {}
+        pop_color = "white"
+        
+        for name, coords in self.ui_map.get('elements', {}).items():
+            box_img, digits, _, clipped = self.process_box(img, name, coords)
+            if box_img is None: continue
+
+            # OCR Matching
+            match_results = []
+            
             for d_img in digits:
                 char, ssd, info = match_digit_to_template(d_img, templates)
-                value_str += char
-                debug_details.append(f"{char}({ssd:.1f}{info})")
-        
-        if verbose:
-            print(f"  {name:<20}: {value_str:<10} | Raw: {', '.join(debug_details)}")
-        
-        # Structure output to match expected_values.json (category -> sub_key)
-        parts = name.split('_')
-        category = parts[0]
-        sub_key = parts[1] if len(parts) > 1 else "value"
-        
-        if category not in results:
-            results[category] = {}
-        
-        # Special case: Split population into current and max (housing)
-        if name == "population_total":
-            if "/" in value_str:
-                curr, housing = value_str.split('/', 1)
-                results[category]['total'] = curr
-                results[category]['housing'] = housing
+                match_results.append({'char': char, 'ssd': ssd, 'info': info, 'img': d_img})
+                
+            # Population Slash Heuristic: Force exactly one slash if missing
+            if name == "population_total" and digits:
+                if not any(m['char'] == "/" for m in match_results):
+                    slash_diffs = [calculate_ssd_for_char(m['img'], "/", templates) - m['ssd'] for m in match_results]
+                    best_idx = np.argmin(slash_diffs)
+                    match_results[best_idx]['char'] = "/"
+                    match_results[best_idx]['info'] += f"[Forced/ d={slash_diffs[best_idx]:.1f}]"
+
+            # Reconstruct value string and logging info
+            value_str = "".join(m['char'] for m in match_results)
+            debug_details = [f"{m['char']}({m['ssd']:.1f}{m['info']})" for m in match_results]
+                
+            if name == "idle_vils" and not digits:
+                value_str, debug_details = "0", ["Shortcut:0"]
+                
+            if name == "population_total":
+                if detect_housed_overlay(box_img): pop_color = "overlay"
+                elif contains_yellow(box_img): pop_color = "yellow"
+                if verbose and pop_color != "white": print(f"    Housed state ({pop_color}) detected!")
+
+            if verbose: print(f"  {name:<20}: {value_str:<10} | Raw: {', '.join(debug_details)}")
+            
+            # Map elements into structured results (category.key)
+            parts = name.split('_')
+            category, sub_key = parts[0], (parts[1] if len(parts) > 1 else "value")
+            if category not in results: results[category] = {}
+            
+            if name == "population_total":
+                curr, housing = value_str.split('/', 1) if "/" in value_str else (value_str, "")
+                results[category]['total'], results[category]['housing'] = curr, housing
             else:
-                if verbose:
-                    print(f"    WARNING: No slash found in {name}: '{value_str}'")
-                results[category]['total'] = value_str
-                results[category]['housing'] = ""
-        else:
-            results[category][sub_key] = value_str
-    
-    if 'population' not in results:
-        results['population'] = {}
-    
-    results['population']['color'] = pop_color
-    
-    return results
+                results[category][sub_key] = value_str
+        
+        if 'population' not in results: results['population'] = {}
+        results['population']['color'] = pop_color
+        return results
+
+def process_frame(frame, ui_map, templates, verbose=False):
+    """
+    Legacy wrapper for video processing.
+    Instantiates a one-off pipeline to process a single frame.
+    """
+    pipeline = ExtractorPipeline(ui_map)
+    return pipeline.run(frame, templates, verbose=verbose)
 
 def process_image(image_path, ui_map, templates):
     start_time = time.time()
-    
     img = cv2.imread(image_path)
-    if img is None:
-        print(f"Failed to load {image_path}")
-        return
+    if img is None: return None
 
-    # Start measuring processing time (after disk I/O)
     proc_start = time.time()
-
-    # 1. Detect Scale
-    t0 = time.time()
-    ui_scale = detect_ui_scale(img)
-    time_scale = time.time() - t0
-    if ui_scale is None:
-        print(f"[no anchor] Red UI reference not found (took {time_scale*1000:.2f}ms)")
-        return {}
-    print(f"Detected UI Scale: {ui_scale:.4f} (took {time_scale*1000:.2f}ms)")
-
-    time_extract = 0
-    time_match = 0
-
-    # 2. Process frame
-    results = process_frame(img, ui_map, templates, verbose=True)
-
+    pipeline = ExtractorPipeline(ui_map)
+    results = pipeline.run(img, templates, verbose=True)
+    
     proc_time = time.time() - proc_start
     total_time = time.time() - start_time
-    
-    print(f"\nTiming:")
-    print(f"  Scale Detection: {time_scale*1000:.2f}ms")
-    print(f"  Extraction:      {time_extract*1000:.2f}ms")
-    print(f"  Matching:        {time_match*1000:.2f}ms")
-    print(f"  ---------------------------")
-    print(f"  Core Logic Total:{proc_time*1000:.2f}ms")
-    print(f"  Total Time:      {total_time*1000:.2f}ms")
-    
+    print(f"\nTiming: Core Logic: {proc_time*1000:.2f}ms | Total: {total_time*1000:.2f}ms")
     return results
 
 def main():
-    parser = argparse.ArgumentParser(description="POC Vision: Extract and Match Digits")
-    parser.add_argument("--image", type=str, help="Path to input image")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image", type=str)
+    parser.add_argument("--bright-thresh", type=int, default=230)
     args = parser.parse_args()
-
-    # Determine paths
+    
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # 1. Load UI Map
-    map_path = os.path.join(script_dir, '..', 'ui_map.json')
-    if not os.path.exists(map_path):
-        print(f"Error: {map_path} not found.")
-        return
-    with open(map_path, 'r') as f:
+    with open(os.path.join(script_dir, '..', 'ui_map.json'), 'r') as f:
         ui_map = json.load(f)
-
-    # 2. Load Templates
-    templates_dir = os.path.join(script_dir, 'templates', 'enormous_numbers')
-    templates = load_templates(templates_dir)
-    print(f"Loaded {len(templates)} templates from {templates_dir}")
-
-    # 3. Select Image
-    if args.image:
-        image_path = args.image
-    else:
-        # Default test image
-        image_path = os.path.join(script_dir, '..', 'test_bench', 'aoe2_16x9.png')
     
-    if not os.path.exists(image_path):
-        print(f"Error: Image {image_path} not found.")
-        return
+    templates = load_templates(os.path.join(script_dir, 'templates', 'enormous_numbers'))
+    print(f"Loaded {len(templates)} templates.")
 
-    # 4. Run Pipeline
+    image_path = args.image or os.path.join(script_dir, '..', 'test_bench', 'aoe2_16x9.png')
     process_image(image_path, ui_map, templates)
 
 if __name__ == "__main__":
