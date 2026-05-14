@@ -1,7 +1,7 @@
+use rfd::FileDialog;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
-use rfd::FileDialog;
 
 /// Attempts to find the most recently modified .aoe2record file that was saved
 /// after the provided `session_start` time.
@@ -88,7 +88,7 @@ fn get_savegame_dirs(games_path: &Path) -> Vec<PathBuf> {
         }
     }
     // Sort by modification time, descending (most recent first)
-    savegame_dirs.sort_by(|a, b| b.1.cmp(&a.1));
+    savegame_dirs.sort_by_key(|b| std::cmp::Reverse(b.1));
     savegame_dirs.into_iter().map(|(path, _)| path).collect()
 }
 

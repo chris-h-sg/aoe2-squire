@@ -56,8 +56,7 @@ fn run_full_analysis(
     let date_part = replay_data
         .metadata
         .start_time
-        .replace('-', "")
-        .replace(':', "")
+        .replace(['-', ':'], "")
         .replace(' ', "-");
     let safe_player = replay_data.metadata.rec_player_name.replace(' ', "_");
     let safe_civ = replay_data.metadata.rec_player_civ.replace(' ', "_");

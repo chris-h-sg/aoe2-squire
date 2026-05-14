@@ -35,7 +35,10 @@ pub fn load_embedded_templates() -> Templates {
         let img = match image::load_from_memory(file.contents()) {
             Ok(i) => i.to_luma8(),
             Err(e) => {
-                eprintln!("Warning: failed to load embedded template {:?}: {}", path, e);
+                eprintln!(
+                    "Warning: failed to load embedded template {:?}: {}",
+                    path, e
+                );
                 continue;
             }
         };
@@ -92,10 +95,10 @@ pub fn load_templates(dir: &Path) -> Templates {
 }
 
 /// Stage 7: match a single digit image against all templates via wiggle SSD.
-/// Returns the best-matching character, or '?' if no templates are loaded.
-pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
+/// Returns the best-matching character and its SSD, or ('?', 0.0) if no templates are loaded.
+pub fn match_digit(digit: &GrayImage, templates: &Templates) -> (char, f32) {
     if templates.is_empty() {
-        return '?';
+        return ('?', 0.0);
     }
 
     let input_canvas = canvas::prepare_canvas(digit);
@@ -167,7 +170,45 @@ pub fn match_digit(digit: &GrayImage, templates: &Templates) -> char {
         }
     }
 
-    matches[0].1
+    (matches[0].1, matches[0].0)
+}
+
+pub fn calculate_ssd_for_char(digit: &GrayImage, ch: char, templates: &Templates) -> f32 {
+    let template = match templates.get(&ch) {
+        Some(t) => t,
+        None => return f32::INFINITY,
+    };
+
+    let input_canvas = canvas::prepare_canvas(digit);
+    let size = CANVAS_SIZE as usize;
+
+    let mut best_ssd = f32::INFINITY;
+    for &dy in &WIGGLE_OFFSETS {
+        for &dx in &WIGGLE_OFFSETS {
+            let mut shifted = vec![0.0f32; size * size];
+            for y in 0..size {
+                for x in 0..size {
+                    let sx = x as i32 + dx;
+                    let sy = y as i32 + dy;
+                    if sx >= 0 && sx < size as i32 && sy >= 0 && sy < size as i32 {
+                        shifted[y * size + x] = input_canvas[sy as usize * size + sx as usize];
+                    }
+                }
+            }
+            let ssd: f32 = shifted
+                .iter()
+                .zip(template.iter())
+                .map(|(&a, &b)| {
+                    let d = a - b;
+                    d * d
+                })
+                .sum();
+            if ssd < best_ssd {
+                best_ssd = ssd;
+            }
+        }
+    }
+    best_ssd
 }
 
 /// sum((canvas - hflip(canvas))²) — lower means more horizontally symmetric.

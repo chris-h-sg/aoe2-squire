@@ -104,8 +104,10 @@ image_test!(aoe2_21x9, "aoe2_21x9.png", "baseline_other");
 image_test!(aoe2_32x9, "aoe2_32x9.png", "baseline_other");
 image_test!(aoe2_4k, "aoe2_4k.png", "baseline_other");
 image_test!(housed_overlay, "housed_overlay.png", "housed_overlay");
-image_test!(
-    housed_no_overlay,
-    "housed_no_overlay.png",
-    "housed_no_overlay"
-);
+image_test!(housed_no_overlay, "housed_no_overlay.png", "housed_no_overlay");
+
+// Anne_HK Mod Tests
+image_test!(aoe2_16x9_anne_hk, "aoe2_16x9_Anne_HK.png", "baseline_1080p");
+image_test!(aoe2_16x9_anne_hk_no_idle, "aoe2_16x9_Anne_HK-no-idle.png", "baseline_1080p_no_idle");
+image_test!(aoe2_16x9_anne_hk_103_idle, "aoe2_16x9_Anne_HK-103-idle.png", "baseline_1080p_103_idle");
+image_test!(aoe2_1366x768_anne_hk, "aoe2_1366x768_Anne_HK.png", "Anne_HK_1366x768");

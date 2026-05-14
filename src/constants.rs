@@ -38,6 +38,14 @@ pub const YELLOW_MIN_BRIGHTNESS: u8 = 100;
 pub const YELLOW_BLUE_MARGIN: i16 = 50;
 pub const YELLOW_RG_SIMILARITY: i16 = 50;
 
+// --- Mod Support (Anne_HK) ---
+pub const ANNE_HK_PIXEL_MIN_COUNT: usize = 12;
+pub const ANNE_HK_COLOR_DIFF_THRESHOLD: i16 = 150; // R and G must be this much higher than B
+pub const ANNE_HK_Y_ADJUST_FACTOR: f64 = 0.6; // Villager boxes expanded up by 60%
+pub const ANNE_HK_IDLE_W_ADJUST_FACTOR: f64 = 0.4; // Idle vils box expanded width by 40%
+pub const ANNE_HK_IDLE_RED_MIN: u8 = 150; // Red indicator threshold
+pub const ANNE_HK_IDLE_GB_MAX: u8 = 10; // Max Green/Blue for the red indicator
+
 // --- Analysis ---
 pub const GAME_AGES: [&str; 4] = ["Dark Age", "Feudal Age", "Castle Age", "Imperial Age"];
 pub const DEFAULT_MERGED_CSV: &str = "output/merged_observations.csv";

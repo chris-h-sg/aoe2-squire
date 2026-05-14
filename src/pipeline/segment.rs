@@ -97,6 +97,7 @@ struct SegmentationParams {
     min_area: u32,
     overlay_mode: bool,
     allow_yellow: bool,
+    ignore_color: bool,
 }
 
 /// Recursive connected-components segmentation.
@@ -114,6 +115,7 @@ fn get_components_recursive(
         params.brightness_thresh,
         params.overlay_mode,
         params.allow_yellow,
+        params.ignore_color,
     );
     let binary = binarize(&seg);
     let conn = if params.use_eight {
@@ -129,9 +131,14 @@ fn get_components_recursive(
     }
 
     let all_stats = compute_stats(&labeled, &seg, max_label);
+    let req_bright = if params.ignore_color {
+        150
+    } else {
+        SEG_REQUIRED_BRIGHTNESS
+    };
     let valid: Vec<(usize, CompStats)> = all_stats
         .into_iter()
-        .filter(|(_, s)| s.area >= params.min_area && s.max_brightness >= SEG_REQUIRED_BRIGHTNESS)
+        .filter(|(_, s)| s.area >= params.min_area && s.max_brightness >= req_bright)
         .collect();
 
     if valid.is_empty() {
@@ -210,6 +217,7 @@ pub fn segment_into_digits(
     ui_scale: f64,
     overlay_mode: bool,
     allow_yellow: bool,
+    ignore_color: bool,
 ) -> Vec<GrayImage> {
     let min_area = ((BASELINE_MIN_AREA * ui_scale * ui_scale) as u32).max(1);
 
@@ -220,6 +228,7 @@ pub fn segment_into_digits(
         min_area,
         overlay_mode,
         allow_yellow,
+        ignore_color,
     };
 
     let mut digit_boxes = get_components_recursive(box_img, params, 0, 0);
@@ -240,6 +249,33 @@ pub fn segment_into_digits(
             Some(image::imageops::crop_imm(out_img, x, y, w, h).to_image())
         })
         .collect()
+}
+
+pub fn detect_baseline(
+    box_img: &RgbImage,
+    ui_scale: f64,
+    ignore_color: bool,
+) -> Option<(u32, u32)> {
+    let min_area = ((BASELINE_MIN_AREA * ui_scale * ui_scale) as u32).max(1);
+
+    let params = SegmentationParams {
+        grey_tol: SEG_GREY_TOLERANCE,
+        brightness_thresh: SEG_BRIGHTNESS_THRESHOLD,
+        use_eight: true,
+        min_area,
+        overlay_mode: false,
+        allow_yellow: false,
+        ignore_color,
+    };
+
+    let boxes = get_components_recursive(box_img, params, 0, 0);
+    if boxes.is_empty() {
+        return None;
+    }
+
+    let y_min = boxes.iter().map(|b| b.y).min().unwrap_or(0);
+    let y_max = boxes.iter().map(|b| b.y + b.h).max().unwrap_or(0);
+    Some((y_max - y_min, y_min))
 }
 
 #[cfg(test)]
@@ -284,6 +320,7 @@ mod tests {
             min_area: 1,
             overlay_mode: false,
             allow_yellow: false,
+            ignore_color: false,
         };
         let boxes = get_components_recursive(&img, params, 0, 0);
 

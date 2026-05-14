@@ -26,7 +26,7 @@ AoE2 Squire runs quietly in the background while you play and creates an interac
 
 ### System Requirements
 *   **Operating System**: Windows 10/11
-*   **Display**: Game is running on the primary monitor, 1920x1080 or larger.
+*   **Display**: Game is running on the primary monitor.
 *   **Game:** Age of Empires II: Definitive Edition.
 
 ### Installation
@@ -58,7 +58,7 @@ After downloading AoE2 Squire, Windows SmartScreen might stop it from running be
 The vision pipeline currently has a few limitations:
 *   **Pausing the Game:** Pausing currently breaks the sync between the visual clock and the replay timeline.
 *   **Alt-Tabbing:** If you alt-tab or minimize the game during a match, the visual data will be interrupted.
-*   **UI Mods:** Mods that change the position of the top resource bar or population counts will break the recorder. `Anne_HK - Better Resource Panel and Idle Villager Icon` is supported.
+*   **UI Mods:** Most mods that change the position of the top resource bar or population counts will break the recorder. Only `Anne_HK - Better Resource Panel and Idle Villager Icon` is currently supported.
 *   **Replay POV:** Analysis is based on the player from whose point of view the replay was recorded.
 
 ## Developer Guide (For Contributors)
@@ -115,6 +115,13 @@ Extract raw events from a replay file:
 ```powershell
 cargo run -- --parse-replay "path/to/match.aoe2record"
 ```
+
+**5. Single Image Vision Test:**
+Test the vision pipeline against a single screenshot:
+```powershell
+cargo run -- "test_bench/aoe2_16x9.png"
+```
+
 
 ## Data Acknowledgements
 This project uses community data from:

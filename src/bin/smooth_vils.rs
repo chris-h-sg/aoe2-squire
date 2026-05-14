@@ -1,8 +1,8 @@
-use csv::{ReaderBuilder, StringRecord, WriterBuilder};
 use aoe2_squire::analysis::smoothing;
 use aoe2_squire::constants::{
     CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
 };
+use csv::{ReaderBuilder, StringRecord, WriterBuilder};
 use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};

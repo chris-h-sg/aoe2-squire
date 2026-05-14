@@ -36,6 +36,7 @@ pub(super) fn contains_yellow(img: &RgbImage) -> bool {
 ///
 /// Standard (overlay_mode=false): keep grey/white pixels (max-min ≤ grey_tol), output max channel.
 /// If allow_yellow, also pass through yellow pixels (R>150, G>150, |R-G|<50, B<max-15).
+/// If ignore_color, just convert to grayscale and threshold.
 ///
 /// Overlay (overlay_mode=true): subtract background colour at (2,2), convert to luminance,
 /// NORM_MINMAX, threshold. Used for population_total when housed.
@@ -45,8 +46,22 @@ pub fn apply_base_filter(
     brightness_thresh: u8,
     overlay_mode: bool,
     allow_yellow: bool,
+    ignore_color: bool,
 ) -> GrayImage {
     let (w, h) = img.dimensions();
+
+    if ignore_color {
+        let mut out = GrayImage::new(w, h);
+        for (x, y, p) in img.enumerate_pixels() {
+            let [r, g, b] = p.0;
+            // OpenCV COLOR_BGR2GRAY equivalent weights
+            let luma = (0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32) as u8;
+            if luma >= brightness_thresh {
+                out.put_pixel(x, y, Luma([luma]));
+            }
+        }
+        return out;
+    }
 
     if overlay_mode {
         let bg = img.get_pixel(2, 2).0;
@@ -112,11 +127,44 @@ pub fn apply_base_filter(
 }
 
 /// Stage 2 wrapper: produces the soft-filtered output image used by the matcher.
-pub fn cleanup_box(img: &RgbImage, overlay_mode: bool, allow_yellow: bool) -> GrayImage {
+pub fn cleanup_box(
+    img: &RgbImage,
+    overlay_mode: bool,
+    allow_yellow: bool,
+    ignore_color: bool,
+) -> GrayImage {
     let thresh = if overlay_mode {
         OUT_OVERLAY_BRIGHTNESS_THRESHOLD
     } else {
         OUT_BRIGHTNESS_THRESHOLD
     };
-    apply_base_filter(img, OUT_GREY_TOLERANCE, thresh, overlay_mode, allow_yellow)
+    apply_base_filter(
+        img,
+        OUT_GREY_TOLERANCE,
+        thresh,
+        overlay_mode,
+        allow_yellow,
+        ignore_color,
+    )
+}
+
+pub(super) fn detect_anne_hk_mod(img: &RgbImage) -> bool {
+    let count = img
+        .pixels()
+        .filter(|p| {
+            let [r, g, b] = p.0;
+            let r16 = r as i16;
+            let g16 = g as i16;
+            let b16 = b as i16;
+            (r16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) && (g16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD)
+        })
+        .count();
+    count >= ANNE_HK_PIXEL_MIN_COUNT
+}
+
+pub(super) fn contains_red(img: &RgbImage) -> bool {
+    img.pixels().any(|p| {
+        let [r, g, b] = p.0;
+        r > ANNE_HK_IDLE_RED_MIN && g < ANNE_HK_IDLE_GB_MAX && b < ANNE_HK_IDLE_GB_MAX
+    })
 }
