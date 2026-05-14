@@ -15,7 +15,10 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
     for y in y_min_scan..=y_max_scan {
         for x in x_min_scan..=x_max_scan {
             let [r, g, b] = rgb.get_pixel(x, y).0;
-            if r >= RED_R_MIN && g < RED_G_MAX && b < RED_B_MAX {
+            let (r_i, g_i, b_i) = (r as i16, g as i16, b as i16);
+
+            // Red must be at least RED_DIFF_THRESHOLD higher than both Green and Blue
+            if r_i - g_i >= RED_DIFF_THRESHOLD && r_i - b_i >= RED_DIFF_THRESHOLD {
                 // Density check: count red pixels in a 10x10 box extending to the left.
                 let mut count = 0;
                 let x_min = x.saturating_sub(9).max(x_min_scan);
@@ -25,7 +28,8 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
                 for bx in x_min..=x {
                     for by in y_min..=y_max {
                         let [br, bg, bb] = rgb.get_pixel(bx, by).0;
-                        if br >= RED_R_MIN && bg < RED_G_MAX && bb < RED_B_MAX {
+                        let (br_i, bg_i, bb_i) = (br as i16, bg as i16, bb as i16);
+                        if br_i - bg_i >= RED_DIFF_THRESHOLD && br_i - bb_i >= RED_DIFF_THRESHOLD {
                             count += 1;
                         }
                     }

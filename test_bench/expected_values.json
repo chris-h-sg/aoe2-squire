@@ -126,6 +126,24 @@
             "idle": {
                 "vils": "1"
             }
+        },
+        "modded_1366x768": {
+            "wood": {
+                "total": "200"
+            },
+            "food": {
+                "total": "200"
+            },
+            "gold": {
+                "total": "100"
+            },
+            "stone": {
+                "total": "200"
+            },
+            "population": {
+                "total": "8",
+                "housing": "10"
+            }
         }
     },
     "images": {
@@ -158,6 +176,9 @@
         },
         "housed_no_overlay.png": {
             "use_value_set": "housed_no_overlay"
+        },
+        "aoe2_1366x768-modded.png": {
+            "use_value_set": "modded_1366x768"
         }
     }
 }

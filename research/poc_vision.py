@@ -11,13 +11,15 @@ from pathlib import Path
 # ==========================================
 
 # --- Scale Detection ---
-RED_MASK_LOWER = np.array([0, 0, 160])
-RED_MASK_UPPER = np.array([70, 70, 255])
+RED_PIXEL_MIN_COUNT = 12
+RED_DIFF_THRESHOLD = 140     # Red must be this much higher than Green and Blue
 BASELINE_MARGIN = 263
 ANCHOR_MIN_X = 0.5
 ANCHOR_MAX_X = 0.95
 ANCHOR_MIN_Y = 0.015
 ANCHOR_MAX_Y = 0.035
+UI_SCALE_MIN = 0.5
+UI_SCALE_MAX = 2.0
 
 # --- Extraction Clean-up ---
 OUT_GREY_TOLERANCE = 30
@@ -49,6 +51,7 @@ WIGGLE_MATRICES = [
 def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
     """
     Detects the UI scale based on the right-side margin of red UI elements.
+    Ported from src/pipeline/anchor.rs to ensure parity with Rust.
     """
     if img is None:
         return None
@@ -56,26 +59,55 @@ def detect_ui_scale(img, baseline_margin=BASELINE_MARGIN):
     h, w, _ = img.shape
     
     # Calculate scan boundaries
-    y_min = int(h * ANCHOR_MIN_Y)
-    y_max = int(h * ANCHOR_MAX_Y)
+    y_min_scan = int(h * ANCHOR_MIN_Y)
+    y_max_scan = min(h - 1, int(h * ANCHOR_MAX_Y))
     x_min_scan = int(w * ANCHOR_MIN_X)
-    x_max_scan = int(w * ANCHOR_MAX_X)
+    x_max_scan = min(w - 1, int(w * ANCHOR_MAX_X))
     
-    print(f"Anchor Scan Box: x=[{x_min_scan}, {x_max_scan}], y=[{y_min}, {y_max}]")
+    # Convert to RGB for parity with Rust 'image' crate logic
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    crop = img[y_min:y_max, x_min_scan:x_max_scan]
+    best_rightmost_x = None
+    best_y = None
 
-    # Mask for red pixels
-    mask = cv2.inRange(crop, RED_MASK_LOWER, RED_MASK_UPPER)
-    y_idxs, x_idxs = np.nonzero(mask)
+    for y in range(y_min_scan, y_max_scan + 1):
+        for x in range(x_min_scan, x_max_scan + 1):
+            r, g, b = img_rgb[y, x]
+            
+            # Red must be at least RED_DIFF_THRESHOLD greater than both Green and Blue
+            if (int(r) - int(g) >= RED_DIFF_THRESHOLD) and (int(r) - int(b) >= RED_DIFF_THRESHOLD):
+                # Density check: count red pixels in a 10x10 box extending to the left and down
+                x_start = max(x_min_scan, x - 9)
+                y_end = min(y_max_scan, y + 9)
 
-    if len(x_idxs) < 5:
+                # Sub-scan the 10x10 area
+                sub_area = img_rgb[y : y_end + 1, x_start : x + 1]
+                
+                # Vectorized difference check
+                r_chan = sub_area[:, :, 0].astype(np.int16)
+                g_chan = sub_area[:, :, 1].astype(np.int16)
+                b_chan = sub_area[:, :, 2].astype(np.int16)
+                r_mask = (r_chan - g_chan >= RED_DIFF_THRESHOLD) & \
+                         (r_chan - b_chan >= RED_DIFF_THRESHOLD)
+                
+                count = np.sum(r_mask)
+
+                if count >= RED_PIXEL_MIN_COUNT:
+                    if best_rightmost_x is None or x > best_rightmost_x:
+                        best_rightmost_x = x
+                        best_y = y
+
+    if best_rightmost_x is None:
         return None
         
-    # Distance from right edge to the rightmost red pixel (within the scan area)
-    best_x = np.max(x_idxs) + x_min_scan
-    margin_px = w - best_x
-    return margin_px / baseline_margin
+    print(f"Anchor found at: x={best_rightmost_x}, y={best_y}")
+    margin_px = w - best_rightmost_x
+    ui_scale = margin_px / baseline_margin
+
+    if not (UI_SCALE_MIN <= ui_scale <= UI_SCALE_MAX):
+        return None
+
+    return ui_scale
 
 # ==========================================
 # 2. EXTRACTION & SEGMENTATION
@@ -279,7 +311,9 @@ def prepare_canvas(img, target_h):
     # 1. Upscale
     scale = target_h / h_orig
     new_w = max(1, int(w_orig * scale))
-    upscaled = cv2.resize(img, (new_w, target_h), interpolation=cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA)
+    # Rust uses CatmullRom (Cubic) for upscaling and Triangle (Bilinear) for downscaling
+    interp = cv2.INTER_CUBIC if scale > 1 else cv2.INTER_LINEAR
+    upscaled = cv2.resize(img, (new_w, target_h), interpolation=interp)
     
     # 2. Find bounding box of the actual content
     _, thresh = cv2.threshold(upscaled, 1, 255, cv2.THRESH_BINARY)

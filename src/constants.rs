@@ -4,10 +4,8 @@ pub const HOUSED_INTERPOLATION_TIMEOUT_MS: u64 = 1000;
 pub const QUEUED_INTERPOLATION_TIMEOUT_MS: u64 = 2000;
 
 // --- Anchor detection (image crate uses RGB, not BGR) ---
-pub const RED_R_MIN: u8 = 160;
-pub const RED_G_MAX: u8 = 70;
-pub const RED_B_MAX: u8 = 70;
 pub const RED_PIXEL_MIN_COUNT: usize = 12;
+pub const RED_DIFF_THRESHOLD: i16 = 140; // Red must be this much higher than Green and Blue
 
 // Spatial boundaries for anchor detection (fraction of frame)
 pub const ANCHOR_MIN_X: f64 = 0.5;
