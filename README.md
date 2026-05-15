@@ -1,36 +1,42 @@
 # AoE2 Squire
 
-An AoE2:DE coaching tool that provides performance feedback immediately after your match ends.
+![Release](https://img.shields.io/github/v/release/chris-h-sg/aoe2-squire)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
+![License](https://img.shields.io/github/license/chris-h-sg/aoe2-squire)
 
-It highlights your main areas to improve, such as:
-  - **Villager Graph:** Your villager count over time, showing when you stopped producing or lost villagers.
-  - **Idle Villagers:** Total gather time lost due to idle villagers.
-  - **Housing Efficiency:** Time you spent blocked by your population limit or having more units in queue than available housing pop.
-  - **Floating Resources:** Identifies when you stockpile resources for too long. It is smart enough to ignore times when you are intentionally saving up for aging up or building castles.
+[⬇ Latest Release](https://github.com/chris-h-sg/aoe2-squire/releases/latest) · [💬 Discord](https://discord.gg/A9QXpDUHX)
 
-### Match Report Example
+---
+
+AoE2 Squire is a free, zero-install coaching tool for **Age of Empires II: Definitive Edition** that runs in the background while you play. When your match ends, your squire gets to work, analyzing your match and creating a report showing exactly where you can improve. No uploading files, no viewing replays, no configuration required.
 
 <a href="assets/report-sample.png"><img src="assets/report-sample.png" alt="Sample Post-Game Report showing timeline and efficiency metrics" width="600"></a>
 
-In this example, the chart shows how the player (NotQuiteLegend) is managing their idle villagers well (red line) but could improve their villager production (blue line). They got housed once around 27:00 (red overlay) and floated a lot of gold and stone during Feudal Age (gold and grey bars at the top).
+The example chart shows how the player NotQuiteLegend is managing their idle villagers well (red line) but could improve their villager production (blue line). They got housed once around 27:00 (red overlay) and floated a lot of gold and stone during Feudal Age (gold and grey bars at the top).
 
-### How It Works
+---
 
-AoE2 Squire runs quietly in the background while you play and creates an interactive Post-Game Report as soon as your match finishes. 
+## What It Tracks
 
-- **Automatic:** No need to upload files or watch replays manually.
-- **Zero Setup:** AoE2 Squire is a single standalone program. You don't need to install anything, edit configuration files, or even be connected to the internet.
-- **Passive & Safe:** AoE2 Squire only reads your screen visually to track resources. It never hooks into game memory or modifies files, ensuring there is zero risk of anti-cheat bans.
+  - **Villager Graph:** Your villager count over time, showing when you stopped producing or lost villagers.
+  - **Idle Villagers:** Total gather time lost due to idle villagers.
+  - **Housing Efficiency:** Time spent population-blocked or with units queued beyond available housing.
+  - **Floating Resources:** Periods where you stockpiled resources too long. Smart enough to ignore intentional saving up for aging up or castles.
 
-## Getting Started (For Players)
+---
+
+## Getting Started
 
 ### System Requirements
-*   **Operating System**: Windows 10/11
-*   **Display**: Game is running on the primary monitor.
-*   **Game:** Age of Empires II: Definitive Edition.
+*   **Operating System**: Windows 10 or 11
+*   **Game:** Age of Empires II: Definitive Edition
+*   **Display**: 1366×768 or higher, game running on primary monitor
 
-### Installation
-Simply download `aoe2-squire.exe` and place it anywhere on your computer. Everything the tool needs is included directly inside the file.
+### Setup
+
+1. Go to the **[Releases page](https://github.com/chris-h-sg/aoe2-squire/releases/latest)** and download `aoe2-squire.exe`
+2. Place it anywhere on your computer, no installation needed
+3. Run it before starting a match
 
 <details>
 <summary><b>Getting a Windows SmartScreen warning?</b></summary>
@@ -49,82 +55,100 @@ After downloading AoE2 Squire, Windows SmartScreen might stop it from running be
 </details>
 
 ### How to Use
-1. **Start the Tool:** Run `aoe2-squire.exe` before or during your game. It will run quietly in the background with minimal CPU impact, waiting for the game to appear.
-2. **Play your Match:** AoE2 Squire automatically detects when the game starts and records your gameplay data.
-3. **View the Report:** When the match ends, the tool finds your replay file, matches it with your screen data, and creates an `output/` folder with the HTML report. The report will open automatically in your web browser.
-   * *Note: If the tool cannot find your replay file, a window will pop up asking you to select the file yourself.*
 
-### Known Limitations
-The vision pipeline currently has a few limitations:
-*   **Pausing the Game:** Pausing currently breaks the sync between the visual clock and the replay timeline.
-*   **Alt-Tabbing:** If you alt-tab or minimize the game during a match, the visual data will be interrupted.
-*   **UI Mods:** Most mods that change the position of the top resource bar or population counts will break the recorder. Only `Anne_HK - Better Resource Panel and Idle Villager Icon` is currently supported.
-*   **Replay POV:** Analysis is based on the player from whose point of view the replay was recorded.
+1. **Start the tool:** Run `aoe2-squire.exe` before you start your match, with or without the game already running
+2. **Play normally:** Your squire observes from the sidelines, taking notes of how the match unfolds
+3. **View your report:** When the match ends, your squire presents your post-match report in your browser
 
-## Developer Guide (For Contributors)
+---
+
+## Known Limitations
+
+| Issue | Detail |
+|-------|--------|
+| **Pausing** | Breaks sync between visual clock and replay timeline |
+| **Alt-Tab / Minimize** | Interrupts visual data collection |
+| **UI Mods** | Only `Anne_HK - Better Resource Panel and Idle Villager Icon` is currently supported |
+| **Replay POV** | Analysis is based on the point of view the replay was recorded from |
+
+---
+
+## FAQ
+
+**Is it safe to use? Will I get banned?**
+Yes. AoE2 Squire only reads your screen visually to track the resource bar and population counter. It never hooks into game memory, modifies files, or interacts with game processes. There is zero risk of an anti-cheat ban.
+
+**Does it work offline?**
+Yes. Everything is bundled inside the single `.exe`, no internet connection required.
+
+**Which resolutions are supported?**
+Any resolution of 1366×768 or higher, running on your primary monitor.
+
+**What if it can't find my replay file?**
+A window will appear asking you to locate the file manually.
+
+---
+
+## Community & Feedback
+
+Got a bug, feature request, or feedback for your squire?
+
+[💬 Join the Discord](https://discord.gg/A9QXpDUHX)
+
+---
+
+## Developer Guide
 
 AoE2 Squire uses a **"Hybrid Data Strategy"**:
-1. **Screen Scraping:** Records the "Current State" (resources, idle counts) while the game is running.
-2. **Replay Parsing:** Reads the game events (timings for units and technology) from the replay file after the match ends.
-3. **Data Meshing:** Combines both timelines to find "Efficiency Gaps" (for example, starting a technology research but failing to spend resources).
-
-For more details, see these documents:
-*   `DECISION_LOG.md`: Overall design and architectural choices.
-*   `TECHNICAL_SPEC.md`: Project requirements and technical details.
-*   `LOW_ELO_ISSUES.md`: Common player mistakes we're trying to help with (many not yet implemented).
+1. **Screen Scraping:** Records the "Current State" (resources, idle counts) while the game runs.
+2. **Replay Parsing:** Reads the game events (unit and tech timings) from the `.aoe2record` file after the match ends.
+3. **Data Meshing:** Combines both timelines to find efficiency gaps (e.g. stockpiling resources but not clicking up to age).
 
 ### Building from Source
-The main code is written in Rust.
-```powershell
-# Generate the final single-file binary
+
+The core is written in Rust.
+
+```bash
+# Build the standalone binary
 cargo build --release
+# Output: target/release/aoe2-squire.exe
 ```
-*The output will be saved at `target/release/aoe2-squire.exe`.*
 
 ### Development Workflows
 
-**1. Running the Full Orchestrator:**
-```powershell
-# Run the automated background orchestrator
+```bash
+# Run the background orchestrator
 cargo run --release
 
-# Run with detailed logs and tables
+# Run with detailed logs
 cargo run --release -- --verbose
-```
 
-**2. Manual Analysis Pipeline:**
-If you already have a data CSV and a replay file from a past game, you can run the analysis directly:
-```powershell
+# Analyze an existing CSV + replay file
 cargo run -- --analyze "path/to/telemetry.csv" "path/to/match.aoe2record"
-```
 
-**3. Individual Analyzers (CLI):**
-To test specific metrics, you can run analyzers on the `output/merged_observations.csv` file.
-```powershell
-# Create the merged data file
+# Build merged data file, then run specific analyzers
 cargo run --bin mesher "path/to/telemetry.csv" "path/to/match.aoe2record"
-
-# Run specific tests
 cargo run --bin idle_analyzer -- --verbose
 cargo run --bin housing_analyzer
 cargo run --bin floating_analyzer
-```
 
-**4. Replay Event Extraction:**
-Extract raw events from a replay file:
-```powershell
+# Extract raw events from a replay
 cargo run -- --parse-replay "path/to/match.aoe2record"
-```
 
-**5. Single Image Vision Test:**
-Test the vision pipeline against a single screenshot:
-```powershell
+# Test vision pipeline on a screenshot
 cargo run -- "test_bench/aoe2_16x9.png"
 ```
 
+Further reading: [`DECISION_LOG.md`](DECISION_LOG.md) · [`TECHNICAL_SPEC.md`](TECHNICAL_SPEC.md) · [`LOW_ELO_ISSUES.md`](LOW_ELO_ISSUES.md)
+
+---
 
 ## Data Acknowledgements
 This project uses community data from:
 *   **Unit Statistics**: [unitstatistics.com](https://unitstatistics.com/age-of-empires2/)
 *   **Object & Tech Tables**: [airef.github.io](https://airef.github.io/tables/objects.html)
-*   **Halfon Data**: [halfon.aoe2.se](https://halfon.aoe2.se/) and [SiegeEngineers/halfon](https://github.com/SiegeEngineers/halfon)
+*   **Halfon Data**: [halfon.aoe2.se](https://halfon.aoe2.se/) · [SiegeEngineers/halfon](https://github.com/SiegeEngineers/halfon)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

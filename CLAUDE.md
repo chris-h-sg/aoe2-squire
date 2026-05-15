@@ -4,12 +4,11 @@
 A native Windows background tool that scrapes AoE2:DE resource/villager counts from the screen in real time and combines them with replay data to produce post-game efficiency coaching. Target: minimal CPU footprint (<1% to avoid impacting the game), no memory hooking, no anti-cheat risk.
 
 ## Current Status
-**Phase 5 Complete — Integrated Reporting & Prototype Release.**
 
 - Python R&D (`research/`) is finished and remains the canonical reference.
 - The Rust production binary is fully functional, with a complete vision pipeline operating under 1% CPU overhead.
 - Master Orchestrator is operational, automating capture, replay discovery, data meshing, and analysis.
-- **Reporting:** Interactive, offline-capable HTML reports are automatically generated and bundled with Chart.js for standalone use.
+- Interactive, offline-capable HTML reports are automatically generated and bundled with Chart.js for standalone use.
 
 ## Repo Layout
 ```
@@ -21,12 +20,17 @@ aoe2-squire/
 ├── ui_map.json             ← element coordinates (baseline 1080p, scaled at runtime)
 ├── src/
 │   ├── main.rs             ← entry point
+│   ├── lib.rs              ← module definitions
 │   ├── constants.rs        ← all pipeline constants
-│   ├── pipeline/           ← Vision pipeline implementation
+│   ├── analysis/           ← modular analyzer implementation
 │   ├── capture/            ← DXGI screen capture implementation
+│   ├── pipeline/           ← Vision pipeline implementation
 │   ├── bin/                ← Standalone CLI tools
-│   ├── analysis.rs         ← shared metrics helpers
-│   └── report.rs           ← HTML report generator
+│   ├── replay.rs           ← replay parsing logic
+│   ├── replay_discovery.rs ← automated replay location
+│   ├── report.rs           ← HTML report generator
+│   ├── sync.rs             ← temporal calibration/sync
+│   └── types.rs            ← shared data structures
 ├── templates/              ← HTML report templates
 ├── test_bench/             ← reference screenshots
 └── research/               ← Python R&D only (reference)
