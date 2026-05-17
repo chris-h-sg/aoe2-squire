@@ -98,6 +98,7 @@ struct SegmentationParams {
     overlay_mode: bool,
     allow_yellow: bool,
     ignore_color: bool,
+    ui_scale: f64,
 }
 
 /// Recursive connected-components segmentation.
@@ -136,6 +137,7 @@ fn get_components_recursive(
     } else {
         SEG_REQUIRED_BRIGHTNESS
     };
+
     let valid: Vec<(usize, CompStats)> = all_stats
         .into_iter()
         .filter(|(_, s)| s.area >= params.min_area && s.max_brightness >= req_bright)
@@ -161,11 +163,86 @@ fn get_components_recursive(
                 p.grey_tol -= 2;
                 return get_components_recursive(roi, p, offset_x, offset_y);
             }
+
+            // Valley Splitting: Try to split the wide merged component vertically using the projection profile
+            let w = s.width;
+            let h = s.height;
+            let mut proj = vec![0u32; w as usize];
+            for cx in 0..w {
+                let mut col_sum = 0;
+                for cy in 0..h {
+                    if binary.get_pixel(cx, cy).0[0] > 0 {
+                        col_sum += 1;
+                    }
+                }
+                proj[cx as usize] = col_sum;
+            }
+
+            let mut valleys = vec![];
+            let min_dist = (3.0 * params.ui_scale) as i32;
+            let min_dist = if min_dist < 2 { 2 } else { min_dist as u32 };
+
+            if w > min_dist * 2 {
+                for cx in min_dist..(w - min_dist) {
+                    let val = proj[cx as usize];
+                    let is_local_min =
+                        val <= proj[(cx - 1) as usize] && val <= proj[(cx + 1) as usize];
+                    let max_allowed_val = (0.3 * h as f32) as u32;
+                    let max_allowed_val = if max_allowed_val < 2 {
+                        2
+                    } else {
+                        max_allowed_val
+                    };
+
+                    if is_local_min && val <= max_allowed_val {
+                        valleys.push(cx);
+                    }
+                }
+            }
+
+            if !valleys.is_empty() {
+                let mut best_valley = None;
+                let mut best_num_wide = 3;
+                let mut best_proj_val = 999999;
+
+                for &v in &valleys {
+                    let w_left = v;
+                    let w_right = w - v;
+                    let num_wide = (if w_left + 2 > h { 1 } else { 0 })
+                        + (if w_right + 2 > h { 1 } else { 0 });
+                    let proj_val = proj[v as usize];
+
+                    if num_wide < best_num_wide {
+                        best_num_wide = num_wide;
+                        best_valley = Some(v);
+                        best_proj_val = proj_val;
+                    } else if num_wide == best_num_wide {
+                        if proj_val < best_proj_val {
+                            best_valley = Some(v);
+                            best_proj_val = proj_val;
+                        }
+                    }
+                }
+
+                if let Some(v) = best_valley {
+                    let mut split_roi = roi.clone();
+                    for cy in 0..h {
+                        split_roi.put_pixel(v, cy, image::Rgb([0, 0, 0]));
+                    }
+                    let mut p = params;
+                    p.grey_tol = SEG_GREY_TOLERANCE;
+                    p.brightness_thresh = SEG_BRIGHTNESS_THRESHOLD;
+                    p.use_eight = true;
+                    return get_components_recursive(&split_roi, p, offset_x, offset_y);
+                }
+            }
+
             if params.use_eight {
                 let mut p = params;
                 p.use_eight = false;
                 return get_components_recursive(roi, p, offset_x, offset_y);
             }
+
             // All strategies exhausted: return as a single digit.
             return vec![BoundingBox {
                 x: offset_x,
@@ -229,6 +306,7 @@ pub fn segment_into_digits(
         overlay_mode,
         allow_yellow,
         ignore_color,
+        ui_scale,
     };
 
     let mut digit_boxes = get_components_recursive(box_img, params, 0, 0);
@@ -289,9 +367,11 @@ pub fn detect_baseline(
         overlay_mode: false,
         allow_yellow: false,
         ignore_color,
+        ui_scale,
     };
 
     let boxes = get_components_recursive(box_img, params, 0, 0);
+
     if boxes.is_empty() {
         return None;
     }
@@ -344,6 +424,7 @@ mod tests {
             overlay_mode: false,
             allow_yellow: false,
             ignore_color: false,
+            ui_scale: 1.0,
         };
         let boxes = get_components_recursive(&img, params, 0, 0);
 

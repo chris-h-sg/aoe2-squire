@@ -150,7 +150,7 @@ pub fn cleanup_box(
 
 pub(super) fn detect_anne_hk_mod(full_img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> bool {
     use image::GenericImageView;
-    
+
     let default_box = full_img.view(x, y, w, h);
     let mut count = 0;
     for (_, _, p) in default_box.pixels() {
@@ -158,19 +158,20 @@ pub(super) fn detect_anne_hk_mod(full_img: &RgbImage, x: u32, y: u32, w: u32, h:
         let r16 = r as i16;
         let g16 = g as i16;
         let b16 = b as i16;
-        if (r16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) && (g16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) {
+        if (r16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) && (g16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD)
+        {
             count += 1;
         }
     }
-    
+
     if count == 0 {
         return false;
     }
-    
+
     let y_adj = (h as f64 * ANNE_HK_Y_ADJUST_FACTOR) as u32;
     let y_adj_start = y.saturating_sub(y_adj);
     let h_adj_len = h + y_adj;
-    
+
     let adjusted_box = full_img.view(x, y_adj_start, w, h_adj_len);
     let mut count_adj = 0;
     for (_, _, p) in adjusted_box.pixels() {
@@ -178,11 +179,12 @@ pub(super) fn detect_anne_hk_mod(full_img: &RgbImage, x: u32, y: u32, w: u32, h:
         let r16 = r as i16;
         let g16 = g as i16;
         let b16 = b as i16;
-        if (r16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) && (g16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) {
+        if (r16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD) && (g16 - b16 > ANNE_HK_COLOR_DIFF_THRESHOLD)
+        {
             count_adj += 1;
         }
     }
-    
+
     count_adj >= ANNE_HK_PIXEL_MIN_COUNT
 }
 

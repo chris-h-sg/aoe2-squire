@@ -241,7 +241,7 @@ def load_templates(templates_dir):
                 templates[char] = prepare_canvas(img, WORKING_HEIGHT)
     return templates
 
-def match_digit_to_template(digit_img, processed_templates):
+def match_digit_to_template(digit_img, processed_templates, allow_slash=True):
     """
     Matches an extracted digit against the template library using a two-stage process:
     
@@ -262,6 +262,8 @@ def match_digit_to_template(digit_img, processed_templates):
 
     all_matches = []
     for char, template_canvas in processed_templates.items():
+        if char == '/' and not allow_slash:
+            continue
         best_ssd = min(np.sum((si - template_canvas)**2) for si in shifted_inputs)
         all_matches.append((best_ssd, char))
     
@@ -344,6 +346,47 @@ def get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_thres
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold + 10, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
             if grey_tolerance > 2:
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance - 2, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+            
+            # Valley Splitting: Try to split the wide merged component vertically using the projection profile
+            proj = np.sum(binary, axis=0)
+            valleys = []
+            min_dist = max(2, int(3 * ui_scale))
+            for cx in range(min_dist, w - min_dist):
+                val = proj[cx]
+                is_local_min = val <= proj[cx - 1] and val <= proj[cx + 1]
+                max_allowed_val = max(2, int(0.3 * h))
+                if is_local_min and val <= max_allowed_val:
+                    valleys.append(cx)
+            
+            if valleys:
+                # Select the single best valley to split first by minimizing the number of resulting wide parts
+                best_valley = None
+                best_num_wide = 3  # Greater than max possible outcome (2)
+                best_proj_val = 999999
+                
+                for v in valleys:
+                    w_left = v
+                    w_right = w - v
+                    num_wide = (1 if w_left + 2 > h else 0) + (1 if w_right + 2 > h else 0)
+                    proj_val = proj[v]
+                    
+                    if num_wide < best_num_wide:
+                        best_num_wide = num_wide
+                        best_valley = v
+                        best_proj_val = proj_val
+                    elif num_wide == best_num_wide:
+                        # Tie-breaker: prefer the deeper valley (lower projection count)
+                        if proj_val < best_proj_val:
+                            best_valley = v
+                            best_proj_val = proj_val
+                
+                if best_valley is not None:
+                    split_roi = roi_bgr.copy()
+                    split_roi[:, best_valley] = 0
+                    # Recurse on split ROI, resetting thresholding parameters to their high-quality defaults
+                    return get_components_recursive(split_roi, ui_scale, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+            
+            # Fallback to 4-connectivity as a last resort
             if connectivity == 8:
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, 4, required_brightness)
             return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]
@@ -560,17 +603,27 @@ class ExtractorPipeline:
             # OCR Matching
             match_results = []
             
-            for d_img in digits:
-                char, ssd, info = match_digit_to_template(d_img, templates)
+            for i, d_img in enumerate(digits):
+                # Only allow slash for population_total and only on middle characters
+                allow_slash = (name == "population_total" and 0 < i < len(digits) - 1)
+                char, ssd, info = match_digit_to_template(d_img, templates, allow_slash=allow_slash)
                 match_results.append({'char': char, 'ssd': ssd, 'info': info, 'img': d_img})
                 
             # Population Slash Heuristic: Force exactly one slash if missing
             if name == "population_total" and digits:
                 if not any(m['char'] == "/" for m in match_results):
-                    slash_diffs = [calculate_ssd_for_char(m['img'], "/", templates) - m['ssd'] for m in match_results]
-                    best_idx = np.argmin(slash_diffs)
-                    match_results[best_idx]['char'] = "/"
-                    match_results[best_idx]['info'] += f"[Forced/ d={slash_diffs[best_idx]:.1f}]"
+                    # Candidates to force a slash must be middle digits
+                    candidate_indices = [idx for idx in range(1, len(digits) - 1)]
+                    if candidate_indices:
+                        slash_diffs = []
+                        for idx in candidate_indices:
+                            m = match_results[idx]
+                            diff = calculate_ssd_for_char(m['img'], "/", templates) - m['ssd']
+                            slash_diffs.append((diff, idx))
+                        
+                        best_diff, best_idx = min(slash_diffs)
+                        match_results[best_idx]['char'] = "/"
+                        match_results[best_idx]['info'] += f"[Forced/ d={best_diff:.1f}]"
 
             # Reconstruct value string and logging info
             value_str = "".join(m['char'] for m in match_results)

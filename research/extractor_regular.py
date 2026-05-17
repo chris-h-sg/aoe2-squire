@@ -205,6 +205,47 @@ def get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_thres
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold + 10, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
             if grey_tolerance > 2:
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance - 2, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+            
+            # Valley Splitting: Try to split the wide merged component vertically using the projection profile
+            proj = np.sum(binary, axis=0)
+            valleys = []
+            min_dist = max(2, int(3 * ui_scale))
+            for cx in range(min_dist, w - min_dist):
+                val = proj[cx]
+                is_local_min = val <= proj[cx - 1] and val <= proj[cx + 1]
+                max_allowed_val = max(2, int(0.3 * h))
+                if is_local_min and val <= max_allowed_val:
+                    valleys.append(cx)
+            
+            if valleys:
+                # Select the single best valley to split first by minimizing the number of resulting wide parts
+                best_valley = None
+                best_num_wide = 3  # Greater than max possible outcome (2)
+                best_proj_val = 999999
+                
+                for v in valleys:
+                    w_left = v
+                    w_right = w - v
+                    num_wide = (1 if w_left + 2 > h else 0) + (1 if w_right + 2 > h else 0)
+                    proj_val = proj[v]
+                    
+                    if num_wide < best_num_wide:
+                        best_num_wide = num_wide
+                        best_valley = v
+                        best_proj_val = proj_val
+                    elif num_wide == best_num_wide:
+                        # Tie-breaker: prefer the deeper valley (lower projection count)
+                        if proj_val < best_proj_val:
+                            best_valley = v
+                            best_proj_val = proj_val
+                
+                if best_valley is not None:
+                    split_roi = roi_bgr.copy()
+                    split_roi[:, best_valley] = 0
+                    # Recurse on split ROI, resetting thresholding parameters to their high-quality defaults
+                    return get_components_recursive(split_roi, ui_scale, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+            
+            # Fallback to 4-connectivity as a last resort
             if connectivity == 8:
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, 4, required_brightness)
             return [{'x': offset_x, 'y': offset_y, 'w': w, 'h': h}]

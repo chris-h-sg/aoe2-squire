@@ -96,7 +96,7 @@ pub fn load_templates(dir: &Path) -> Templates {
 
 /// Stage 7: match a single digit image against all templates via wiggle SSD.
 /// Returns the best-matching character and its SSD, or ('?', 0.0) if no templates are loaded.
-pub fn match_digit(digit: &GrayImage, templates: &Templates) -> (char, f32) {
+pub fn match_digit(digit: &GrayImage, templates: &Templates, allow_slash: bool) -> (char, f32) {
     if templates.is_empty() {
         return ('?', 0.0);
     }
@@ -129,6 +129,7 @@ pub fn match_digit(digit: &GrayImage, templates: &Templates) -> (char, f32) {
     // Compute minimum SSD across all 9 shifts for each template.
     let mut matches: Vec<(f32, char)> = templates
         .iter()
+        .filter(|(&ch, _)| allow_slash || ch != '/')
         .map(|(&ch, template)| {
             let best_ssd = shifted_inputs
                 .iter()

@@ -59,14 +59,12 @@ impl<'a> ExtractorPipeline<'a> {
             }
         }
 
-        // Baselines
         if let Some(wood_total) = self.ui_map.elements.get("wood_total") {
             self.ref_baseline = self.detect_baseline(&rgb, "wood_total", wood_total);
         }
         if let Some(wood_vils) = self.ui_map.elements.get("wood_vils") {
             self.vil_ref_baseline = self.detect_baseline(&rgb, "wood_vils", wood_vils);
         }
-
         true
     }
 
@@ -183,24 +181,35 @@ impl<'a> ExtractorPipeline<'a> {
             if let Some((box_img, digits, _clipped)) = self.process_box(&rgb, name, coords) {
                 let mut match_results: Vec<(char, f32)> = digits
                     .iter()
-                    .map(|d| matcher::match_digit(d, self.templates))
+                    .enumerate()
+                    .map(|(idx, d)| {
+                        let allow_slash = name == "population_total"
+                            && digits.len() > 2
+                            && idx > 0
+                            && idx < digits.len() - 1;
+                        matcher::match_digit(d, self.templates, allow_slash)
+                    })
                     .collect();
 
                 if name == "population_total"
-                    && !digits.is_empty()
+                    && digits.len() > 2
                     && !match_results.iter().any(|m| m.0 == '/')
                 {
-                    let mut best_idx = 0;
+                    let mut best_idx = None;
                     let mut min_diff = f32::INFINITY;
                     for (i, d) in digits.iter().enumerate() {
-                        let ssd_slash = matcher::calculate_ssd_for_char(d, '/', self.templates);
-                        let diff = ssd_slash - match_results[i].1;
-                        if diff < min_diff {
-                            min_diff = diff;
-                            best_idx = i;
+                        if i > 0 && i < digits.len() - 1 {
+                            let ssd_slash = matcher::calculate_ssd_for_char(d, '/', self.templates);
+                            let diff = ssd_slash - match_results[i].1;
+                            if diff < min_diff {
+                                min_diff = diff;
+                                best_idx = Some(i);
+                            }
                         }
                     }
-                    match_results[best_idx].0 = '/';
+                    if let Some(idx) = best_idx {
+                        match_results[idx].0 = '/';
+                    }
                 }
 
                 let mut value_str: String = match_results.iter().map(|m| m.0).collect();

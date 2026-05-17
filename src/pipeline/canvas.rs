@@ -16,7 +16,7 @@ pub fn prepare_canvas(img: &GrayImage) -> Vec<f32> {
     let scale = WORKING_HEIGHT as f64 / h_orig as f64;
     let new_w = ((w_orig as f64 * scale) as u32).max(1);
     let filter = if scale > 1.0 {
-        FilterType::CatmullRom
+        FilterType::Lanczos3
     } else {
         FilterType::Triangle
     };
@@ -61,12 +61,12 @@ pub fn prepare_canvas(img: &GrayImage) -> Vec<f32> {
         let scale_fit = (CANVAS_SIZE as f64 / ch as f64).min(CANVAS_SIZE as f64 / cw as f64);
         let fw = ((cw as f64 * scale_fit) as u32).clamp(1, CANVAS_SIZE);
         let fh = ((ch as f64 * scale_fit) as u32).clamp(1, CANVAS_SIZE);
-        crop = image::imageops::resize(&crop, fw, fh, FilterType::Triangle);
+        crop = image::imageops::resize(&crop, fw, fh, filter);
         cw = crop.width();
         ch = crop.height();
     }
 
-    // 3. Center crop in CANVAS_SIZE × CANVAS_SIZE zero-padded canvas.
+    // 3. Center the cropped digit inside a CANVAS_SIZE x CANVAS_SIZE canvas.
     let off_x = ((CANVAS_SIZE - cw) / 2) as i64;
     let off_y = ((CANVAS_SIZE - ch) / 2) as i64;
     let mut canvas = GrayImage::new(CANVAS_SIZE, CANVAS_SIZE);
