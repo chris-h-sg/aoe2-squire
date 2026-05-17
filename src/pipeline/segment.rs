@@ -235,8 +235,31 @@ pub fn segment_into_digits(
 
     digit_boxes.sort_by_key(|d| d.x);
 
+    let mut merged_boxes: Vec<BoundingBox> = Vec::new();
+    for db in digit_boxes {
+        if let Some(prev) = merged_boxes.last_mut() {
+            if db.x < prev.x + prev.w {
+                let new_x = prev.x.min(db.x);
+                let new_y = prev.y.min(db.y);
+                let new_right = (prev.x + prev.w).max(db.x + db.w);
+                let new_bottom = (prev.y + prev.h).max(db.y + db.h);
+                let new_w = new_right - new_x;
+                let new_h = new_bottom - new_y;
+
+                if new_w + 2 <= new_h {
+                    prev.x = new_x;
+                    prev.y = new_y;
+                    prev.w = new_w;
+                    prev.h = new_h;
+                    continue;
+                }
+            }
+        }
+        merged_boxes.push(db);
+    }
+
     let (ow, oh) = out_img.dimensions();
-    digit_boxes
+    merged_boxes
         .into_iter()
         .filter_map(|db| {
             let x = db.x.min(ow.saturating_sub(1));

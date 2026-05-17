@@ -53,8 +53,7 @@ impl<'a> ExtractorPipeline<'a> {
         if let Some(wood_vils) = self.ui_map.elements.get("wood_vils") {
             let (x, y, w, h) = self.get_raw_coords(wood_vils);
             if x + w <= img_w && y + h <= img_h {
-                let box_img = image::imageops::crop_imm(&rgb, x, y, w, h).to_image();
-                if filter::detect_anne_hk_mod(&box_img) {
+                if filter::detect_anne_hk_mod(&rgb, x, y, w, h) {
                     self.anne_hk_active = true;
                 }
             }
