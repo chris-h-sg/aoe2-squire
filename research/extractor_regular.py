@@ -227,6 +227,41 @@ def segment_box(box_img, out_img, ui_scale, overlay_mode=False, bright_threshold
                                      overlay_mode, allow_yellow, ignore_color, required_brightness=bright_threshold)
     boxes.sort(key=lambda d: d['x'])
     
+    # Post-processing: Merge horizontally overlapping components
+    # This prevents vertically fractured characters (like the top and bottom of a '2') 
+    # from being treated as separate digits.
+    merged_boxes = []
+    for db in boxes:
+        if not merged_boxes:
+            merged_boxes.append(db)
+            continue
+            
+        prev = merged_boxes[-1]
+        # Check for horizontal overlap (strict)
+        if db['x'] < prev['x'] + prev['w']:
+            # Calculate potential merged dimensions
+            new_x = min(prev['x'], db['x'])
+            new_y = min(prev['y'], db['y'])
+            new_right = max(prev['x'] + prev['w'], db['x'] + db['w'])
+            new_bottom = max(prev['y'] + prev['h'], db['y'] + db['h'])
+            new_w = new_right - new_x
+            new_h = new_bottom - new_y
+            
+            # Only merge if the combined box is not considered "wide" (multiple digits)
+            if new_w + 2 <= new_h:
+                merged_boxes[-1] = {
+                    'x': new_x,
+                    'y': new_y,
+                    'w': new_w,
+                    'h': new_h
+                }
+            else:
+                merged_boxes.append(db)
+        else:
+            merged_boxes.append(db)
+            
+    boxes = merged_boxes
+    
     digits = []
     h_img = out_img.shape[0]
     for db in boxes:

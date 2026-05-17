@@ -123,6 +123,7 @@ When digits touch (visually merging into one blob), the system detects that a co
 2.  **Reduce Grey Tolerance**: If brightness adjustment fails, it tightens the grayscale tolerance (down to 2) to identify sharp color discontinuities.
 3.  **Ignore Diagonal Connectivity**: If the digits remain fused, it switches from 8-connectivity to **4-connectivity**. This ignores diagonal neighbors, successfully splitting characters that only touch at corners.
 4.  **Boundary Transfer**: The boundaries found by this strict "seed" search are applied to the "soft" output image, preserving high-quality edge detail.
+5.  **Horizontal Re-Merging (Post-Processing)**: The strict thresholding step can sometimes horizontally fracture a single digit (e.g., the top and bottom loops of an anti-aliased '2' becoming disconnected). To fix this, the pipeline merges any bounding boxes that overlap on the X-axis. To prevent accidentally merging distinct digits that are tightly kerned (like '7' and '5'), this merge is **strictly constrained** to only occur if the resulting combined box satisfies `width + 2 <= height`, creating a perfect symmetry with the initial splitting trigger.
 
 ## Extraction Performance Conclusions
 
