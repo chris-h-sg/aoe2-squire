@@ -294,6 +294,7 @@ pub fn run_capture_loop(
                 CaptureState::Recording => {
                     if let Some(results) = process_result {
                         let duration = start.elapsed();
+                        print_telemetry(&results, duration);
 
                         // Prepare CapturedFrame for interpolation
                         let timestamp_ms = SystemTime::now()
@@ -332,8 +333,6 @@ pub fn run_capture_loop(
 
                         if let Some(ref mut w) = writer {
                             for (row_data, row_timestamp_ms) in interpolated_rows {
-                                print_telemetry(&row_data, duration);
-
                                 let row =
                                     prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
                                 w.write_record(&row).map_err(|e| {
