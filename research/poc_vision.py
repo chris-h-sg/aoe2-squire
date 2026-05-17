@@ -103,12 +103,28 @@ def detect_ui_scale(img, baseline_margin=263):
     ui_scale = (w - best_rightmost_x) / baseline_margin
     return ui_scale if UI_SCALE_MIN <= ui_scale <= UI_SCALE_MAX else None
 
-def detect_anne_hk_mod(img):
-    """Detects 'Anne_HK resource panels' mod by checking for specific color patterns."""
-    if img is None or len(img.shape) < 3: return False
-    b, g, r = img[:, :, 0].astype(np.int16), img[:, :, 1].astype(np.int16), img[:, :, 2].astype(np.int16)
+def detect_anne_hk_mod(full_img, x, y, w, h):
+    """Detects 'Anne_HK resource panels' mod using a two-stage color matching and bounding box expansion approach."""
+    if full_img is None or len(full_img.shape) < 3:
+        return False
+    default_box_img = full_img[y:y+h, x:x+w]
+    if default_box_img is None or len(default_box_img.shape) < 3:
+        return False
+    
+    b, g, r = default_box_img[:, :, 0].astype(np.int16), default_box_img[:, :, 1].astype(np.int16), default_box_img[:, :, 2].astype(np.int16)
     mask = (r - b > ANNE_HK_COLOR_DIFF_THRESHOLD) & (g - b > ANNE_HK_COLOR_DIFF_THRESHOLD)
-    return np.sum(mask) >= ANNE_HK_PIXEL_MIN_COUNT
+    if not np.any(mask):
+        return False
+        
+    # Check the adjusted box to see if it meets the min count
+    y_adj = int(h * ANNE_HK_Y_ADJUST_FACTOR)
+    y_adj_start = max(0, y - y_adj)
+    h_adj_len = h + y_adj
+    adjusted_box_img = full_img[y_adj_start:y_adj_start+h_adj_len, x:x+w]
+    
+    b_adj, g_adj, r_adj = adjusted_box_img[:, :, 0].astype(np.int16), adjusted_box_img[:, :, 1].astype(np.int16), adjusted_box_img[:, :, 2].astype(np.int16)
+    mask_adj = (r_adj - b_adj > ANNE_HK_COLOR_DIFF_THRESHOLD) & (g_adj - b_adj > ANNE_HK_COLOR_DIFF_THRESHOLD)
+    return np.sum(mask_adj) >= ANNE_HK_PIXEL_MIN_COUNT
 
 def detect_housed_overlay(img):
     """Detects the bright yellow background overlay used when a player is housed."""
@@ -396,7 +412,7 @@ class ExtractorPipeline:
         wood_vils_coords = self.ui_map.get('elements', {}).get('wood_vils')
         if wood_vils_coords:
             x, y, w, h = self._get_raw_coords("wood_vils", wood_vils_coords)
-            if detect_anne_hk_mod(img[y:y+h, x:x+w]):
+            if detect_anne_hk_mod(img, x, y, w, h):
                 self.anne_hk_active = True
         
         # Reference metrics from wood_total (Primary Resource Digits)

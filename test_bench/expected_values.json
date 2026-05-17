@@ -207,6 +207,60 @@
             "idle": {
                 "vils": "103"
             }
+        },
+        "7_vil_Anne_HK": {
+            "wood": {
+                "vils": "7",
+                "total": "250"
+            },
+            "food": {
+                "vils": "5",
+                "total": "494"
+            },
+            "gold": {
+                "vils": "0",
+                "total": "50"
+            },
+            "stone": {
+                "vils": "0",
+                "total": "200"
+            },
+            "population": {
+                "vils": "19",
+                "total": "20",
+                "housing": "25",
+                "color": "white"
+            },
+            "idle": {
+                "vils": "7"
+            }
+        },
+        "7_vil_Anne_HK-2": {
+            "wood": {
+                "vils": "7",
+                "total": "290"
+            },
+            "food": {
+                "vils": "42",
+                "total": "9"
+            },
+            "gold": {
+                "vils": "0",
+                "total": "50"
+            },
+            "stone": {
+                "vils": "0",
+                "total": "200"
+            },
+            "population": {
+                "vils": "19",
+                "total": "20",
+                "housing": "25",
+                "color": "white"
+            },
+            "idle": {
+                "vils": "0"
+            }
         }
     },
     "images": {
@@ -251,6 +305,12 @@
         },
         "aoe2_16x9_Anne_HK-103-idle.png": {
             "use_value_set": "baseline_1080p_103_idle"
+        },
+        "7_vil_Anne_HK.png": {
+            "use_value_set": "7_vil_Anne_HK"
+        },
+        "7_vil_Anne_HK-2.png": {
+            "use_value_set": "7_vil_Anne_HK-2"
         }
     }
 }
