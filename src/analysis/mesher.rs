@@ -6,7 +6,7 @@ use std::path::Path;
 
 pub fn generate_merged_observations(
     csv_path: &Path,
-    replay_path: &Path,
+    replay_path: Option<&Path>,
     min_spike: i32,
     max_duration: usize,
 ) -> Result<Vec<MergedRow>, Box<dyn std::error::Error>> {
@@ -71,171 +71,177 @@ pub fn generate_merged_observations(
         return Err("Could not find any frames with resource data in CSV.".into());
     }
 
-    // 2. Parse Replay
-    let data = extract_events(replay_path)?;
-    let rec_player = data.rec_player;
-    let mut events = data.events;
+    let mut merged: Vec<MergedRow> = Vec::new();
+    let speed_factor;
+    let game_start_rw_f64;
 
-    // Filter events to only the POV player
-    events.retain(|e| {
-        let p_id = match e {
-            ReplayEvent::TechResearch { player_id, .. } => *player_id,
-            ReplayEvent::UnitQueued { player_id, .. } => *player_id,
-            ReplayEvent::QueueCancellation { player_id, .. } => *player_id,
-            ReplayEvent::BuildingConstruction { player_id, .. } => *player_id,
-            ReplayEvent::Deletion { player_id, .. } => *player_id,
-        };
-        p_id as u32 == rec_player
-    });
+    if let Some(replay) = replay_path {
+        // 2. Parse Replay
+        let data = extract_events(replay)?;
+        let rec_player = data.rec_player;
+        let mut events = data.events;
 
-    // 3. Detect Game Speed & Offset (Two-Point Calibration)
-    let calibration = crate::sync::calibrate_timing(&csv_rows, &events, start_ts_rw)?;
-    let speed_factor = calibration.speed_factor;
-    let game_start_rw_f64 = calibration.game_start_rw_ms;
+        // Filter events to only the POV player
+        events.retain(|e| {
+            let p_id = match e {
+                ReplayEvent::TechResearch { player_id, .. } => *player_id,
+                ReplayEvent::UnitQueued { player_id, .. } => *player_id,
+                ReplayEvent::QueueCancellation { player_id, .. } => *player_id,
+                ReplayEvent::BuildingConstruction { player_id, .. } => *player_id,
+                ReplayEvent::Deletion { player_id, .. } => *player_id,
+            };
+            p_id as u32 == rec_player
+        });
 
-    // 4. Filter events to ignore anything after the final captured frame
-    let last_captured_ig_ms = if let Some(last_row) = csv_rows.last() {
-        if last_row.timestamp_ms as f64 >= game_start_rw_f64 {
-            ((last_row.timestamp_ms as f64 - game_start_rw_f64) * speed_factor).round() as u64
+        // 3. Detect Game Speed & Offset (Two-Point Calibration)
+        let calibration = crate::sync::calibrate_timing(&csv_rows, &events, start_ts_rw)?;
+        speed_factor = calibration.speed_factor;
+        game_start_rw_f64 = calibration.game_start_rw_ms;
+
+        // 4. Filter events to ignore anything after the final captured frame
+        let last_captured_ig_ms = if let Some(last_row) = csv_rows.last() {
+            if last_row.timestamp_ms as f64 >= game_start_rw_f64 {
+                ((last_row.timestamp_ms as f64 - game_start_rw_f64) * speed_factor).round() as u64
+            } else {
+                0
+            }
         } else {
             0
+        };
+
+        let original_event_count = events.len();
+        events.retain(|e| {
+            let ev_ms = match e {
+                ReplayEvent::TechResearch { timestamp_ms, .. } => *timestamp_ms,
+                ReplayEvent::UnitQueued { timestamp_ms, .. } => *timestamp_ms,
+                ReplayEvent::QueueCancellation { timestamp_ms, .. } => *timestamp_ms,
+                ReplayEvent::BuildingConstruction { timestamp_ms, .. } => *timestamp_ms,
+                ReplayEvent::Deletion { timestamp_ms, .. } => *timestamp_ms,
+            };
+            ev_ms as u64 <= last_captured_ig_ms
+        });
+
+        if events.len() < original_event_count {
+            println!(
+                "Mesher: Ignored {} replay events that occurred after the final captured frame.",
+                original_event_count - events.len()
+            );
+        }
+
+        // Add Rec Events FIRST (so they appear before ScreenGrabs at same ms)
+        for ev in &events {
+            let (ig_ms, desc, cost, b_type, b_ids) = match ev {
+                ReplayEvent::TechResearch {
+                    timestamp_ms,
+                    tech_type,
+                    cost,
+                    building_type,
+                    building_id,
+                    ..
+                } => (
+                    timestamp_ms,
+                    format!("Research {}", tech_type),
+                    Some(cost),
+                    building_type.clone(),
+                    building_id.to_string(),
+                ),
+                ReplayEvent::UnitQueued {
+                    timestamp_ms,
+                    unit_type,
+                    cost,
+                    building_types,
+                    building_ids,
+                    ..
+                } => (
+                    timestamp_ms,
+                    format!("Queue {}", unit_type),
+                    Some(cost),
+                    building_types.join(","),
+                    building_ids
+                        .iter()
+                        .map(|id| id.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ),
+                ReplayEvent::QueueCancellation {
+                    timestamp_ms,
+                    building_types,
+                    building_ids,
+                    ..
+                } => (
+                    timestamp_ms,
+                    "Unqueue".to_string(),
+                    None,
+                    building_types.join(","),
+                    building_ids
+                        .iter()
+                        .map(|id| id.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ),
+                ReplayEvent::BuildingConstruction {
+                    timestamp_ms,
+                    building_type,
+                    cost,
+                    ..
+                } => (
+                    timestamp_ms,
+                    format!("Build {}", building_type),
+                    Some(cost),
+                    building_type.clone(),
+                    "".to_string(),
+                ),
+                ReplayEvent::Deletion {
+                    timestamp_ms,
+                    object_name,
+                    ..
+                } => (
+                    timestamp_ms,
+                    format!("Delete {}", object_name),
+                    None,
+                    "".to_string(),
+                    "".to_string(),
+                ),
+            };
+
+            let f = cost
+                .filter(|c| c.food > 0)
+                .map(|c| format!("-{}", c.food))
+                .unwrap_or_default();
+            let w = cost
+                .filter(|c| c.wood > 0)
+                .map(|c| format!("-{}", c.wood))
+                .unwrap_or_default();
+            let g = cost
+                .filter(|c| c.gold > 0)
+                .map(|c| format!("-{}", c.gold))
+                .unwrap_or_default();
+            let s = cost
+                .filter(|c| c.stone > 0)
+                .map(|c| format!("-{}", c.stone))
+                .unwrap_or_default();
+
+            merged.push(MergedRow {
+                in_game_ms: *ig_ms as u64,
+                observation_type: "RecEvent".to_string(),
+                event_desc: desc,
+                food: f,
+                wood: w,
+                gold: g,
+                stone: s,
+                rw_timestamp_ms: "".to_string(),
+                building_type: b_type,
+                building_ids: b_ids,
+                idle_vils: "".to_string(),
+                pop_curr: "".to_string(),
+                pop_max: "".to_string(),
+                pop_vils: "".to_string(),
+                housing: "".to_string(),
+            });
         }
     } else {
-        0
-    };
-
-    let original_event_count = events.len();
-    events.retain(|e| {
-        let ev_ms = match e {
-            ReplayEvent::TechResearch { timestamp_ms, .. } => *timestamp_ms,
-            ReplayEvent::UnitQueued { timestamp_ms, .. } => *timestamp_ms,
-            ReplayEvent::QueueCancellation { timestamp_ms, .. } => *timestamp_ms,
-            ReplayEvent::BuildingConstruction { timestamp_ms, .. } => *timestamp_ms,
-            ReplayEvent::Deletion { timestamp_ms, .. } => *timestamp_ms,
-        };
-        ev_ms as u64 <= last_captured_ig_ms
-    });
-
-    if events.len() < original_event_count {
-        println!(
-            "Mesher: Ignored {} replay events that occurred after the final captured frame.",
-            original_event_count - events.len()
-        );
-    }
-
-    // 5. Create merged stream
-    let mut merged: Vec<MergedRow> = Vec::new();
-
-    // Add Rec Events FIRST (so they appear before ScreenGrabs at same ms)
-    for ev in &events {
-        let (ig_ms, desc, cost, b_type, b_ids) = match ev {
-            ReplayEvent::TechResearch {
-                timestamp_ms,
-                tech_type,
-                cost,
-                building_type,
-                building_id,
-                ..
-            } => (
-                timestamp_ms,
-                format!("Research {}", tech_type),
-                Some(cost),
-                building_type.clone(),
-                building_id.to_string(),
-            ),
-            ReplayEvent::UnitQueued {
-                timestamp_ms,
-                unit_type,
-                cost,
-                building_types,
-                building_ids,
-                ..
-            } => (
-                timestamp_ms,
-                format!("Queue {}", unit_type),
-                Some(cost),
-                building_types.join(","),
-                building_ids
-                    .iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>()
-                    .join(","),
-            ),
-            ReplayEvent::QueueCancellation {
-                timestamp_ms,
-                building_types,
-                building_ids,
-                ..
-            } => (
-                timestamp_ms,
-                "Unqueue".to_string(),
-                None,
-                building_types.join(","),
-                building_ids
-                    .iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>()
-                    .join(","),
-            ),
-            ReplayEvent::BuildingConstruction {
-                timestamp_ms,
-                building_type,
-                cost,
-                ..
-            } => (
-                timestamp_ms,
-                format!("Build {}", building_type),
-                Some(cost),
-                building_type.clone(),
-                "".to_string(),
-            ),
-            ReplayEvent::Deletion {
-                timestamp_ms,
-                object_name,
-                ..
-            } => (
-                timestamp_ms,
-                format!("Delete {}", object_name),
-                None,
-                "".to_string(),
-                "".to_string(),
-            ),
-        };
-
-        let f = cost
-            .filter(|c| c.food > 0)
-            .map(|c| format!("-{}", c.food))
-            .unwrap_or_default();
-        let w = cost
-            .filter(|c| c.wood > 0)
-            .map(|c| format!("-{}", c.wood))
-            .unwrap_or_default();
-        let g = cost
-            .filter(|c| c.gold > 0)
-            .map(|c| format!("-{}", c.gold))
-            .unwrap_or_default();
-        let s = cost
-            .filter(|c| c.stone > 0)
-            .map(|c| format!("-{}", c.stone))
-            .unwrap_or_default();
-
-        merged.push(MergedRow {
-            in_game_ms: *ig_ms as u64,
-            observation_type: "RecEvent".to_string(),
-            event_desc: desc,
-            food: f,
-            wood: w,
-            gold: g,
-            stone: s,
-            rw_timestamp_ms: "".to_string(),
-            building_type: b_type,
-            building_ids: b_ids,
-            idle_vils: "".to_string(),
-            pop_curr: "".to_string(),
-            pop_max: "".to_string(),
-            pop_vils: "".to_string(),
-            housing: "".to_string(),
-        });
+        speed_factor = 1.7;
+        game_start_rw_f64 = start_ts_rw as f64;
     }
 
     // Add CSV rows

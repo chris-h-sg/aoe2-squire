@@ -199,7 +199,7 @@ enum CaptureState {
 pub fn run_capture_loop(
     ui_map: &UiMap,
     templates: &Templates,
-) -> Result<Option<(std::path::PathBuf, std::path::PathBuf)>> {
+) -> Result<Option<(std::path::PathBuf, Option<std::path::PathBuf>)>> {
     let mut session = CaptureSession::new()?;
     let (w, h) = session.dimensions();
     let fps = 1000.0 / crate::constants::CAPTURE_INTERVAL_MS as f64;
@@ -383,14 +383,17 @@ pub fn run_capture_loop(
             std::thread::sleep(Duration::from_secs(3));
             if let Some(replay) = crate::replay_discovery::find_latest_replay(start, None) {
                 println!("[Discovery] Discovered latest replay: {:?}", replay);
-                return Ok(Some((telemetry, replay)));
+                return Ok(Some((telemetry, Some(replay))));
             } else {
                 eprintln!(
                     "[Discovery] Could not find a replay file modified after the session start."
                 );
                 if let Some(replay) = crate::replay_discovery::pick_replay_manually() {
                     println!("[Discovery] Manually selected replay: {:?}", replay);
-                    return Ok(Some((telemetry, replay)));
+                    return Ok(Some((telemetry, Some(replay))));
+                } else {
+                    println!("[Discovery] No replay selected. Fallback mode: generating report from telemetry data only.");
+                    return Ok(Some((telemetry, None)));
                 }
             }
         }

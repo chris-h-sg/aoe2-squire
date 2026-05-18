@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let merged = mesher::generate_merged_observations(
         csv_path,
-        replay_path,
+        Some(replay_path),
         min_spike,
         max_duration_frames,
     )?;

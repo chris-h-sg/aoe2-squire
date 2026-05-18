@@ -9,14 +9,18 @@ use std::path::Path;
 
 fn run_full_analysis(
     csv_path: &Path,
-    replay_path: &Path,
+    replay_path: Option<&Path>,
     verbose: bool,
     min_spike: i32,
     max_duration_ms: u64,
 ) -> Result<(), Box<dyn Error>> {
     println!("\n=== STARTING INTEGRATED ANALYSIS PIPELINE ===");
     println!("CSV: {}", csv_path.display());
-    println!("Replay: {}", replay_path.display());
+    if let Some(replay) = replay_path {
+        println!("Replay: {}", replay.display());
+    } else {
+        println!("Replay: None (Telemetry Only Fallback)");
+    }
     println!(
         "Smoothing: min_spike={}, max_duration_ms={}",
         min_spike, max_duration_ms
@@ -34,7 +38,49 @@ fn run_full_analysis(
     )?;
     println!("Successfully meshed {} rows.", merged.len());
 
-    let replay_data = aoe2_squire::replay::extract_events(replay_path)?;
+    let metadata = if let Some(replay) = replay_path {
+        let replay_data = aoe2_squire::replay::extract_events(replay)?;
+        replay_data.metadata
+    } else {
+        let start_time = if let Some(first_row) = merged.first() {
+            if let Ok(ts_rw) = first_row.rw_timestamp_ms.parse::<i64>() {
+                use chrono::TimeZone;
+                if let Some(datetime) = chrono::Local.timestamp_millis_opt(ts_rw).single() {
+                    datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+                } else {
+                    chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+                }
+            } else {
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+            }
+        } else {
+            chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+        };
+
+        let duration_sec = if let (Some(first), Some(last)) = (merged.first(), merged.last()) {
+            (last.in_game_ms - first.in_game_ms) as f64 / 1000.0
+        } else {
+            0.0
+        };
+
+        let minutes = (duration_sec / 60.0).floor() as u32;
+        let remaining_seconds = duration_sec % 60.0;
+        let duration_formatted = format!("{:02}:{:06.3}", minutes, remaining_seconds);
+
+        aoe2_squire::replay::MatchMetadata {
+            start_time,
+            duration_formatted,
+            duration_sec,
+            players: vec![aoe2_squire::replay::PlayerInfo {
+                name: "Active Player".to_string(),
+                civ: "Unknown Civ".to_string(),
+            }],
+            rec_player_name: "Active Player".to_string(),
+            rec_player_civ: "Unknown Civ".to_string(),
+            app_version: env!("CARGO_PKG_VERSION").to_string(),
+            has_replay: false,
+        }
+    };
 
     // 2. Run Analyzers
     let idle_stats = idle::analyze_idle(merged.iter().cloned(), verbose)?;
@@ -45,7 +91,7 @@ fn run_full_analysis(
     println!("\nGenerating HTML report...");
     let chart_data = report::extract_chart_data(&merged, &floating_stats);
     let report_html = report::generate_report(
-        &replay_data.metadata,
+        &metadata,
         &idle_stats,
         &housing_stats,
         &floating_stats,
@@ -53,13 +99,12 @@ fn run_full_analysis(
     )?;
 
     // Construct filename: yyyymmdd-hhmmss-<player name>-<player civilization>.html
-    let date_part = replay_data
-        .metadata
+    let date_part = metadata
         .start_time
         .replace(['-', ':'], "")
         .replace(' ', "-");
-    let safe_player = replay_data.metadata.rec_player_name.replace(' ', "_");
-    let safe_civ = replay_data.metadata.rec_player_civ.replace(' ', "_");
+    let safe_player = metadata.rec_player_name.replace(' ', "_");
+    let safe_civ = metadata.rec_player_civ.replace(' ', "_");
     let filename = format!("{}-{}-{}.html", date_part, safe_player, safe_civ);
 
     let output_path = Path::new("output").join(filename);
@@ -144,7 +189,13 @@ fn run_app() -> Result<(), Box<dyn Error>> {
     if args.len() >= 4 && args[1] == "--analyze" {
         let csv_path = Path::new(&args[2]);
         let replay_path = Path::new(&args[3]);
-        return run_full_analysis(csv_path, replay_path, verbose, min_spike, max_duration_ms);
+        return run_full_analysis(
+            csv_path,
+            Some(replay_path),
+            verbose,
+            min_spike,
+            max_duration_ms,
+        );
     }
 
     let ui_map: types::UiMap = {
@@ -232,7 +283,13 @@ fn run_app() -> Result<(), Box<dyn Error>> {
         match capture::run_capture_loop(&ui_map, &templates) {
             Ok(Some((telemetry, replay))) => {
                 println!("\n--- Capture & Discovery Complete ---");
-                run_full_analysis(&telemetry, &replay, verbose, min_spike, max_duration_ms)?;
+                run_full_analysis(
+                    &telemetry,
+                    replay.as_deref(),
+                    verbose,
+                    min_spike,
+                    max_duration_ms,
+                )?;
             }
             Ok(None) => println!("Capture loop ended without recording a complete session."),
             Err(e) => return Err(e.into()),

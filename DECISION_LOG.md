@@ -90,3 +90,11 @@ This log captures the high-level architectural and design decisions of the AoE2 
 *   **Reasoning**: 
     *   Many competitive players use this mod that changes text colors and clears out panel backgrounds.
     *   By detecting the mod once per frame, we can switch to an "Ignore Color" (Greyscale) extraction mode and adjust bounding box heights to accommodate larger modded fonts, without requiring the user to switch profiles or configuration files manually.
+
+## Telemetry-Only Fallback Report Mode
+
+### 1. Telemetry-Only Execution Fallback
+*   **Decision**: Generate an HTML match report using a standard "1.7" game speed factor when no recorded game (`.aoe2record`) file is found or selected.
+*   **Reasoning**:
+    *   Prevents empty exits when automated replay discovery and manual selection both fail or are skipped.
+    *   We can still provide user analytics (total idle villager time, housing efficiency, resource floating, population charts) derived from real-time screen telemetry.

@@ -22,3 +22,9 @@
 - **CPU Contention:** AoE2 is single-threaded; background scraping must be <1% CPU to avoid micro-stutters.
 - **Desyncs:** Real-time state might lag behind the live game in late-game scenarios.
 - **Anti-Cheat:** Avoid memory hooking to minimize ban risk; DXGI capture is used passively.
+
+## Fallback Mechanisms
+- **Telemetry-Only Fallback**:
+  - **Condition**: Triggers when both automated discovery and manual replay file selection are skipped or fail.
+  - **Execution**: Employs a fallback speed factor constant of `1.7` (representing standard Normal speed in AoE2:DE) to calibrate real-time timestamps into in-game milliseconds.
+  - **Visualization**: Hides per-age stat breakdown tables and presents total/aggregate metrics only. Overrides player labels to a standard active player identifier.

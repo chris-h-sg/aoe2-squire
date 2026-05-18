@@ -4,7 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | AoE2 Squire</title>
+    <title>
+        {% if meta.has_replay %}
+            {{ meta.players[0].civ }} vs {{ meta.players[1].civ }}
+        {% else %}
+            Match Report
+        {% endif %}
+        | AoE2 Squire
+    </title>
     <script>{{ chart_js_lib | safe }}</script>
     <style data-purpose="custom-fonts">
         @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap");
@@ -379,9 +386,13 @@
 <body>
     <div class="container">
         <h1>
-            {{ meta.players[0].civ }} ({{ meta.players[0].name }})
-            vs
-            {{ meta.players[1].civ }} ({{ meta.players[1].name }})
+            {% if meta.has_replay %}
+                {{ meta.players[0].civ }} ({{ meta.players[0].name }})
+                vs
+                {{ meta.players[1].civ }} ({{ meta.players[1].name }})
+            {% else %}
+                AoE2 Squire Match Report
+            {% endif %}
         </h1>
 
         <div class="kpi-grid">
@@ -522,6 +533,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% if meta.has_replay %}
                     {% for age in ["Dark Age", "Feudal Age", "Castle Age", "Imperial Age"] %}
                         {% if floating.summary[age] is defined or idle.age_vs_lost[age] is defined or housing.metrics[age] is defined %}
                         <tr>
@@ -536,8 +548,13 @@
                         </tr>
                         {% endif %}
                     {% endfor %}
+                    {% endif %}
                 </tbody>
+                {% if meta.has_replay %}
                 <tfoot>
+                {% else %}
+                <tbody>
+                {% endif %}
                     <tr>
                         <td class="category-gap">TOTAL</td>
                         <td class="text-right category-gap">{{ idle.total_vs_lost | default(0.0) | round | int }}</td>
@@ -548,7 +565,11 @@
                         <td class="text-right">{{ floating.total.gold | default(0.0) | round | int }}s</td>
                         <td class="text-right">{{ floating.total.stone | default(0.0) | round | int }}s</td>
                     </tr>
+                {% if meta.has_replay %}
                 </tfoot>
+                {% else %}
+                </tbody>
+                {% endif %}
             </table>
         </div>
 
@@ -585,7 +606,11 @@
         
         // Update page title with duration
         const durationStr = formatDuration(matchDurationSec);
-        document.title = `{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | ${durationStr} | AoE2 Squire`;
+        {% if meta.has_replay %}
+            document.title = `{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | ${durationStr} | AoE2 Squire`;
+        {% else %}
+            document.title = `Match Report | ${durationStr} | AoE2 Squire`;
+        {% endif %}
 
         const timeLabels = {{ chart.time_labels_json | safe }};
         const popVils = {{ chart.pop_vils_json | safe }};
