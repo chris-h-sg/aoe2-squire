@@ -215,6 +215,11 @@ pub fn run_capture_loop(
     let capture_interval = Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS);
 
     loop {
+        // Park the main thread indefinitely if we are shutting down via Ctrl-C
+        if !crate::RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+            std::thread::park();
+        }
+
         let next_tick = std::time::Instant::now() + capture_interval;
 
         if let Some(dyn_image) = session.capture_frame()? {
@@ -223,14 +228,16 @@ pub fn run_capture_loop(
 
             match state {
                 CaptureState::WaitingForGame => {
-                    let spinner = ['|', '/', '-', '\\'];
-                    print!(
-                        "\rWaiting for game to start... {} ",
-                        spinner[tick_count % 4]
-                    );
-                    use std::io::Write;
-                    let _ = std::io::stdout().flush();
-                    tick_count += 1;
+                    if crate::RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+                        let spinner = ['|', '/', '-', '\\'];
+                        print!(
+                            "\rWaiting for match to start... {} ",
+                            spinner[tick_count % 4]
+                        );
+                        use std::io::Write;
+                        let _ = std::io::stdout().flush();
+                        tick_count += 1;
+                    }
 
                     if let Some(results) = process_result {
                         // Check if all major fields have a "total" value
@@ -243,7 +250,11 @@ pub fn run_capture_loop(
                             });
 
                         if has_all_fields {
-                            println!("\nGame UI detected with all fields. Starting recording...");
+                            if crate::RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+                                println!(
+                                    "\nMatch UI detected with all fields. Starting recording..."
+                                );
+                            }
                             state = CaptureState::Recording;
                             session_start = Some(SystemTime::now());
 
@@ -293,8 +304,10 @@ pub fn run_capture_loop(
                 }
                 CaptureState::Recording => {
                     if let Some(results) = process_result {
-                        let duration = start.elapsed();
-                        print_telemetry(&results, duration);
+                        if crate::RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+                            let duration = start.elapsed();
+                            print_telemetry(&results, duration);
+                        }
 
                         // Prepare CapturedFrame for interpolation
                         let timestamp_ms = SystemTime::now()
@@ -346,7 +359,9 @@ pub fn run_capture_loop(
                         }
                         frame_idx += 1;
                     } else {
-                        println!("Game UI lost. Ending recording...");
+                        if crate::RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+                            println!("Match UI lost. Ending recording...");
+                        }
                         state = CaptureState::GameEnded;
                         break;
                     }

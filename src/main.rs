@@ -82,16 +82,24 @@ fn main() {
         eprintln!("A fatal error occurred (panic):");
         eprintln!("{}", panic_info);
         eprintln!("\nPlease report this error via Discord:");
-        eprintln!("https://discord.gg/k9DubjSJAQ");
+        eprintln!("https://discord.gg/A9QXpDUHX");
         eprintln!("========================================");
         wait_for_user();
     }));
+
+    // Set a thematic Ctrl-C handler to exit gracefully and prevent ugly console error dumps
+    let _ = ctrlc::set_handler(move || {
+        aoe2_squire::RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+        println!("\n\nGodspeed, my liege! Your Squire stands ready to serve at your next bidding.");
+        wait_for_user();
+        std::process::exit(0);
+    });
 
     if let Err(e) = run_app() {
         eprintln!("\n========================================");
         eprintln!("ERROR: {}", e);
         eprintln!("\nPlease report this error via Discord:");
-        eprintln!("https://discord.gg/k9DubjSJAQ");
+        eprintln!("https://discord.gg/A9QXpDUHX");
         eprintln!("========================================");
         wait_for_user();
         std::process::exit(1);
@@ -180,6 +188,46 @@ fn run_app() -> Result<(), Box<dyn Error>> {
             ),
         }
     } else {
+        println!("╔══════════════════════════════════════╗");
+        let version_line = format!("AoE2 Squire v{}", env!("CARGO_PKG_VERSION"));
+        println!("║{:^38}║", version_line);
+        println!("║{:^38}║", "\"At your service, my liege.\"");
+        println!("╚══════════════════════════════════════╝");
+        println!();
+        println!("To prepare for battle:");
+        println!(" ♦ Ensure the game is running on your primary monitor.");
+        println!(" ♦ Resolution must be 1366x768 or higher.");
+        println!(" ♦ Supported UIs: Default or Anne_HK.");
+        println!();
+        println!("Simply keep this window open in the background and play as usual.");
+        println!("Your Squire will silently observe and generate a report after your next match.");
+        println!();
+        println!("Feedback & Support: https://discord.gg/A9QXpDUHX");
+        println!("════════════════════════════════════════");
+        println!();
+
+        // Spawn a background thread to check for the latest release on GitHub
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let res = aoe2_squire::version::fetch_latest_release_tag("chris-h-sg/aoe2-squire");
+            let _ = tx.send(res);
+        });
+
+        // Pause for 3 seconds to let the user read the welcome message
+        // and allow the background thread to fetch the latest version
+        std::thread::sleep(std::time::Duration::from_secs(3));
+
+        // Check if an update is available
+        if let Ok(Ok(latest_tag)) = rx.try_recv() {
+            let current = env!("CARGO_PKG_VERSION");
+            if aoe2_squire::version::is_update_available(current, &latest_tag) {
+                println!("♦ A sharper squire ({}) is ready for duty!", latest_tag);
+                println!("♦ Recruit them here: https://github.com/chris-h-sg/aoe2-squire/releases/latest");
+                println!("════════════════════════════════════════");
+                println!();
+            }
+        }
+
         println!("Starting live screen capture...");
         match capture::run_capture_loop(&ui_map, &templates) {
             Ok(Some((telemetry, replay))) => {

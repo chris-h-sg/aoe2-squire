@@ -1,6 +1,6 @@
 [package]
 name = "aoe2-squire"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 default-run = "aoe2-squire"
@@ -10,6 +10,8 @@ name = "aoe2-squire"
 path = "src/main.rs"
 
 [dependencies]
+ureq = { version = "2.9", features = ["json"] }
+ctrlc = "3.4"
 
 image = "0.25"
 imageproc = "0.25"
