@@ -135,7 +135,9 @@ fn main() {
     // Set a thematic Ctrl-C handler to exit gracefully and prevent ugly console error dumps
     let _ = ctrlc::set_handler(move || {
         aoe2_squire::RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-        println!("\n\nGodspeed, my liege! Your Squire stands ready to serve at your next bidding.");
+        println!(
+            "\n\n♦ Godspeed, my liege! Your Squire stands ready to serve at your next bidding."
+        );
         wait_for_user();
         std::process::exit(0);
     });
@@ -279,20 +281,30 @@ fn run_app() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        println!("Starting live screen capture...");
-        match capture::run_capture_loop(&ui_map, &templates) {
-            Ok(Some((telemetry, replay))) => {
-                println!("\n--- Capture & Discovery Complete ---");
-                run_full_analysis(
-                    &telemetry,
-                    replay.as_deref(),
-                    verbose,
-                    min_spike,
-                    max_duration_ms,
-                )?;
+        loop {
+            match capture::run_capture_loop(&ui_map, &templates) {
+                Ok(Some((telemetry, replay))) => {
+                    println!("\n--- Capture & Discovery Complete ---");
+                    run_full_analysis(
+                        &telemetry,
+                        replay.as_deref(),
+                        verbose,
+                        min_spike,
+                        max_duration_ms,
+                    )?;
+                    println!("\n════════════════════════════════════════");
+                    println!("♦ The report is delivered, my liege.");
+                    println!("♦ Your Squire is standing by, ready to record your next battle.");
+                    println!("════════════════════════════════════════\n");
+                }
+                Ok(None) => {
+                    println!("Capture loop ended without recording a complete session.");
+                    println!("\n════════════════════════════════════════");
+                    println!("♦ Your Squire remains at his post, waiting for the next battle.");
+                    println!("════════════════════════════════════════\n");
+                }
+                Err(e) => return Err(e.into()),
             }
-            Ok(None) => println!("Capture loop ended without recording a complete session."),
-            Err(e) => return Err(e.into()),
         }
     }
 

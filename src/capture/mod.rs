@@ -203,7 +203,10 @@ pub fn run_capture_loop(
     let mut session = CaptureSession::new()?;
     let (w, h) = session.dimensions();
     let fps = 1000.0 / crate::constants::CAPTURE_INTERVAL_MS as f64;
-    println!("Started capture loop ({}x{}) at ~{:.1} FPS", w, h, fps);
+    println!(
+        "Started capture loop ({}x{}) at ~{:.1} FPS. Press Ctrl+C or close this window to exit.",
+        w, h, fps
+    );
 
     let mut state = CaptureState::WaitingForGame;
     let mut writer: Option<csv::Writer<std::fs::File>> = None;

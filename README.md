@@ -58,7 +58,7 @@ After downloading AoE2 Squire, Windows SmartScreen might stop it from running be
 
 1. **Start the tool:** Run `aoe2-squire.exe` before you start your match, with or without the game already running
 2. **Play normally:** Your squire observes from the sidelines, taking notes of how the match unfolds
-3. **View your report:** When the match ends, your squire presents your post-match report in your browser
+3. **View your report:** When the match ends, your squire presents your post-match report in your browser and automatically waits for your next match
 
 ---
 
