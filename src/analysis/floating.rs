@@ -106,6 +106,25 @@ pub fn calculate_floating_seconds(
     rows: impl Iterator<Item = MergedRow>,
     suppressions: &Suppressions,
 ) -> (HashMap<String, FloatingSeconds>, Vec<FloatingSegment>) {
+    let rows: Vec<MergedRow> = rows.collect();
+
+    // Find the last click for each age-up to ensure cancelled clicks do not prematurely transition the age
+    let mut last_feudal_ms = None;
+    let mut last_castle_ms = None;
+    let mut last_imperial_ms = None;
+
+    for r in &rows {
+        if r.observation_type == "RecEvent" {
+            if r.event_desc == "Research Feudal Age" {
+                last_feudal_ms = Some(r.in_game_ms);
+            } else if r.event_desc == "Research Castle Age" {
+                last_castle_ms = Some(r.in_game_ms);
+            } else if r.event_desc == "Research Imperial Age" {
+                last_imperial_ms = Some(r.in_game_ms);
+            }
+        }
+    }
+
     let mut summary: HashMap<String, FloatingSeconds> = HashMap::new();
     let mut segments: Vec<FloatingSegment> = Vec::new();
 
@@ -141,11 +160,17 @@ pub fn calculate_floating_seconds(
         last_ts = row.in_game_ms;
 
         if row.observation_type == "RecEvent" {
-            let new_age = if row.event_desc == "Research Feudal Age" {
+            let new_age = if row.event_desc == "Research Feudal Age"
+                && Some(row.in_game_ms) == last_feudal_ms
+            {
                 Some(("Feudal Age", 1usize))
-            } else if row.event_desc == "Research Castle Age" {
+            } else if row.event_desc == "Research Castle Age"
+                && Some(row.in_game_ms) == last_castle_ms
+            {
                 Some(("Castle Age", 2usize))
-            } else if row.event_desc == "Research Imperial Age" {
+            } else if row.event_desc == "Research Imperial Age"
+                && Some(row.in_game_ms) == last_imperial_ms
+            {
                 Some(("Imperial Age", 3usize))
             } else {
                 None
@@ -683,5 +708,32 @@ mod tests {
         assert_eq!(segments[0].end_ms, 60_000);
         assert_eq!(segments[1].start_ms, 120_000);
         assert_eq!(segments[1].end_ms, 180_000);
+    }
+
+    /// A player clicks Feudal Age at 40s (cancelled) and clicks again at 80s (successful).
+    /// They float 300 food during the interval [40s, 80s].
+    /// This float is flagged under Dark Age (threshold 200).
+    #[test]
+    fn test_duplicate_age_up_clicks_retains_correct_age() {
+        let rows = vec![
+            grab(0, 100, 100, 50, 100),
+            age_event(40_000, "Research Feudal Age"), // Cancelled click
+            grab(50_000, 300, 100, 50, 100), // Floating food (Dark Age threshold is 200, Feudal is 500)
+            grab(75_000, 300, 100, 50, 100),
+            age_event(80_000, "Research Feudal Age"), // Successful click (the last one!)
+            grab(90_000, 100, 100, 50, 100),          // Drop food back to 100
+        ];
+
+        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+
+        // The floating food run starts at 50,000 and is closed at 80,000 (30s duration) due to the age transition.
+        // It must be attributed to "Dark Age" since Feudal Age only starts at 80,000.
+        let dark = summary.get("Dark Age").unwrap();
+        assert_eq!(dark.food, 30.0);
+
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0].age, "Dark Age");
+        assert_eq!(segments[0].start_ms, 50_000);
+        assert_eq!(segments[0].end_ms, 80_000);
     }
 }
