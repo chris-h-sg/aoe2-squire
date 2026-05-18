@@ -272,6 +272,107 @@
         .report-footer a:hover {
             text-decoration: underline;
         }
+
+        /* Premium Tooltips Styling */
+        .tooltip {
+            position: relative;
+            cursor: help;
+            display: inline-block;
+        }
+
+        .tooltip-underlined {
+            border-bottom: 1px dotted #8b7355;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 260px;
+            background-color: #2a221a; /* Dark Wood panel */
+            color: #e5e0d8; /* Parchment text color */
+            text-align: left;
+            border: 1px solid #8b7355; /* Gold/Bronze border */
+            border-radius: 6px;
+            padding: 10px 14px;
+            position: absolute;
+            z-index: 99;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            font-size: 0.85rem;
+            font-weight: normal;
+            line-height: 1.4;
+            font-family: 'Roboto', sans-serif;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+            word-wrap: break-word;
+            text-transform: none; /* override uppercase from table headers */
+            letter-spacing: normal; /* override letter-spacing from table headers */
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #8b7355 transparent transparent transparent;
+        }
+
+        /* Tooltip position modifiers */
+        .tooltip-right .tooltiptext {
+            left: auto;
+            right: 0;
+            transform: translateX(0);
+        }
+        .tooltip-right:hover .tooltiptext {
+            transform: translateX(0) translateY(-5px);
+        }
+        .tooltip-right .tooltiptext::after {
+            left: auto;
+            right: 15px;
+            margin-left: 0;
+        }
+
+        .tooltip-left .tooltiptext {
+            left: 0;
+            transform: translateX(0);
+        }
+        .tooltip-left:hover .tooltiptext {
+            transform: translateX(0) translateY(-5px);
+        }
+        .tooltip-left .tooltiptext::after {
+            left: 15px;
+            margin-left: 0;
+        }
+
+        /* Bottom-aligned tooltip position modifier */
+        .tooltip-bottom .tooltiptext {
+            bottom: auto;
+            top: 125%;
+            transform: translateX(-50%);
+        }
+        .tooltip-bottom:hover .tooltiptext {
+            transform: translateX(-50%) translateY(5px);
+        }
+        .tooltip-bottom .tooltiptext::after {
+            top: auto;
+            bottom: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent transparent #8b7355 transparent;
+        }
     </style>
 </head>
 
@@ -310,20 +411,44 @@
                 <!-- Idle Stats -->
                 <div class="kpi-card">
                     <div class="kpi-2x2">
-                        <div class="val-top danger" id="vs-lost-val">{{ idle.total_vs_lost | round | int }}</div>
-                        <div class="lbl-top">VS Lost</div>
-                        <div class="lbl-btm">Time Idle</div>
-                        <div class="val-btm warning" id="idle-duration">--:--</div>
+                        <div class="val-top danger">
+                            <span class="tooltip tooltip-bottom" data-tooltip="vs-lost">
+                                <span id="vs-lost-val">{{ idle.total_vs_lost | round | int }}</span>
+                            </span>
+                        </div>
+                        <div class="lbl-top">
+                            <span class="tooltip tooltip-underlined tooltip-bottom" data-tooltip="vs-lost">VS Lost</span>
+                        </div>
+                        <div class="lbl-btm">
+                            <span class="tooltip tooltip-underlined tooltip-bottom" data-tooltip="idle-time">Time Idle</span>
+                        </div>
+                        <div class="val-btm warning">
+                            <span class="tooltip tooltip-bottom" data-tooltip="idle-time">
+                                <span id="idle-duration">--:--</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Housing -->
                 <div class="kpi-card">
                     <div class="kpi-2x2">
-                        <div class="val-top danger" id="housed-duration">--:--</div>
-                        <div class="lbl-top">Housed</div>
-                        <div class="lbl-btm">Fully Queued</div>
-                        <div class="val-btm warning" id="queued-duration">--:--</div>
+                        <div class="val-top danger">
+                            <span class="tooltip tooltip-bottom" data-tooltip="housed">
+                                <span id="housed-duration">--:--</span>
+                            </span>
+                        </div>
+                        <div class="lbl-top">
+                            <span class="tooltip tooltip-underlined tooltip-bottom" data-tooltip="housed">Housed</span>
+                        </div>
+                        <div class="lbl-btm">
+                            <span class="tooltip tooltip-underlined tooltip-bottom" data-tooltip="queued">Fully Queued</span>
+                        </div>
+                        <div class="val-btm warning">
+                            <span class="tooltip tooltip-bottom" data-tooltip="queued">
+                                <span id="queued-duration">--:--</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -369,17 +494,31 @@
                 <thead>
                     <tr>
                         <th rowspan="2" class="category-gap">Age</th>
-                        <th rowspan="2" class="text-right category-gap">VS Lost</th>
+                        <th rowspan="2" class="text-right category-gap">
+                            <span class="tooltip tooltip-underlined" data-tooltip="vs-lost">VS Lost</span>
+                        </th>
                         <th colspan="2" class="text-center group-header category-gap">Housing</th>
                         <th colspan="4" class="text-center group-header">Floating Resources</th>
                     </tr>
                     <tr>
-                        <th class="text-right">Housed</th>
-                        <th class="text-right category-gap">Queued</th>
-                        <th class="text-right">Wood</th>
-                        <th class="text-right">Food</th>
-                        <th class="text-right">Gold</th>
-                        <th class="text-right">Stone</th>
+                        <th class="text-right">
+                            <span class="tooltip tooltip-underlined" data-tooltip="housed">Housed</span>
+                        </th>
+                        <th class="text-right category-gap">
+                            <span class="tooltip tooltip-underlined" data-tooltip="queued">Queued</span>
+                        </th>
+                        <th class="text-right">
+                            <span class="tooltip tooltip-underlined" data-tooltip="wood">Wood</span>
+                        </th>
+                        <th class="text-right">
+                            <span class="tooltip tooltip-underlined" data-tooltip="food">Food</span>
+                        </th>
+                        <th class="text-right">
+                            <span class="tooltip tooltip-underlined tooltip-right" data-tooltip="gold">Gold</span>
+                        </th>
+                        <th class="text-right">
+                            <span class="tooltip tooltip-underlined tooltip-right" data-tooltip="stone">Stone</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -681,6 +820,65 @@
             let num = parseInt(numText.replace(/,/g, ''));
             if (!isNaN(num)) {
                 td.textContent = num.toLocaleString() + (isSeconds ? 's' : '');
+            }
+        });
+
+        // Dynamic Tooltips Injection (DRY Implementation)
+        const TOOLTIPS = {
+            "vs-lost": {
+                title: "Villager Seconds (VS) Lost",
+                body: "Total lost working time from idle villagers.<br/>Example: 3 villagers idle for 10 seconds = 30 villager seconds lost.",
+                strategy: "Measures the resource loss from wasted gather time.<br/>Prioritize working villagers over minor military advantages."
+            },
+            "idle-time": {
+                title: "Time Idle",
+                body: "Total time during the match where at least one villager was idle.",
+                strategy: "Shows how quickly you noticed and put idle villagers back to work.<br/>Use breaks in military action to fix idles."
+            },
+            "housed": {
+                title: "Housed Duration",
+                body: "Total time spent at your housing limit with not enough houses to train new units.",
+                strategy: "Highlights delays in building houses.<br/>Build enough houses before and during breaks in military action."
+            },
+            "queued": {
+                title: "Fully Queued Duration",
+                body: "Total time spent close to your housing limit with units in queue.",
+                strategy: "Highlights how often you were close to housed without actually housed.<br/>If both this and your housed duration are high, build more houses ahead of time."
+            },
+            "wood": {
+                title: "Floating Wood",
+                body: "Time spent banking large amounts of wood.<br/>Limits: Dark: 200, Feudal: 500, Castle: 800, Imperial: 1000.",
+                strategy: "Indicates too many wood gatherers or not enough production.<br/>Reassign villagers, queue units, or spend wood on buildings."
+            },
+            "food": {
+                title: "Floating Food",
+                body: "Time spent banking large amounts of food. Excludes a 60s save-up window before age-ups.<br/>Limits: Dark: 200, Feudal: 500, Castle: 800, Imperial: 1000.",
+                strategy: "Indicates too many food gatherers, delayed aging up, or not enough production.<br/>Reassign villagers or queue units."
+            },
+            "gold": {
+                title: "Floating Gold",
+                body: "Time spent banking large amounts of gold. Excludes a 60s save-up window before age-ups.<br/>Limits: Dark: 100, Feudal: 300, Castle: 500, Imperial: 1000.",
+                strategy: "Indicates too many gold gatherers or not enough production.<br/>Reassign villagers or queue units."
+            },
+            "stone": {
+                title: "Floating Stone",
+                body: "Time spent banking large amounts of stone. Excludes a 60s save-up window before building a Castle.<br/>Limits: Dark: 200, Feudal: 300, Castle: 500, Imperial: 1000.",
+                strategy: "Indicates too many stone gatherers.<br/>Gather stone only when needed for towers, town centers, or castles."
+            }
+        };
+
+        document.querySelectorAll('[data-tooltip]').forEach(el => {
+            const key = el.getAttribute('data-tooltip');
+            const data = TOOLTIPS[key];
+            if (data) {
+                const tooltipTextSpan = document.createElement('span');
+                tooltipTextSpan.className = 'tooltiptext';
+                tooltipTextSpan.innerHTML = `
+                    <strong style="color: #d4af37; display: block; margin-bottom: 4px;">${data.title}</strong>
+                    ${data.body}
+                    <span style="color: #9ca3af; display: block; margin-top: 4px; font-style: italic;">${data.strategy}</span>
+                `;
+                el.appendChild(tooltipTextSpan);
             }
         });
     </script>
