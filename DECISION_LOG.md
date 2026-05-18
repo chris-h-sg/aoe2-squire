@@ -98,3 +98,10 @@ This log captures the high-level architectural and design decisions of the AoE2 
 *   **Reasoning**:
     *   Prevents empty exits when automated replay discovery and manual selection both fail or are skipped.
     *   We can still provide user analytics (total idle villager time, housing efficiency, resource floating, population charts) derived from real-time screen telemetry.
+
+## Match Winner Detection
+
+### 1. Replay Resign Event Extraction
+*   **Decision**: Determine the match winner by observing `Resign` events in the `aoe2record` parsed command stream.
+*   **Reasoning**: 
+    *   The `aoe2record` header does not expose the match victor. We infer the match outcome for 1v1s by identifying the `Resign` action from any player to enable marking the winning player in the post-match HTML report.

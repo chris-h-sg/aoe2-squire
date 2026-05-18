@@ -212,10 +212,12 @@ mod tests {
                 PlayerInfo {
                     name: "Player 1".to_string(),
                     civ: "Franks".to_string(),
+                    is_winner: false,
                 },
                 PlayerInfo {
                     name: "Player 2".to_string(),
                     civ: "Britons".to_string(),
+                    is_winner: false,
                 },
             ],
             rec_player_name: "Player 1".to_string(),

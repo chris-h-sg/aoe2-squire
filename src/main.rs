@@ -74,6 +74,7 @@ fn run_full_analysis(
             players: vec![aoe2_squire::replay::PlayerInfo {
                 name: "Active Player".to_string(),
                 civ: "Unknown Civ".to_string(),
+                is_winner: false,
             }],
             rec_player_name: "Active Player".to_string(),
             rec_player_civ: "Unknown Civ".to_string(),

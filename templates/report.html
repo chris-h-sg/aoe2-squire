@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
         {% if meta.has_replay %}
-            {{ meta.players[0].civ }} vs {{ meta.players[1].civ }}
+            {% if meta.players[0].is_winner %}👑&nbsp;{% endif %}{{ meta.players[0].civ }} vs {% if meta.players[1].is_winner %}👑&nbsp;{% endif %}{{ meta.players[1].civ }}
         {% else %}
             Match Report
         {% endif %}
@@ -387,9 +387,9 @@
     <div class="container">
         <h1>
             {% if meta.has_replay %}
-                {{ meta.players[0].civ }} ({{ meta.players[0].name }})
+                {% if meta.players[0].is_winner %}👑&nbsp;{% endif %}{{ meta.players[0].civ }} ({{ meta.players[0].name }})
                 vs
-                {{ meta.players[1].civ }} ({{ meta.players[1].name }})
+                {% if meta.players[1].is_winner %}👑&nbsp;{% endif %}{{ meta.players[1].civ }} ({{ meta.players[1].name }})
             {% else %}
                 AoE2 Squire Match Report
             {% endif %}
@@ -413,8 +413,8 @@
                 <div class="kpi-card" style="text-align: left;">
                     {% for p in meta.players %}
                     <div class="kpi-row">
-                        <span style="font-weight: bold;">{{ p.civ }}</span>
-                        <span style="color: #9ca3af;">{{ p.name }}</span>
+                        <span style="font-weight: bold;">{% if p.is_winner %}👑&nbsp;{% endif %}{{ p.civ }}</span>
+                        <span style="color: #9ca3af; text-align: right; margin-left: 10px;">{{ p.name }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -607,7 +607,7 @@
         // Update page title with duration
         const durationStr = formatDuration(matchDurationSec);
         {% if meta.has_replay %}
-            document.title = `{{ meta.players[0].civ }} vs {{ meta.players[1].civ }} | ${durationStr} | AoE2 Squire`;
+            document.title = `{% if meta.players[0].is_winner %}👑\u00A0{% endif %}{{ meta.players[0].civ }} vs {% if meta.players[1].is_winner %}👑\u00A0{% endif %}{{ meta.players[1].civ }} | ${durationStr} | AoE2 Squire`;
         {% else %}
             document.title = `Match Report | ${durationStr} | AoE2 Squire`;
         {% endif %}

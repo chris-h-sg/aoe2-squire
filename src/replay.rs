@@ -149,6 +149,7 @@ fn parse_csv_map(
 pub struct PlayerInfo {
     pub name: String,
     pub civ: String,
+    pub is_winner: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -251,12 +252,14 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
             player_infos.push(PlayerInfo {
                 name: display_name,
                 civ: civ_name,
+                is_winner: false,
             });
         } else if display_name != format!("Player {}", i + 1) && !display_name.trim().is_empty() {
             // fallback if player_type is different but it has a real name
             player_infos.push(PlayerInfo {
                 name: display_name,
                 civ: civ_name,
+                is_winner: false,
             });
         }
     }
@@ -271,6 +274,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     }
 
     let mut current_ms = 0;
+    let mut loser_id: Option<u8> = None;
 
     for op in savegame.operations {
         match op {
@@ -542,9 +546,25 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         object_name: name,
                     });
                 }
+                aoe2rec::actions::ActionData::Resign {
+                    player_id,
+                    ..
+                } => {
+                    loser_id = Some(player_id);
+                }
                 _ => {}
             },
             _ => {}
+        }
+    }
+
+    if let Some(l_id) = loser_id {
+        if let Some(loser_name) = player_names.get(&l_id) {
+            for p in &mut player_infos {
+                if p.name != *loser_name {
+                    p.is_winner = true;
+                }
+            }
         }
     }
 
