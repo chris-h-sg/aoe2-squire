@@ -80,6 +80,7 @@ fn run_full_analysis(
             rec_player_civ: "Unknown Civ".to_string(),
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             has_replay: false,
+            map_name: "Unknown Map".to_string(),
         }
     };
 

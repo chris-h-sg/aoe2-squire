@@ -1,0 +1,387 @@
+ID,Name
+9,Arabia
+10,Archipelago
+11,Baltic
+12,Black Forest
+13,Coastal
+14,Continental
+15,Crater Lake
+16,Fortress
+17,Gold Rush
+18,Highland
+19,Islands
+20,Mediterranean
+21,Migration
+22,Rivers
+23,Team Islands
+25,Scandinavia
+26,Mongolia
+27,Yucatan
+28,Salt Marsh
+29,Arena
+31,Oasis
+32,Ghost Lake
+33,Nomad
+34,Canals
+35,Capricious
+36,Dingos
+37,Graveyards
+38,Metropolis
+39,Moats
+40,Paradise Island
+41,Pilgrims
+42,Prairie
+43,Seasons
+44,Sherwood Forest
+46,Shipwreck
+47,Team Glaciers
+49,Iberia
+50,Britain
+51,Mideast
+52,Texas
+53,Italy
+54,Central America
+55,France
+56,Norse Lands
+57,Sea of Japan (East Sea)
+58,Byzantium
+67,Acropolis
+68,Budapest
+69,Cenotes
+70,City of Lakes
+71,Golden Pit
+72,Hideout
+73,Hill Fort
+74,Lombardia
+75,Steppe
+76,Valley
+77,MegaRandom
+78,Hamburger
+79,CtR Random
+80,CtR Monsoon
+81,CtR Pyramid Descent
+82,CtR Spiral
+83,Kilimanjaro
+84,Mountain Pass
+85,Nile Delta
+86,Serengeti
+87,Socotra
+88,Amazon
+89,China
+90,Horn of Africa
+91,India
+92,Madagascar
+93,West Africa
+94,Bohemia
+95,Earth
+96,Canyons
+97,Enemy Archipelago
+98,Enemy Islands
+99,Far Out
+100,Front Line
+101,Inner Circle
+102,Motherland
+103,Open Plains
+104,Ring of Water
+105,Snakepit
+106,The Eye
+107,Australia
+108,Indochina
+109,Indonesia
+110,Strait of Malacca
+111,Philippines
+112,Bog Islands
+113,Mangrove Jungle
+114,Pacific Islands
+115,Sandbank
+116,Water Nomad
+117,Jungle Islands
+118,Holy Line
+119,Border Stones
+120,Yin Yang
+121,Jungle Lanes
+122,Alpine Lakes
+123,Bogland
+124,Mountain Ridge
+125,Ravines
+126,Wolf Hill
+127,Swirling River
+128,Twin Forests
+129,Journey South
+130,Snake Forest
+131,Sprawling Streams
+132,Antarctica
+133,Aral Sea
+134,Black Sea
+135,Caucasus
+136,Siberia
+139,Golden Swamp
+140,Four Lakes
+141,Land Nomad
+142,BR Battle On Ice
+143,BR El Dorado
+144,BR Fall of Axum
+145,BR Fall of Rome
+146,BR Majapahit Empire
+147,Amazon Tunnel
+148,Coastal Forest
+149,African Clearing
+150,Atacama
+151,Seize The Mountain
+152,Crater
+153,Crossroads
+154,Michi
+155,Team Moats
+156,Volcanic Island
+157,Acclivity
+158,Eruption
+159,Frigid Lake
+160,Greenland
+161,Lowland
+162,Marketplace
+163,Meadow
+164,Mountain Range
+165,Northern Isles
+166,Ring Fortress
+167,Runestones
+168,Aftermath
+169,Enclosed
+170,Haboob
+171,Kawasan
+172,Land Madness
+173,Sacred Springs
+174,Wade
+175,Morass
+176,Shoals
+177,Cliffbound
+178,Isthmus
+179,Dunesprings
+180,Golden Stream
+181,Mountain Dunes
+182,River Divide
+183,Sandrift
+184,Shrubland
+185,The Passage
+186,Hollow Woodlands
+187,Karsts
+188,Glade
+189,Fortified Clearing
+190,QS Arabia
+191,QS Fortified Clearing
+192,QS Glade
+193,QS Nomad
+194,QS Runestones
+195,QS Arena
+196,QS Black Forest
+197,Great Wall
+198,Border Dispute
+199,Graupel
+200,Stranded
+201,Sardis
+202,Aquarena
+203,Forest Breach
+204,Chaos Pit
+205,Mired
+206,Murkwood
+207,Crownwood
+208,Dorothea Quarry
+209,Glacis
+210,Hengehold
+211,Loch Ness
+212,Rampart
+213,Stonefront
+214,Thames
+215,Vulpine
+10875,Arabia
+10876,Archipelago
+10877,Baltic
+10878,Black Forest
+10879,Coastal
+10880,Continental
+10881,Crater Lake
+10882,Fortress
+10883,Gold Rush
+10884,Highland
+10885,Islands
+10886,Mediterranean
+10887,Migration
+10888,Rivers
+10889,Team Islands
+10891,Scandinavia
+10892,Mongolia
+10893,Salt Marsh
+10894,Yucatan
+10895,Arena
+10897,Oasis
+10898,Ghost Lake
+10901,Nomad
+10914,Acropolis
+10915,Budapest
+10916,Cenotes
+10917,City of Lakes
+10918,Golden Pit
+10919,Hideout
+10920,Hill Fort
+10921,Lombardia
+10922,Steppe
+10923,Valley
+10924,MegaRandom
+10925,Hamburger
+10926,CtR Random
+10927,CtR Monsoon
+10928,CtR Pyramid Descent
+10929,CtR Spiral
+10930,Golden Swamp
+10931,Four Lakes
+10932,Land Nomad
+10933,BR Battle On Ice
+10934,BR El Dorado
+10935,BR Fall of Axum
+10936,BR Fall of Rome
+10937,BR Majapahit Empire
+10938,Amazon Tunnel
+10939,Coastal Forest
+10940,African Clearing
+10941,Atacama
+10942,Seize The Mountain
+10943,Crater
+10944,Crossroads
+10945,Michi
+10946,Team Moats
+10947,Volcanic Island
+10948,Acclivity
+10949,Eruption
+10950,Frigid Lake
+10951,Greenland
+10952,Lowland
+10953,Marketplace
+10954,Meadow
+10955,Mountain Range
+10956,Northern Isles
+10957,Ring Fortress
+10958,Runestones
+10959,Aftermath
+10960,Enclosed
+10961,Haboob
+10962,Kawasan
+10963,Land Madness
+10964,Sacred Springs
+10965,Wade
+10966,Morass
+10967,Shoals
+10968,Cliffbound
+10969,Isthmus
+10970,Dunesprings
+10971,Golden Stream
+10972,Mountain Dunes
+10973,River Divide
+10974,Sandrift
+10975,Shrubland
+10976,The Passage
+10977,Hollow Woodlands
+10978,Karsts
+10979,Glade
+10980,Fortified Clearing
+10981,QS Arabia
+10982,QS Fortified Clearing
+10983,QS Glade
+10984,QS Nomad
+10985,Canals
+10986,Capricious
+10987,Dingos
+10988,Graveyards
+10989,Metropolis
+10990,Moats
+10991,Paradise Island
+10992,Pilgrims
+10993,Prairie
+10994,Seasons
+10995,Sherwood Forest
+10997,Shipwreck
+10998,Team Glaciers
+11000,Stranded
+11005,QS Runestones
+11006,QS Arena
+11007,QS Black Forest
+11008,Great Wall
+11009,Sardis
+11010,Aquarena
+11011,Forest Breach
+11012,Border Dispute
+11013,Graupel
+11014,Chaos Pit
+11015,Mired
+11016,Murkwood
+11017,Crownwood
+11018,Dorothea Quarry
+11019,Glacis
+11020,Hengehold
+11021,Loch Ness
+11022,Rampart
+11023,Stonefront
+11024,Thames
+11025,Vulpine
+13544,Iberia
+13545,Britain
+13546,Mideast
+13547,Texas
+13548,Italy
+13549,Central America
+13550,France
+13551,Norse Lands
+13552,Sea of Japan (East Sea)
+13553,Byzantium
+301100,Kilimanjaro
+301101,Mountain Pass
+301102,Nile Delta
+301103,Serengeti
+301104,Socotra
+301105,Amazon
+301106,China
+301107,Horn of Africa
+301108,India
+301109,Madagascar
+301110,West Africa
+301111,Bohemia
+301112,Earth
+301113,Canyons
+301114,Enemy Archipelago
+301115,Enemy Islands
+301116,Far Out
+301117,Front Line
+301118,Inner Circle
+301119,Motherland
+301120,Open Plains
+301121,Ring of Water
+301122,Snakepit
+301123,The Eye
+301124,Australia
+301125,Indochina
+301126,Indonesia
+301127,Strait of Malacca
+301128,Philippines
+301129,Bog Islands
+301130,Mangrove Jungle
+301131,Pacific Islands
+301132,Sandbank
+301133,Water Nomad
+301134,Jungle Islands
+301135,Holy Line
+301136,Border Stones
+301137,Yin Yang
+301138,Jungle Lanes
+301139,Alpine Lakes
+301141,Bogland
+301142,Mountain Ridge
+301143,Ravines
+301144,Wolf Hill
+301145,Antarctica
+301146,Aral Sea
+301147,Black Sea
+301148,Caucasus
+301149,Siberia
+301150,Swirling River
+301151,Twin Forests
+301152,Journey South
+301153,Snake Forest
+301154,Sprawling Streams

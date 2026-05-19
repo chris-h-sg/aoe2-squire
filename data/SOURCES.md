@@ -10,4 +10,7 @@ The following resources were used to generate and normalize the CSV files in thi
 - Comprehensive Data (Halfon): https://halfon.aoe2.se/
 - Raw Data Source (JSON): https://github.com/SiegeEngineers/halfon/blob/master/data/units_buildings_techs.de.json
 
-The civilization IDs are derived from the community-standard mapping used by aoe2.net / aoe2.world.
+The civilization and map IDs are derived from the community mapping maintained by the SiegeEngineers development collective:
+- **Local Mirror**: [aoc_reference_data.de.json](aoc_reference_data.de.json) (a direct copy of [data/datasets/100.json in SiegeEngineers/aoc-reference-data](https://raw.githubusercontent.com/SiegeEngineers/aoc-reference-data/master/data/datasets/100.json)).
+- **Civilization IDs**: Parsed from the `"civilizations"` section of `aoc_reference_data.de.json`.
+- **Map IDs**: Parsed from the `"maps"` section of `aoc_reference_data.de.json` (used as the backing data for the `aocref` package that power replay parser libraries like `aoc-mgz`).

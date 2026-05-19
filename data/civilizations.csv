@@ -1,4 +1,4 @@
-﻿ID,Name
+ID,Name
 1,Britons
 2,Franks
 3,Goths
@@ -14,7 +14,7 @@
 13,Celts
 14,Spanish
 15,Aztecs
-16,Mayans
+16,Maya
 17,Huns
 18,Koreans
 19,Italians
@@ -44,3 +44,17 @@
 43,Romans
 44,Armenians
 45,Georgians
+46,Achaemenids
+47,Athenians
+48,Spartans
+49,Shu
+50,Wu
+51,Wei
+52,Jurchens
+53,Khitans
+54,Macedonians
+55,Thracians
+56,Puru
+57,Muisca
+58,Mapuche
+59,Tupi

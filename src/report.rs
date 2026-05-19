@@ -224,6 +224,7 @@ mod tests {
             rec_player_civ: "Franks".to_string(),
             app_version: "0.1.0".to_string(),
             has_replay: true,
+            map_name: "Arabia".to_string(),
         };
 
         let chart_data = extract_chart_data(&[], &floating);
