@@ -549,10 +549,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         object_name: name,
                     });
                 }
-                aoe2rec::actions::ActionData::Resign {
-                    player_id,
-                    ..
-                } => {
+                aoe2rec::actions::ActionData::Resign { player_id, .. } => {
                     loser_id = Some(player_id);
                 }
                 _ => {}

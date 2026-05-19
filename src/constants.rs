@@ -97,3 +97,9 @@ pub const FLOATING_THRESHOLDS: [ResourceThresholds; 4] = [
 // --- Smoothing ---
 pub const SMOOTH_VILS_MIN_SPIKE: i32 = 2;
 pub const SMOOTH_VILS_MAX_DURATION_MS: u64 = 2000;
+
+// --- Squire Grading Targets ---
+pub const GRADE_GOLD_THRESHOLD_PCT: f64 = 2.0;
+pub const GRADE_SILVER_THRESHOLD_PCT: f64 = 4.0;
+pub const OVERALL_GOLD_MIN_STARS: u32 = 6;
+pub const OVERALL_SILVER_MIN_STARS: u32 = 4;

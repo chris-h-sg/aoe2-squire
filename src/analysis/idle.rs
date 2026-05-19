@@ -21,6 +21,7 @@ pub struct IdleReport {
     pub age_vs_lost: HashMap<String, f64>,
     pub total_vs_lost: f64,
     pub total_idle_duration_sec: f64,
+    pub total_vs_overall: f64,
 }
 
 pub fn analyze_idle(
@@ -29,7 +30,17 @@ pub fn analyze_idle(
 ) -> Result<IdleReport, Box<dyn Error>> {
     println!("\n=== IDLE VILLAGER ANALYSIS ===");
 
-    let segments = segment_game(rows, |r| r.idle_vils.parse::<u32>().ok());
+    let rows_vec: Vec<MergedRow> = rows.collect();
+    let segments = segment_game(rows_vec.iter().cloned(), |r| {
+        r.idle_vils.parse::<u32>().ok()
+    });
+
+    let pop_segments = segment_game(rows_vec.iter().cloned(), |r| r.pop_vils.parse::<u32>().ok());
+    let mut total_vs_overall = 0.0;
+    for seg in &pop_segments {
+        let duration_sec = (seg.end_ms - seg.start_ms) as f64 / 1000.0;
+        total_vs_overall += duration_sec * seg.value as f64;
+    }
 
     let mut report_segments = Vec::new();
     let mut total_idle_duration_sec = 0.0;
@@ -105,5 +116,6 @@ pub fn analyze_idle(
         age_vs_lost,
         total_vs_lost: total,
         total_idle_duration_sec,
+        total_vs_overall,
     })
 }

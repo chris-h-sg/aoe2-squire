@@ -69,6 +69,10 @@ This log captures the high-level architectural and design decisions of the AoE2 
 *   **Decision**: Embed the Chart.js library directly into the HTML report.
 *   **Reasoning**: Ensures the report is fully functional without internet access, aligning with the "Single Executable" goal.
 
+### 4. Type-Safe Squire Grading Engine
+*   **Decision**: Grading engine in Rust to compute match performance metrics (Idle Percentage, Housed Percentage).
+*   **Reasoning**: Avoids complex logic inside the HTML report template and improves testability.
+
 ## Distribution & Packaging
 
 ### 1. Report Theming
