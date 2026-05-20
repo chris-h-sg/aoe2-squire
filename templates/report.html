@@ -26,7 +26,8 @@
             background-color: #f4ecd8; /* Parchment/Paper background */
             color: #e5e0d8; /* Default text color for inside panels */
             margin: 0;
-      background-image: 
+            overflow-x: hidden; /* Prevent horizontal scrollbars from diagonal ribbon */
+            background-image: 
         radial-gradient(circle at 10% 20%, rgba(200, 180, 140, 0.2) 0%, transparent 40%),
         radial-gradient(circle at 90% 80%, rgba(180, 160, 120, 0.3) 0%, transparent 50%),
         url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.05' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
@@ -600,10 +601,40 @@
             border-style: solid;
             border-color: transparent transparent #8b7355 transparent;
         }
+        /* Corner Feedback Ribbon */
+        .corner-ribbon {
+            position: absolute;
+            top: 25px;
+            right: -55px;
+            width: 200px;
+            background-color: #8b2525; /* Crimson wax seal / sash red */
+            color: #d4af37; /* Metallic Gold */
+            text-align: center;
+            padding: 6px 0;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            font-size: 0.8em;
+            line-height: 1.25;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            border-top: 1px dashed rgba(212, 175, 55, 0.6);
+            border-bottom: 1px dashed rgba(212, 175, 55, 0.6);
+            transform: rotate(45deg);
+            z-index: 10000;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .corner-ribbon:hover {
+            background-color: #a13131;
+            color: #ffffff;
+        }
     </style>
 </head>
 
 <body>
+    <a href="https://discord.gg/A9QXpDUHX" target="_blank" class="corner-ribbon">Share<br>Feedback</a>
     <div class="container" style="padding-top: 20px;">
         <div class="kpi-grid">
             <!-- Scorecard Card (spans 2x2) -->
