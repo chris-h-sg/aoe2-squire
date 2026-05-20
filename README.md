@@ -8,20 +8,20 @@
 
 ---
 
-AoE2 Squire is a free, zero-install coaching tool for **Age of Empires II: Definitive Edition** that runs in the background while you play. When your match ends, your squire gets to work, analyzing your match and creating a report showing exactly where you can improve. No uploading files, no viewing replays, no configuration required.
+AoE2 Squire is a free, zero-install match analyzer for **Age of Empires II: Definitive Edition** that runs in the background while you play. When your match ends, your squire gets to work, creating a report showing exactly where you can improve. No uploading files, no viewing replays, no configuration required.
 
 <a href="assets/report-sample.png"><img src="assets/report-sample.png" alt="Sample Post-Game Report showing timeline and efficiency metrics" width="600"></a>
 
-The example chart shows how the player NotQuiteLegend is managing their idle villagers well (red line) but could improve their villager production (blue line). They got housed once around 27:00 (red overlay) and floated a lot of gold and stone during Feudal Age (gold and grey bars at the top).
+This report shows how the player NotQuiteLegend is managing their idle villagers well (★★★, red line in the chart) but got housed multiple times (★, red overlays) and didn't keep up consistent villager villager production (blue line). They floated a lot of food in late Feudal and early Castle Age (red bar at the top).
 
 ---
 
 ## What It Tracks
 
+  - **Idle Villagers:** Gather time lost due to idle villagers.
+  - **Housing Efficiency:** Time spent population-blocked or with units queued while close the housing limit.
   - **Villager Graph:** Your villager count over time, showing when you stopped producing or lost villagers.
-  - **Idle Villagers:** Total gather time lost due to idle villagers.
-  - **Housing Efficiency:** Time spent population-blocked or with units queued beyond available housing.
-  - **Floating Resources:** Periods where you stockpiled resources too long. Smart enough to ignore intentional saving up for aging up or castles.
+  - **Floating Resources:** Periods where you stockpiled resources too long. Ignores intentional saving up for aging up or castles.
 
 ---
 
@@ -56,7 +56,7 @@ After downloading AoE2 Squire, Windows SmartScreen might stop it from running be
 
 ### How to Use
 
-1. **Start the tool:** Run `aoe2-squire.exe` before you start your match, with or without the game already running
+1. **Start the Squire:** Run `aoe2-squire.exe` before you start your match, with or without the game already running
 2. **Play normally:** Your squire observes from the sidelines, taking notes of how the match unfolds
 3. **View your report:** When the match ends, your squire presents your post-match report in your browser and automatically waits for your next match
 
@@ -85,7 +85,7 @@ Yes. Everything is bundled inside the single `.exe`, no internet connection requ
 Any resolution of 1366×768 or higher, running on your primary monitor.
 
 **What if it can't find my replay file?**
-A window will appear asking you to locate the file manually.
+A window will appear asking you to select the file manually. If you don't select a replay file, the Squire will generate a report using collected real-time data only.
 
 ---
 
