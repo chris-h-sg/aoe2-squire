@@ -20,6 +20,7 @@ pub struct HousingReport {
     pub metrics: HashMap<String, HashMap<String, f64>>,
     pub total_housed_sec: f64,
     pub total_queued_sec: f64,
+    pub recorded_duration_sec: f64,
 }
 
 pub fn analyze_housing(
@@ -109,10 +110,13 @@ pub fn analyze_housing(
         );
     }
 
+    let recorded_duration_sec = report_segments.iter().map(|s| s.duration_sec).sum::<f64>();
+
     Ok(HousingReport {
         segments: report_segments,
         metrics,
         total_housed_sec: total_housed,
         total_queued_sec: total_queued,
+        recorded_duration_sec,
     })
 }
