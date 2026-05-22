@@ -342,44 +342,60 @@ def get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_thres
         idx = valid_indices[0]
         w, h = stats[idx, cv2.CC_STAT_WIDTH], stats[idx, cv2.CC_STAT_HEIGHT]
         if w == img_w and h == img_h and (w + 2 > h):
+            max_allowed_val = max(2, int(0.3 * h))
+            min_dist = max(2, int(3 * ui_scale))
+            proj = np.sum(binary, axis=0)
+
+            perfect_valleys = []
+            regular_valleys = []
+
+            for cx in range(min_dist, w - min_dist):
+                val = proj[cx]
+                is_local_min = val <= proj[cx - 1] and val <= proj[cx + 1]
+                if is_local_min and val <= max_allowed_val:
+                    regular_valleys.append((cx, val))
+                    if w > h + 1:
+                        w_left = cx
+                        w_right = w - cx
+                        num_wide = (1 if w_left + 2 > h else 0) + (1 if w_right + 2 > h else 0)
+                        balance = min(w_left, w_right) / max(w_left, w_right)
+                        if num_wide == 0 and balance >= 0.7:  # neither half is less than 70% of the other
+                            perfect_valleys.append((cx, val))
+
+            if perfect_valleys:
+                perfect_valleys.sort(key=lambda item: item[1])
+                best_valley = perfect_valleys[0][0]
+                split_roi = roi_bgr.copy()
+                split_roi[:, best_valley] = 0
+                return get_components_recursive(split_roi, ui_scale, SEG_GREY_TOLERANCE, SEG_BRIGHTNESS_THRESHOLD, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
+
             if brightness_threshold < 160:
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance, brightness_threshold + 10, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
             if grey_tolerance > 2:
                 return get_components_recursive(roi_bgr, ui_scale, grey_tolerance - 2, brightness_threshold, overlay_mode, allow_yellow, ignore_color, offset_x, offset_y, connectivity, required_brightness)
-            
-            # Valley Splitting: Try to split the wide merged component vertically using the projection profile
-            proj = np.sum(binary, axis=0)
-            valleys = []
-            min_dist = max(2, int(3 * ui_scale))
-            for cx in range(min_dist, w - min_dist):
-                val = proj[cx]
-                is_local_min = val <= proj[cx - 1] and val <= proj[cx + 1]
-                max_allowed_val = max(2, int(0.3 * h))
-                if is_local_min and val <= max_allowed_val:
-                    valleys.append(cx)
-            
-            if valleys:
-                # Select the single best valley to split first by minimizing the number of resulting wide parts
+
+            # Valley Splitting: Try to split the wide merged component vertically using the regular valleys
+            if regular_valleys:
+                # Select the single best valley by minimising the number of resulting wide parts
                 best_valley = None
                 best_num_wide = 3  # Greater than max possible outcome (2)
                 best_proj_val = 999999
-                
-                for v in valleys:
-                    w_left = v
-                    w_right = w - v
+
+                for cx, val in regular_valleys:
+                    w_left = cx
+                    w_right = w - cx
                     num_wide = (1 if w_left + 2 > h else 0) + (1 if w_right + 2 > h else 0)
-                    proj_val = proj[v]
-                    
+
                     if num_wide < best_num_wide:
                         best_num_wide = num_wide
-                        best_valley = v
-                        best_proj_val = proj_val
+                        best_valley = cx
+                        best_proj_val = val
                     elif num_wide == best_num_wide:
                         # Tie-breaker: prefer the deeper valley (lower projection count)
-                        if proj_val < best_proj_val:
-                            best_valley = v
-                            best_proj_val = proj_val
-                
+                        if val < best_proj_val:
+                            best_valley = cx
+                            best_proj_val = val
+
                 if best_valley is not None:
                     split_roi = roi_bgr.copy()
                     split_roi[:, best_valley] = 0

@@ -102,6 +102,98 @@ struct SegmentationParams {
     ui_scale: f64,
 }
 
+/// Helper function to find vertical valleys in a wide blob's projection profile.
+/// Returns a tuple of (perfect_valley, fallback_valley).
+fn find_split_valleys(
+    binary: &GrayImage,
+    w: u32,
+    h: u32,
+    ui_scale: f64,
+) -> (Option<u32>, Option<u32>) {
+    let max_allowed_val = (0.3 * h as f32) as u32;
+    let max_allowed_val = if max_allowed_val < 2 { 2 } else { max_allowed_val };
+
+    let min_dist = (3.0 * ui_scale) as i32;
+    let min_dist = if min_dist < 2 { 2 } else { min_dist as u32 };
+
+    let mut proj = vec![0u32; w as usize];
+    for cx in 0..w {
+        let mut col_sum = 0;
+        for cy in 0..h {
+            if binary.get_pixel(cx, cy).0[0] > 0 {
+                col_sum += 1;
+            }
+        }
+        proj[cx as usize] = col_sum;
+    }
+
+    let mut perfect_valleys = vec![];
+    let mut regular_valleys = vec![];
+
+    if w > min_dist * 2 {
+        for cx in min_dist..(w - min_dist) {
+            let val = proj[cx as usize];
+            let is_local_min =
+                val <= proj[(cx - 1) as usize] && val <= proj[(cx + 1) as usize];
+
+            if is_local_min && val <= max_allowed_val {
+                regular_valleys.push((cx, val));
+
+                if w > h + 1 {
+                    let w_left = cx;
+                    let w_right = w - cx;
+                    let num_wide = (if w_left + 2 > h { 1 } else { 0 })
+                        + (if w_right + 2 > h { 1 } else { 0 });
+
+                    let min_w = w_left.min(w_right) as f32;
+                    let max_w = w_left.max(w_right) as f32;
+                    let balance = min_w / max_w;
+
+                    if num_wide == 0 && balance >= 0.7 {
+                        perfect_valleys.push((cx, val));
+                    }
+                }
+            }
+        }
+    }
+
+    let perfect_valley = if !perfect_valleys.is_empty() {
+        perfect_valleys.sort_by_key(|&(_, val)| val);
+        Some(perfect_valleys[0].0)
+    } else {
+        None
+    };
+
+    let fallback_valley = if !regular_valleys.is_empty() {
+        let mut best_valley = None;
+        let mut best_num_wide = 3;
+        let mut best_proj_val = 999999;
+
+        for &(v, proj_val) in &regular_valleys {
+            let w_left = v;
+            let w_right = w - v;
+            let num_wide = (if w_left + 2 > h { 1 } else { 0 })
+                + (if w_right + 2 > h { 1 } else { 0 });
+
+            if num_wide < best_num_wide {
+                best_num_wide = num_wide;
+                best_valley = Some(v);
+                best_proj_val = proj_val;
+            } else if num_wide == best_num_wide {
+                if proj_val < best_proj_val {
+                    best_valley = Some(v);
+                    best_proj_val = proj_val;
+                }
+            }
+        }
+        best_valley
+    } else {
+        None
+    };
+
+    (perfect_valley, fallback_valley)
+}
+
 /// Recursive connected-components segmentation.
 /// Returns bounding boxes in the coordinate space of the *original* box_img
 /// (offsets accumulate via offset_x / offset_y).
@@ -154,6 +246,24 @@ fn get_components_recursive(
     if valid.len() == 1 {
         let (_, ref s) = valid[0];
         if s.width == roi_w && s.height == roi_h && s.width + 2 > s.height {
+            let (perfect_valley, fallback_valley) =
+                find_split_valleys(&binary, s.width, s.height, params.ui_scale);
+
+            let do_split = |v: u32, mut p: SegmentationParams| {
+                let mut split_roi = roi.clone();
+                for cy in 0..s.height {
+                    split_roi.put_pixel(v, cy, image::Rgb([0, 0, 0]));
+                }
+                p.grey_tol = SEG_GREY_TOLERANCE;
+                p.brightness_thresh = SEG_BRIGHTNESS_THRESHOLD;
+                p.use_eight = true;
+                get_components_recursive(&split_roi, p, offset_x, offset_y)
+            };
+
+            if let Some(v) = perfect_valley {
+                return do_split(v, params);
+            }
+
             if params.brightness_thresh < 160 {
                 let mut p = params;
                 p.brightness_thresh += 10;
@@ -165,77 +275,8 @@ fn get_components_recursive(
                 return get_components_recursive(roi, p, offset_x, offset_y);
             }
 
-            // Valley Splitting: Try to split the wide merged component vertically using the projection profile
-            let w = s.width;
-            let h = s.height;
-            let mut proj = vec![0u32; w as usize];
-            for cx in 0..w {
-                let mut col_sum = 0;
-                for cy in 0..h {
-                    if binary.get_pixel(cx, cy).0[0] > 0 {
-                        col_sum += 1;
-                    }
-                }
-                proj[cx as usize] = col_sum;
-            }
-
-            let mut valleys = vec![];
-            let min_dist = (3.0 * params.ui_scale) as i32;
-            let min_dist = if min_dist < 2 { 2 } else { min_dist as u32 };
-
-            if w > min_dist * 2 {
-                for cx in min_dist..(w - min_dist) {
-                    let val = proj[cx as usize];
-                    let is_local_min =
-                        val <= proj[(cx - 1) as usize] && val <= proj[(cx + 1) as usize];
-                    let max_allowed_val = (0.3 * h as f32) as u32;
-                    let max_allowed_val = if max_allowed_val < 2 {
-                        2
-                    } else {
-                        max_allowed_val
-                    };
-
-                    if is_local_min && val <= max_allowed_val {
-                        valleys.push(cx);
-                    }
-                }
-            }
-
-            if !valleys.is_empty() {
-                let mut best_valley = None;
-                let mut best_num_wide = 3;
-                let mut best_proj_val = 999999;
-
-                for &v in &valleys {
-                    let w_left = v;
-                    let w_right = w - v;
-                    let num_wide = (if w_left + 2 > h { 1 } else { 0 })
-                        + (if w_right + 2 > h { 1 } else { 0 });
-                    let proj_val = proj[v as usize];
-
-                    if num_wide < best_num_wide {
-                        best_num_wide = num_wide;
-                        best_valley = Some(v);
-                        best_proj_val = proj_val;
-                    } else if num_wide == best_num_wide {
-                        if proj_val < best_proj_val {
-                            best_valley = Some(v);
-                            best_proj_val = proj_val;
-                        }
-                    }
-                }
-
-                if let Some(v) = best_valley {
-                    let mut split_roi = roi.clone();
-                    for cy in 0..h {
-                        split_roi.put_pixel(v, cy, image::Rgb([0, 0, 0]));
-                    }
-                    let mut p = params;
-                    p.grey_tol = SEG_GREY_TOLERANCE;
-                    p.brightness_thresh = SEG_BRIGHTNESS_THRESHOLD;
-                    p.use_eight = true;
-                    return get_components_recursive(&split_roi, p, offset_x, offset_y);
-                }
+            if let Some(v) = fallback_valley {
+                return do_split(v, params);
             }
 
             if params.use_eight {

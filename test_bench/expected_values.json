@@ -288,6 +288,33 @@
             "idle": {
                 "vils": "0"
             }
+        },
+        "90_vil_Anne_HK": {
+            "wood": {
+                "vils": "23",
+                "total": "1087"
+            },
+            "food": {
+                "vils": "41",
+                "total": "2629"
+            },
+            "gold": {
+                "vils": "20",
+                "total": "880"
+            },
+            "stone": {
+                "vils": "0",
+                "total": "1381"
+            },
+            "population": {
+                "vils": "90",
+                "total": "113",
+                "housing": "125",
+                "color": "white"
+            },
+            "idle": {
+                "vils": "0"
+            }
         }
     },
     "images": {
@@ -341,6 +368,9 @@
         },
         "11_vil_Anne_HK.png": {
             "use_value_set": "11_vil_Anne_HK"
+        },
+        "90_vil_Anne_HK.png": {
+            "use_value_set": "90_vil_Anne_HK"
         }
     }
 }

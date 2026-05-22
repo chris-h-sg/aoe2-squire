@@ -62,7 +62,8 @@ class TestVisionSystem(unittest.TestCase):
             "aoe2_16x9_Anne_HK-103-idle.png",
             "7_vil_Anne_HK.png",
             "7_vil_Anne_HK-2.png",
-            "11_vil_Anne_HK.png"
+            "11_vil_Anne_HK.png",
+            "90_vil_Anne_HK.png"
         }
 
     def test_extract_digits_count_parameterized(self):
