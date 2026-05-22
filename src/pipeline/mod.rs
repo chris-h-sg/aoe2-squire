@@ -126,7 +126,7 @@ impl<'a> ExtractorPipeline<'a> {
         img: &RgbImage,
         name: &str,
         coords: &UiElement,
-    ) -> Option<(RgbImage, Vec<image::GrayImage>, bool)> {
+    ) -> Option<(RgbImage, Vec<image::GrayImage>, bool, Option<[u8; 3]>)> {
         let (x, y, w, h, clipped) = self.get_element_coords(name, coords);
         if x + w > img.width() || y + h > img.height() {
             return None;
@@ -134,10 +134,22 @@ impl<'a> ExtractorPipeline<'a> {
 
         let box_img = image::imageops::crop_imm(img, x, y, w, h).to_image();
         let ignore_color = self.anne_hk_active && name.ends_with("_vils");
-        let overlay_mode = name == "population_total" && filter::detect_housed_overlay(&box_img);
         let allow_yellow = name == "population_total";
 
-        let out_img = filter::cleanup_box(&box_img, overlay_mode, allow_yellow, ignore_color);
+        // Sample background colour once from the root box before any segmentation.
+        // Passed as Option<[u8; 3]> so recursive sub-image calls never re-sample.
+        let overlay_bg = if name == "population_total" && filter::detect_housed_overlay(&box_img) {
+            let (w_box, h_box) = box_img.dimensions();
+            if w_box > 2 && h_box > 2 {
+                Some(box_img.get_pixel(2, 2).0)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let out_img = filter::cleanup_box(&box_img, overlay_bg, allow_yellow, ignore_color);
 
         if name == "idle_vils" {
             let active = if self.anne_hk_active {
@@ -146,7 +158,7 @@ impl<'a> ExtractorPipeline<'a> {
                 filter::contains_yellow(&box_img)
             };
             if !active {
-                return Some((box_img, vec![], clipped));
+                return Some((box_img, vec![], clipped, None));
             }
         }
 
@@ -154,11 +166,11 @@ impl<'a> ExtractorPipeline<'a> {
             &box_img,
             &out_img,
             self.ui_scale,
-            overlay_mode,
+            overlay_bg,
             allow_yellow,
             ignore_color,
         );
-        Some((box_img, digits, clipped))
+        Some((box_img, digits, clipped, overlay_bg))
     }
 
     fn run(&mut self, img: &DynamicImage) -> Option<Results> {
@@ -176,7 +188,7 @@ impl<'a> ExtractorPipeline<'a> {
             .insert("ui_scale".to_string(), format!("{:.4}", self.ui_scale));
 
         for (name, coords) in &self.ui_map.elements {
-            if let Some((box_img, digits, _clipped)) = self.process_box(&rgb, name, coords) {
+            if let Some((box_img, digits, _clipped, overlay_bg)) = self.process_box(&rgb, name, coords) {
                 let mut match_results: Vec<(char, f32)> = digits
                     .iter()
                     .enumerate()
@@ -217,7 +229,7 @@ impl<'a> ExtractorPipeline<'a> {
                 }
 
                 if name == "population_total" {
-                    if filter::detect_housed_overlay(&box_img) {
+                    if overlay_bg.is_some() {
                         pop_color = "overlay";
                     } else if filter::contains_yellow(&box_img) {
                         pop_color = "yellow";

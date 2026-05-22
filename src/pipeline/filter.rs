@@ -34,17 +34,17 @@ pub(super) fn contains_yellow(img: &RgbImage) -> bool {
 
 /// Core pixel filter — two modes:
 ///
-/// Standard (overlay_mode=false): keep grey/white pixels (max-min ≤ grey_tol), output max channel.
+/// Standard (overlay_bg=None): keep grey/white pixels (max-min ≤ grey_tol), output max channel.
 /// If allow_yellow, also pass through yellow pixels (R>150, G>150, |R-G|<50, B<max-15).
 /// If ignore_color, just convert to grayscale and threshold.
 ///
-/// Overlay (overlay_mode=true): subtract background colour at (2,2), convert to luminance,
+/// Overlay (overlay_bg=Some(bg)): subtract background colour, convert to luminance,
 /// NORM_MINMAX, threshold. Used for population_total when housed.
 pub fn apply_base_filter(
     img: &RgbImage,
     grey_tol: i16,
     brightness_thresh: u8,
-    overlay_mode: bool,
+    overlay_bg: Option<[u8; 3]>,
     allow_yellow: bool,
     ignore_color: bool,
 ) -> GrayImage {
@@ -63,8 +63,7 @@ pub fn apply_base_filter(
         return out;
     }
 
-    if overlay_mode {
-        let bg = img.get_pixel(2, 2).0;
+    if let Some(bg) = overlay_bg {
         let (bg_r, bg_g, bg_b) = (bg[0] as i16, bg[1] as i16, bg[2] as i16);
 
         // Subtract background per-pixel, convert to luminance
@@ -129,11 +128,11 @@ pub fn apply_base_filter(
 /// Stage 2 wrapper: produces the soft-filtered output image used by the matcher.
 pub fn cleanup_box(
     img: &RgbImage,
-    overlay_mode: bool,
+    overlay_bg: Option<[u8; 3]>,
     allow_yellow: bool,
     ignore_color: bool,
 ) -> GrayImage {
-    let thresh = if overlay_mode {
+    let thresh = if overlay_bg.is_some() {
         OUT_OVERLAY_BRIGHTNESS_THRESHOLD
     } else {
         OUT_BRIGHTNESS_THRESHOLD
@@ -142,7 +141,7 @@ pub fn cleanup_box(
         img,
         OUT_GREY_TOLERANCE,
         thresh,
-        overlay_mode,
+        overlay_bg,
         allow_yellow,
         ignore_color,
     )
@@ -193,4 +192,40 @@ pub(super) fn contains_red(img: &RgbImage) -> bool {
         let [r, g, b] = p.0;
         r > ANNE_HK_IDLE_RED_MIN && g < ANNE_HK_IDLE_GB_MAX && b < ANNE_HK_IDLE_GB_MAX
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::Rgb;
+
+    /// Regression: apply_base_filter with overlay_bg must not panic on images
+    /// smaller than 3×3. This was the exact condition that triggered the OOB crash
+    /// (image index (2,2) out of bounds (3,2)) before the bg colour was pre-sampled.
+    #[test]
+    fn test_overlay_filter_does_not_panic_on_tiny_image() {
+        let img = RgbImage::from_pixel(1, 1, Rgb([200, 180, 50]));
+        let bg = [200u8, 180u8, 50u8];
+        // Must not panic.
+        let out = apply_base_filter(&img, 10, 30, Some(bg), false, false);
+        assert_eq!(out.dimensions(), (1, 1));
+    }
+
+    /// Verifies that background subtraction in overlay mode zeroes pixels at or
+    /// below the bg colour and produces non-zero output for pixels that exceed it.
+    #[test]
+    fn test_overlay_filter_subtracts_background_correctly() {
+        // 1×2 image: top pixel equals bg, bottom pixel is clearly brighter.
+        let mut img = RgbImage::new(1, 2);
+        img.put_pixel(0, 0, Rgb([100, 100, 100])); // bg-level pixel → should be 0 after norm
+        img.put_pixel(0, 1, Rgb([200, 200, 200])); // bright foreground → should survive
+
+        let bg = [100u8, 100u8, 100u8];
+        let out = apply_base_filter(&img, 10, 1, Some(bg), false, false);
+
+        // bg pixel subtracts to 0 → normalised to 0
+        assert_eq!(out.get_pixel(0, 0).0[0], 0);
+        // foreground pixel has positive subtracted luminance → normalised to 255
+        assert_eq!(out.get_pixel(0, 1).0[0], 255);
+    }
 }

@@ -95,7 +95,8 @@ struct SegmentationParams {
     brightness_thresh: u8,
     use_eight: bool,
     min_area: u32,
-    overlay_mode: bool,
+    /// Pre-sampled background colour from the root box; None means standard (non-overlay) mode.
+    overlay_bg: Option<[u8; 3]>,
     allow_yellow: bool,
     ignore_color: bool,
     ui_scale: f64,
@@ -114,7 +115,7 @@ fn get_components_recursive(
         roi,
         params.grey_tol,
         params.brightness_thresh,
-        params.overlay_mode,
+        params.overlay_bg,
         params.allow_yellow,
         params.ignore_color,
     );
@@ -292,7 +293,7 @@ pub fn segment_into_digits(
     box_img: &RgbImage,
     out_img: &GrayImage,
     ui_scale: f64,
-    overlay_mode: bool,
+    overlay_bg: Option<[u8; 3]>,
     allow_yellow: bool,
     ignore_color: bool,
 ) -> Vec<GrayImage> {
@@ -303,7 +304,7 @@ pub fn segment_into_digits(
         brightness_thresh: SEG_BRIGHTNESS_THRESHOLD,
         use_eight: true,
         min_area,
-        overlay_mode,
+        overlay_bg,
         allow_yellow,
         ignore_color,
         ui_scale,
@@ -364,7 +365,7 @@ pub fn detect_baseline(
         brightness_thresh: SEG_BRIGHTNESS_THRESHOLD,
         use_eight: true,
         min_area,
-        overlay_mode: false,
+        overlay_bg: None,
         allow_yellow: false,
         ignore_color,
         ui_scale,
@@ -421,7 +422,7 @@ mod tests {
             brightness_thresh: 128,
             use_eight: true,
             min_area: 1,
-            overlay_mode: false,
+            overlay_bg: None,
             allow_yellow: false,
             ignore_color: false,
             ui_scale: 1.0,
@@ -436,5 +437,33 @@ mod tests {
 
         assert_eq!(b[0].x, 2);
         assert_eq!(b[1].x, 10);
+    }
+
+    #[test]
+    fn test_segment_into_digits_overlay_tiny_roi() {
+        // Create an image that triggers the standard processing recursive path
+        // for a sub-image that is smaller than 3x3 (e.g., 2x1).
+        let mut box_img = RgbImage::new(10, 5);
+
+        // Put bright pixels at (2, 2) and (3, 2).
+        // Using a ui_scale of 0.1 ensures min_area evaluates to 1.
+        box_img.put_pixel(2, 2, Rgb([255, 255, 255]));
+        box_img.put_pixel(3, 2, Rgb([255, 255, 255]));
+
+        let out_img = GrayImage::new(10, 5);
+        let bg = [100u8, 100u8, 100u8];
+
+        // Call segment_into_digits with overlay_bg and ui_scale = 0.1 to force min_area to 1
+        let digits = segment_into_digits(
+            &box_img,
+            &out_img,
+            0.1,
+            Some(bg),
+            false,
+            false,
+        );
+
+        // This should run without panicking.
+        let _ = digits;
     }
 }
