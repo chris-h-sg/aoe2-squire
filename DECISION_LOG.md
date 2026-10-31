@@ -55,6 +55,10 @@ This log captures the high-level architectural and design decisions of the AoE2 
 *   **Decision**: Utilize a unified library-first architecture with thin binary wrappers and a "Progressive Disclosure" CLI (verbose flag), instead of standalone analysis binaries.
 *   **Reasoning**: Enables in-memory orchestration of the full analysis suite immediately after capture, eliminates redundant I/O, and centralizes shared analytical logic (segmentation, timing) for better maintainability and testability.
 
+### Typed Timeline Instead of String Rows
+*   **Decision**: The merged timeline is a `Vec<Observation>` (`types.rs`). Each entry is either a screen reading (`CsvRow` with `Option<u32>` fields and a `HousingStatus` enum, placed on the in-game clock) or the original typed `ReplayEvent`. Age-ups are recognised as `Age` values (`ReplayEvent::age_researched`), and descriptions, costs and building ids come from methods on `ReplayEvent`. `MergedRow` (all strings) remains only as the schema of `output/merged_observations.csv`, with lossless conversions both ways for the `mesher` and single-analyzer tools.
+*   **Reasoning**: Every analyzer used to re-parse numbers and compare strings ("ScreenGrab", "Research Feudal Age", "-50", comma-joined ids), so a typo or format change failed silently. Types make those mistakes compile errors and give the planned sync rework a clean model to build on. File formats and outputs stay byte-identical. The vision pipeline keeps its internal `Results` string map, which is converted to telemetry at the capture boundary as before.
+
 ## HTML Report Visualization
 
 ### 1. Unified Multi-Layer Timeline
