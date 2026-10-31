@@ -59,7 +59,8 @@ pub struct SpendAlignment {
     /// means a pause or a sync jump.
     pub offset_by_quarter_ms: Vec<Option<i64>>,
     pub unmatched: Vec<Finding>,
-    /// Multi-building queues charged more by the replay parser than the screen shows.
+    /// Multi-building queues the replay charges more for than the screen shows (the replay
+    /// parser once charged them once per selected building).
     pub overclaimed: Vec<Finding>,
     pub farm_reseeds: usize,
     /// Drops no replay event explains (walls, market and tributes are not parsed either).
@@ -286,7 +287,7 @@ fn check_invariants(
 
 struct Drop {
     frame: usize,
-    amount: u32,
+    /// Part of the drop not yet attributed to a spend.
     left: u32,
 }
 
@@ -307,7 +308,6 @@ fn align_spends(
                 .filter(|w| w[1].1 < w[0].1)
                 .map(|w| Drop {
                     frame: w[1].0,
-                    amount: w[0].1 - w[1].1,
                     left: w[0].1 - w[1].1,
                 })
                 .collect()
@@ -333,12 +333,13 @@ fn align_spends(
     let mut unmatched = vec![];
     let mut overclaimed = vec![];
     for sp in spends {
-        // The replay parser charges multi-building queues once per building; match on one
-        // unit's cost and report the difference separately.
-        let per_unit = sp.cost.map(|c| c.div_ceil(sp.buildings));
+        // Each spend event is one unit, building or tech, even when several buildings
+        // were selected for a queue.
+        let per_unit = sp.cost;
         let mut takes: Vec<(usize, usize, u32)> = vec![];
         let mut first_drop: Option<u64> = None;
         let mut short = vec![];
+        let mut got_by_resource = [0u32; 4];
         for (r, &need) in per_unit.iter().enumerate() {
             if need == 0 {
                 continue;
@@ -367,6 +368,7 @@ fn align_spends(
             if (got as f64) < MIN_MATCHED_FRACTION * need as f64 {
                 short.push(r);
             }
+            got_by_resource[r] = got;
         }
 
         if short.is_empty() {
@@ -402,37 +404,32 @@ fn align_spends(
             ));
         }
 
-        if sp.buildings > 1 {
-            for (r, &claimed) in sp.cost.iter().enumerate() {
-                if claimed == 0 {
-                    continue;
-                }
-                let window_drops: u32 = drops[r]
-                    .iter()
-                    .filter(|d| in_window(sp.ig_ms, d))
-                    .map(|d| d.amount)
-                    .sum();
-                let sharing = spends
-                    .iter()
-                    .filter(|o| {
-                        o.cost[r] > 0
-                            && o.ig_ms + MATCH_AFTER_MS + MATCH_BEFORE_MS >= sp.ig_ms
-                            && o.ig_ms <= sp.ig_ms + MATCH_AFTER_MS + MATCH_BEFORE_MS
-                    })
-                    .count()
-                    .max(1) as u32;
-                let share = window_drops / sharing;
-                if (share as f64) < OVERCLAIM_FRACTION * claimed as f64 {
-                    overclaimed.push(finding_at(
-                        sp.ig_ms,
-                        RESOURCES[r],
-                        format!(
-                            "{}: replay charges {} for {} buildings, screen shows ~{} per event",
-                            sp.desc, claimed, sp.buildings, share
-                        ),
-                    ));
-                }
-            }
+        // An over-charge shrinks every charged resource; gathering in the same frame only
+        // ever hides part of one.
+        let charged: Vec<usize> = (0..RESOURCES.len()).filter(|&r| sp.cost[r] > 0).collect();
+        let all_below = charged
+            .iter()
+            .all(|&r| (got_by_resource[r] as f64) < OVERCLAIM_FRACTION * sp.cost[r] as f64);
+        if short.is_empty() && sp.buildings > 1 && all_below {
+            let shown: Vec<String> = charged
+                .iter()
+                .map(|&r| {
+                    format!(
+                        "{} {} charged, ~{} on screen",
+                        RESOURCES[r], sp.cost[r], got_by_resource[r]
+                    )
+                })
+                .collect();
+            overclaimed.push(finding_at(
+                sp.ig_ms,
+                RESOURCES[charged[0]],
+                format!(
+                    "{} with {} buildings selected: {}",
+                    sp.desc,
+                    sp.buildings,
+                    shown.join(", ")
+                ),
+            ));
         }
     }
 
@@ -664,17 +661,34 @@ mod tests {
 
     #[test]
     fn flags_overcharged_multi_building_queues() {
-        // Two batches of one unit each from two selected stables: the replay charges 160.
+        // One scout per click with two stables selected, charged once per stable (160).
         let rows = vec![
             grab(0, "500", "200", POP),
             event(100, "Queue Scout", "-160", "", "7,8"),
-            event(200, "Queue Scout", "-160", "", "7,8"),
-            grab(425, "340", "200", POP),
+            grab(425, "420", "200", POP),
+            event(500, "Queue Scout", "-160", "", "7,8"),
+            grab(850, "340", "200", POP),
         ];
         let s = check(&rows).spends.unwrap();
         assert_eq!(s.matched, 2);
         assert_eq!(s.overclaimed.len(), 2);
-        assert!(s.overclaimed[0].detail.contains("screen shows ~80"));
+        assert_eq!(
+            s.overclaimed[0].detail,
+            "Queue Scout with 2 buildings selected: food 160 charged, ~80 on screen"
+        );
+    }
+
+    #[test]
+    fn multi_building_queues_charged_per_unit_match() {
+        let rows = vec![
+            grab(0, "500", "200", POP),
+            event(100, "Queue Scout", "-80", "", "7,8"),
+            event(200, "Queue Scout", "-80", "", "7,8"),
+            grab(425, "340", "200", POP),
+        ];
+        let s = check(&rows).spends.unwrap();
+        assert_eq!(s.matched, 2);
+        assert!(s.overclaimed.is_empty());
     }
 
     #[test]
