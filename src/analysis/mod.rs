@@ -33,13 +33,34 @@ pub fn load_merged_observations() -> Result<Reader<File>, Box<dyn Error>> {
     Ok(csv::ReaderBuilder::new().from_path(path)?)
 }
 
+/// In-game time of the last age-up click per age. Only the last click can be the one that
+/// went through: clicking the same age again means the earlier research was cancelled.
+pub fn last_age_up_clicks(rows: &[Observation]) -> HashMap<Age, u64> {
+    let mut clicks = HashMap::new();
+    for event in rows.iter().filter_map(Observation::event) {
+        if let Some(age) = event.age_researched() {
+            clicks.insert(age, event.timestamp_ms() as u64);
+        }
+    }
+    clicks
+}
+
+/// The age an observation starts researching, if it is the last click for that age.
+pub fn effective_age_up(obs: &Observation, last_clicks: &HashMap<Age, u64>) -> Option<Age> {
+    obs.event()?
+        .age_researched()
+        .filter(|age| last_clicks.get(age) == Some(&obs.in_game_ms()))
+}
+
 /// Splits the timeline into runs of the same extracted value, also cutting at each age-up
-/// click. Readings for which `extractor` returns None are skipped.
+/// (the last click per age, see `last_age_up_clicks`). Readings for which `extractor`
+/// returns None are skipped.
 pub fn segment_game<T, F>(rows: &[Observation], extractor: F) -> Vec<GameSegment<T>>
 where
     T: PartialEq + Clone,
     F: Fn(&CsvRow) -> Option<T>,
 {
+    let last_clicks = last_age_up_clicks(rows);
     let mut segments = Vec::new();
     let mut current_value: Option<T> = None;
     let mut segment_start_ms: u64 = 0;
@@ -76,8 +97,8 @@ where
                     _ => {}
                 }
             }
-            Observation::Event(event) => {
-                if let Some(age) = event.age_researched() {
+            Observation::Event(_) => {
+                if let Some(age) = effective_age_up(row, &last_clicks) {
                     if let Some(ref val) = current_value {
                         segments.push(GameSegment {
                             start_ms: segment_start_ms,
@@ -224,6 +245,31 @@ mod tests {
         ];
         let results = calculate_vs_lost(&segments);
         assert_eq!(*results.get("Dark Age").unwrap(), 40.0);
+    }
+
+    #[test]
+    fn test_only_the_last_age_up_click_counts() {
+        // Feudal clicked three times; the first two were cancelled.
+        let rows = vec![
+            mock_row(1000, "ScreenGrab", "2", ""),
+            mock_row(2000, "RecEvent", "", "Research Feudal Age"),
+            mock_row(3000, "RecEvent", "", "Research Feudal Age"),
+            mock_row(4000, "ScreenGrab", "2", ""),
+            mock_row(5000, "RecEvent", "", "Research Feudal Age"),
+            mock_row(6000, "ScreenGrab", "2", ""),
+        ];
+
+        assert_eq!(last_age_up_clicks(&rows).get(&Age::Feudal), Some(&5000));
+        let segments = segment_game(&rows, |r| r.idle_vils);
+        assert_eq!(segments.len(), 2);
+        assert_eq!(segments[0].age, Age::Dark);
+        assert_eq!((segments[0].start_ms, segments[0].end_ms), (1000, 5000));
+        assert_eq!(
+            segments[0].end_reason,
+            SegmentEndReason::AgeResearch(Age::Feudal)
+        );
+        assert_eq!(segments[1].age, Age::Feudal);
+        assert_eq!((segments[1].start_ms, segments[1].end_ms), (5000, 6000));
     }
 
     #[test]

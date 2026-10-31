@@ -1,4 +1,4 @@
-use crate::analysis::format_time;
+use crate::analysis::{effective_age_up, format_time, last_age_up_clicks};
 use crate::constants::{
     FLOATING_MIN_DURATION_MS, FLOATING_THRESHOLDS, GAME_AGES, SAVE_UP_WINDOW_MS,
 };
@@ -109,13 +109,8 @@ pub fn calculate_floating_seconds(
     rows: &[Observation],
     suppressions: &Suppressions,
 ) -> (HashMap<String, FloatingSeconds>, Vec<FloatingSegment>) {
-    // Find the last click for each age-up to ensure cancelled clicks do not prematurely transition the age
-    let mut last_click_ms: HashMap<Age, u64> = HashMap::new();
-    for event in rows.iter().filter_map(Observation::event) {
-        if let Some(age) = event.age_researched() {
-            last_click_ms.insert(age, event.timestamp_ms() as u64);
-        }
-    }
+    // Only the last click per age-up counts, so cancelled clicks do not prematurely transition the age
+    let last_clicks = last_age_up_clicks(rows);
 
     let mut summary: HashMap<String, FloatingSeconds> = HashMap::new();
     let mut segments: Vec<FloatingSegment> = Vec::new();
@@ -151,11 +146,9 @@ pub fn calculate_floating_seconds(
         last_ts = row.in_game_ms();
 
         let reading = match row {
-            Observation::Event(event) => {
+            Observation::Event(_) => {
                 let ts = row.in_game_ms();
-                let new_age = event
-                    .age_researched()
-                    .filter(|age| last_click_ms.get(age) == Some(&ts));
+                let new_age = effective_age_up(row, &last_clicks);
 
                 if let Some(age) = new_age {
                     let bucket = summary.entry(current_age.name().to_string()).or_default();
