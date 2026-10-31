@@ -16,8 +16,8 @@ The only full game so far (`1v1-RM-sample`) was captured from a replay playing b
 normal speed, with no pauses and one click per Age-up. These 2–3 games cover what the
 tests can only simulate today.
 
-**Every game:** record with `--record-frames` (see below) and a video (Steam recording
-until the planned `--record-video` exists), keep the `.aoe2record`, and turn the in-game
+**Every game:** record with `--record-frames` and `--record-video` (see below; a Steam
+recording works too), keep the `.aoe2record`, and turn the in-game
 clock on (F11) for the whole game. Play live, not from a replay: only a live game runs at
 the true game speed. Note the rough in-game time of each deliberate scenario below; that
 makes the sanity report's findings quick to explain.
@@ -91,6 +91,33 @@ game), so well under 0.1% of one core. On disk, 200-240 KB per frame at 1080p an
 at 1440p, so roughly 3-7 MB per minute.
 Frames are dropped, never waited for, if the disk cannot keep up.
 
+**Video (dev builds):** `--record-video <dir>` records the screen with ffmpeg for the
+length of each match. It is behind the `dev-tools` Cargo feature, so release builds do not
+have it. It needs ffmpeg 6.0 or newer (`winget install Gyan.FFmpeg`; update it with
+`winget upgrade Gyan.FFmpeg`):
+
+```bash
+cargo run --release --features dev-tools -- --record-frames recordings --record-video recordings
+```
+
+- `recordings/telemetry_<start>.mkv`: the primary monitor (the one Squire reads) at 30 fps,
+  H.264. Matroska stays playable if Squire is killed (remux it with
+  `ffmpeg -i in.mkv -c copy out.mkv` to make it seekable again).
+- `telemetry_<start>.video.json`: when ffmpeg was started, the match start, the encoder and
+  the full ffmpeg command. `telemetry_<start>.ffmpeg.log`: ffmpeg's warnings and errors.
+- ffmpeg starts when the match is detected and gets `q` when the match UI disappears, or
+  when Squire is stopped with Ctrl+C. If Squire crashes or its window is closed, Windows
+  kills ffmpeg. The first video frame comes about 0.6 s after the match was detected.
+- Options: `--ffmpeg <path>` (or `SQUIRE_FFMPEG`; default `ffmpeg` on PATH),
+  `--video-encoder nvenc|amf|qsv|x264` and `--video-fps <n>`. At startup Squire checks
+  that ffmpeg has the `ddagrab` screen capture filter and tries the GPU encoders in that
+  order with a short test capture. A GPU encoder only works on the GPU the monitor is
+  plugged into, and NVENC needs an NVIDIA driver recent enough for the ffmpeg build
+  (ffmpeg 9 needs 610 or newer). x264 is the CPU fallback.
+- Measured on an i7 with the monitor on Intel HD 630 (QuickSync, 1080p): ffmpeg used about
+  13% of one core, the video ran at 29.9 fps (a few single-frame gaps, plus about 0.3 s
+  at the start), and took 30-35 MB per minute.
+
 ### 2. Check the recording
 
 - Re-read the frames through the capture loop; the replayed rows must equal the original
@@ -111,6 +138,18 @@ Frames are dropped, never waited for, if the disk cannot keep up.
   It prints each finding with its `rw` timestamp, which is the `timestamp_ms` of the CSV
   row and of the saved frame, so the nearest frame in `frames.csv` shows what the panel
   read at that moment.
+- Find a moment in the video. `tools/align_video.py` reads the resource panel from video
+  frames with the release binary (`cargo build --release` first) and matches it against
+  the CSV. It prints the offset, checks it in four parts of the video for drift, and
+  converts CSV `timestamp_ms` / `rw` values or times since the match start to video times:
+
+  ```bash
+  python tools/align_video.py recordings/telemetry_<start>.mkv logs/telemetry_<start>.csv --at <rw> --at 12:34
+  ```
+
+  It works for Steam recordings too, which start before the match. A 5-minute video takes
+  about a minute, a 20-minute one about two; the offset comes out to within about
+  ±50 ms. `--offset-ms` skips measuring and only converts.
 - Look at the `change:` and `before` frames: each pair is either a real change (a spend,
   a house finished) or a misread. Read the panel in the PNG and compare with the CSV row.
 

@@ -146,6 +146,12 @@ cargo run --release -- --record-frames recordings
 
 # Re-read recorded frames through the capture loop
 cargo run --release -- --replay-frames "recordings/telemetry_<start>"
+
+# Dev builds only: also record the screen of each match with ffmpeg 6+
+cargo run --release --features dev-tools -- --record-video recordings
+
+# Find a CSV / sanity report time (rw) in a video of the game
+python tools/align_video.py "recordings/telemetry_<start>.mkv" "logs/telemetry_<start>.csv" --at <rw>
 ```
 
 Recording a game and turning it into test fixtures: [`test_bench/README.md`](test_bench/README.md).
