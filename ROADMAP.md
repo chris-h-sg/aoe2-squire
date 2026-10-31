@@ -7,12 +7,12 @@ This roadmap outlines the development path for the AoE2 Squire, prioritizing cor
 Once the MVP is providing user value, development will shift toward expanding our data capture capabilities to unlock more complex coaching features.
 
 ### Core Automation & Fundamentals
-*   **Pause Detection:** Sync finds pauses between matched spends (see "Sync Rework" below). Reading the in-game clock would also find them at the very start and end of a game.
+*   **Pause Detection:** Sync finds pauses between matched spends (see "Sync Rework" below). Where the in-game clock is visible, it could also find them at the very start and end of a game.
 *   **Civilization Tech Tree Data Integration:** Integrate a comprehensive data file defining what units and technologies each civilization has access to, preventing the tool from penalizing players for missing unavailable upgrades.
 *   **Starting Resource Extraction:** Update the `aoe2rec` parser to correctly extract starting resources for the recorded player, replacing the current "first frame" heuristic with absolute ground truth.
 
 ### Vision Pipeline Expansions
-*   **Game Timer (F11) Capture:** Read the top-screen game clock to enable absolute synchronization between vision data and replay data, replacing heuristic syncing.
+*   **Game Timer (F11) Capture (optional):** When the top-screen game clock is visible, read it as extra time pairs for sync. It is off for many players, so it can only add to spend alignment, never replace it.
 *   **Global Queue Detection:** Read the top-left global queue to verify when a unit (specifically villagers) or technology is actively in production.
 *   **Current Age Detection:** Read the top-center UI element to determine exact Age-up completion times (rather than relying on queue timings).
 *   **Bottom Selection Panel Detection:** Ground-truth active building and unit counts when the player uses "Select All" hotkeys.
@@ -47,7 +47,8 @@ As we bridge the gap between vision-based telemetry and binary replay data, we a
 *   **Sync Granularity Tuning**: Capture runs every 250 ms; evaluate whether that is enough for villager production analysis or whether specific micro-gap detection needs a higher rate.
 *   **Sync Rework**:
     *   **Phase 1 (done)**: Sync is a piecewise-linear time mapping fitted to replay spends matched with resource drops over the whole game (DECISION_LOG.md, "Time Mapping from Spend Alignment"). It handles any speed from 0.5 to 4.0, pauses, a speed that changes or drifts (replay playback), unread values and a late capture start, and fails with an error instead of guessing. `tests/sync_stress.rs` has no ignored scenarios left; all of them are simulated by distorting the sample game.
-    *   **Phase 2 (next, after the sample games are recorded)**: Read the in-game clock (F11) and feed its readings to the same mapping fit as a second source of time pairs (`MappingSource`), so stretches without spends are synced too, as are pauses at the very start or end. Check both sources against the recorded games at other speeds, with real pauses and with replay playback whose speed changes. Those games are also the first real test of pause handling; so far pauses are only simulated.
+    *   **Phase 2 (next, after the sample games are recorded)**: Check spend alignment against the recorded games at other speeds, with real pauses and with replay playback whose speed changes. Those games are the first real test of pause handling; so far pauses are only simulated. Spend alignment stays the main method, because the in-game clock (F11) is off for many players.
+    *   **Optional, when the clock is visible**: feed in-game clock readings to the same mapping fit as extra time pairs (`MappingSource`). They would cover stretches without spends and pauses at the very start or end of a game. Games without the clock keep working exactly as now.
     *   **Known weak spot**: the sanity report matches spends to drops greedily, closest to the expected time first. In bursts of identical spends (10 houses in 4 s at 30:00 in the sample game), a sync a few ms off can flip one match. The sample game scores 188/189, and 187/189 is equally plausible for a correct sync. Matching bursts in order would remove the flip.
 *   **Cancelled Final Age-up Click**: Only the last click per age counts as the age-up (earlier clicks were cancelled). If that last click was cancelled too and never repeated, the age-up is still counted. Detecting it would mean matching a queue cancellation at the Town Center.
 *   **Typed Readings at the Capture Boundary**: The analysis works on typed observations, but capture still writes the telemetry CSV straight from the vision pipeline's string map (`Results`), and the frame recorder parses that map again (`PanelValues`). A typed panel reading would remove the duplication.

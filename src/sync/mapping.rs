@@ -167,7 +167,7 @@ fn pair_tol(p: &TimePair) -> f64 {
 const SEED_PAIRS: usize = 4;
 /// Shorter segments are treated as wrong matches.
 const MIN_SEGMENT_PAIRS: usize = 5;
-/// A frozen screen must account for at least this share of a jump to be taken as the pause.
+/// Still panel numbers must last at least this share of a jump to be taken as the pause.
 const MIN_FROZEN_SHARE: f64 = 0.5;
 /// Shorter jumps between segments are a changing speed, not a pause (real-world ms).
 const MIN_PAUSE_MS: f64 = 2_000.0;
@@ -270,9 +270,9 @@ fn segment(pairs: &[TimePair]) -> Vec<Segment> {
 
 /// Fits a monotonic piecewise-linear mapping to time pairs. Pairs off every straight run
 /// (wrong matches) are ignored, and so are runs that contradict the others (time running
-/// backwards or faster than any game speed). A jump between two runs is placed where the
-/// screen stood still (`rows`), as that is what a pause looks like; otherwise the runs are
-/// joined where they cross, or by a straight line. None if no segment could be fitted.
+/// backwards or faster than any game speed). A jump between two runs is a pause, placed
+/// where the panel's numbers stood still (`rows`); otherwise the runs are joined where they
+/// cross, or by a straight line. None if no segment could be fitted.
 pub fn fit_mapping(pairs: &[TimePair], rows: &[CsvRow]) -> Option<TimeMapping> {
     let mut sorted = pairs.to_vec();
     sorted.sort_by(|a, b| a.ig_ms.total_cmp(&b.ig_ms));
@@ -420,7 +420,7 @@ fn join(a: &Segment, b: &Segment, rows: &[CsvRow], tol: f64) -> Vec<Knot> {
         }];
     }
 
-    // Pause: b runs later than a; look for the screen standing still in the gap.
+    // Pause: b runs later than a; look for the panel's numbers standing still in the gap.
     if jump(ta) > 0.0 && jump(tb) >= MIN_PAUSE_MS {
         if let Some((start, end)) = longest_frozen_run(rows, gap_start.rw_ms, gap_end.rw_ms) {
             let t = a.ig(start).clamp(ta, tb);
@@ -450,33 +450,55 @@ fn join(a: &Segment, b: &Segment, rows: &[CsvRow], tol: f64) -> Vec<Knot> {
     ]
 }
 
-/// The longest run of identical consecutive readings within [from, to] (real-world ms), as
-/// the timestamps of its first and last frame.
+/// The numbers on the panel; they all stand still while the game is paused. The housing
+/// status is left out: the population keeps blinking during a pause.
+fn panel_numbers(row: &CsvRow) -> [Option<u32>; 8] {
+    [
+        row.food,
+        row.wood,
+        row.gold,
+        row.stone,
+        row.pop_curr,
+        row.pop_max,
+        row.pop_vils,
+        row.idle_vils,
+    ]
+}
+
+/// The longest run of consecutive readings within [from, to] (real-world ms) whose numbers
+/// do not change, as the timestamps of its first and last frame. An unread number does not
+/// end a run.
 fn longest_frozen_run(rows: &[CsvRow], from: f64, to: f64) -> Option<(f64, f64)> {
     let lo = rows.partition_point(|r| (r.timestamp_ms as f64) < from);
     let hi = rows.partition_point(|r| (r.timestamp_ms as f64) <= to);
     if hi <= lo + 1 {
         return None;
     }
-    let same = |x: &CsvRow, y: &CsvRow| {
-        CsvRow {
-            timestamp_ms: 0,
-            ..x.clone()
-        } == CsvRow {
-            timestamp_ms: 0,
-            ..y.clone()
-        }
-    };
     let mut best: Option<(f64, f64)> = None;
     let mut run_start = lo;
+    // The numbers the run has shown so far (None: not read yet).
+    let mut frozen = panel_numbers(&rows[lo]);
     for i in lo + 1..=hi {
-        if i == hi || !same(&rows[i], &rows[run_start]) {
-            let start = rows[run_start].timestamp_ms as f64;
-            let end = rows[i - 1].timestamp_ms as f64;
-            if best.is_none_or(|(s, e)| end - start > e - s) {
-                best = Some((start, end));
+        let numbers = (i < hi).then(|| panel_numbers(&rows[i]));
+        let continues = numbers.is_some_and(|n| {
+            n.iter()
+                .zip(&frozen)
+                .all(|(v, f)| v.is_none() || f.is_none() || v == f)
+        });
+        if continues {
+            for (f, v) in frozen.iter_mut().zip(numbers.unwrap()) {
+                *f = f.or(v);
             }
+            continue;
+        }
+        let start = rows[run_start].timestamp_ms as f64;
+        let end = rows[i - 1].timestamp_ms as f64;
+        if best.is_none_or(|(s, e)| end - start > e - s) {
+            best = Some((start, end));
+        }
+        if let Some(n) = numbers {
             run_start = i;
+            frozen = n;
         }
     }
     best.filter(|(s, e)| e > s)
@@ -485,6 +507,7 @@ fn longest_frozen_run(rows: &[CsvRow], from: f64, to: f64) -> Option<(f64, f64)>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::HousingStatus;
 
     fn pairs(f: impl Fn(f64) -> f64, igs: impl Iterator<Item = u32>) -> Vec<TimePair> {
         igs.map(|t| {
@@ -542,8 +565,9 @@ mod tests {
     }
 
     #[test]
-    fn places_pause_where_screen_stands_still() {
-        // 10 s pause at real-world 60 s; the screen is frozen from 60 s to 70 s.
+    fn places_pause_where_panel_numbers_stand_still() {
+        // 10 s pause at real-world 60 s; the numbers are frozen from 60 s to 70 s, while
+        // the housed population keeps blinking and some frames are unreadable.
         let f = |ig: f64| {
             let rw = ig / 1.7;
             if rw < 60_000.0 {
@@ -558,17 +582,22 @@ mod tests {
                 let ts = i * 250;
                 let frozen = (60_000..=70_000).contains(&ts);
                 let food = if frozen { 1 } else { ts as u32 };
+                let housing = if i % 2 == 0 {
+                    HousingStatus::Housed
+                } else {
+                    HousingStatus::Normal
+                };
                 CsvRow {
                     timestamp_ms: ts,
-                    food: Some(food),
-                    wood: None,
+                    food: (i % 7 != 0).then_some(food),
+                    wood: Some(200),
                     gold: None,
                     stone: None,
-                    pop_curr: None,
-                    pop_max: None,
+                    pop_curr: Some(10),
+                    pop_max: Some(10),
                     pop_vils: None,
                     idle_vils: None,
-                    housing: None,
+                    housing: Some(housing),
                 }
             })
             .collect();

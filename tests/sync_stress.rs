@@ -25,6 +25,7 @@ const CAPTURE_INTERVAL_MS: u64 = 240;
 
 const FOOD: usize = 1;
 const WOOD: usize = 3;
+const HOUSING: usize = 13;
 
 struct Baseline {
     csv: Csv,
@@ -267,8 +268,9 @@ fn speed_2_0() {
     check_speed("speed_2_0", 2.0);
 }
 
-/// Pauses of (real-world time in the unaltered CSV, duration).
-fn check_pauses(name: &str, pauses: &[(u64, u64)]) {
+/// Pauses of (real-world time in the unaltered CSV, duration). With `blinking`, the
+/// population display blinks during the pause (housed) and some numbers are unreadable.
+fn check_pauses(name: &str, pauses: &[(u64, u64)], blinking: bool) {
     let b = baseline();
     let mut csv = b.csv.clone();
     let mut at: Vec<(f64, u64)> = pauses
@@ -287,6 +289,22 @@ fn check_pauses(name: &str, pauses: &[(u64, u64)]) {
             .map(|(_, d)| *d as f64)
             .sum::<f64>()
     };
+    if blinking {
+        for &(rw, d) in &at {
+            let start = to_scenario_rw(rw - 1.0);
+            let paused = |r: &Vec<String>| {
+                let ts: f64 = r[0].parse().unwrap();
+                ts > start && ts <= start + d as f64
+            };
+            for (k, r) in csv.rows.iter_mut().filter(|r| paused(r)).enumerate() {
+                r[HOUSING] = if k % 2 == 0 { "housed" } else { "normal" }.to_string();
+                if k % 5 == 2 {
+                    // Food, wood, gold, stone, pop_curr and pop_max in turn.
+                    r[[1, 3, 5, 7, 9, 10][k / 5 % 6]] = String::new();
+                }
+            }
+        }
+    }
     check(
         name,
         &csv,
@@ -303,7 +321,7 @@ fn check_pause(name: &str, before_feudal: bool, duration_ms: u64) {
     } else {
         b.feudal_rw + 60_000
     };
-    check_pauses(name, &[(at, duration_ms)]);
+    check_pauses(name, &[(at, duration_ms)], false);
 }
 
 #[test]
@@ -339,6 +357,22 @@ fn multiple_pauses() {
             (t0 + 700_000, 40_000),
             (t0 + 1_100_000, 3_000),
         ],
+        false,
+    );
+}
+
+#[test]
+fn pauses_while_population_blinks() {
+    // The population keeps blinking during a pause when housed, and the overlay can make
+    // numbers unreadable; only the numbers themselves stand still.
+    let b = baseline();
+    check_pauses(
+        "pauses_while_population_blinks",
+        &[
+            ((b.first_spend_rw + b.feudal_rw) / 2, 10_000),
+            (b.feudal_rw + 60_000, 30_000),
+        ],
+        true,
     );
 }
 
