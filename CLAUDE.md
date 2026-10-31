@@ -35,3 +35,5 @@ aoe2-squire/
 ├── test_bench/             ← reference screenshots
 └── research/               ← Python R&D only (reference)
 ```
+
+The replay parser `aoe2rec` is our fork (github.com/chris-h-sg/aoe2rec), pinned by commit in `Cargo.toml`. Parser changes go to the fork first, then bump `rev`.

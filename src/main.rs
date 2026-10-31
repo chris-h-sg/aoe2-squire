@@ -100,23 +100,16 @@ fn run_full_analysis(
         &chart_data,
     )?;
 
-    // Construct filename: yyyymmdd-hhmmss-<player name>-<player civilization>.html
-    let date_part = metadata
-        .start_time
-        .replace(['-', ':'], "")
-        .replace(' ', "-");
-    let safe_player = metadata.rec_player_name.replace(' ', "_");
-    let safe_civ = metadata.rec_player_civ.replace(' ', "_");
-    let filename = format!("{}-{}-{}.html", date_part, safe_player, safe_civ);
-
-    let output_path = Path::new("output").join(filename);
+    let output_path = Path::new("output").join(report::report_filename(&metadata));
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
     fs::write(&output_path, report_html)?;
 
     println!("Opening report: {}", output_path.display());
-    open::that(&output_path)?;
+    if let Err(e) = open::that(&output_path) {
+        eprintln!("Could not open the report in a browser: {}", e);
+    }
 
     println!("\n=== ANALYSIS COMPLETE ===");
     Ok(())
@@ -153,6 +146,38 @@ fn main() {
         wait_for_user();
         std::process::exit(1);
     }
+}
+
+/// Analyzes a captured match without propagating errors, so the background loop
+/// survives a bad match. If the replay-based analysis fails (e.g. the replay format
+/// changed after a game patch), falls back to a telemetry-only report.
+/// Returns whether a report was generated.
+fn analyze_captured_match<F>(replay: Option<&Path>, mut analyze: F) -> bool
+where
+    F: FnMut(Option<&Path>) -> Result<(), Box<dyn Error>>,
+{
+    let err = match analyze(replay) {
+        Ok(()) => return true,
+        Err(e) => e,
+    };
+
+    let err = if replay.is_some() {
+        eprintln!("\n[Analysis] Replay-based analysis failed: {}", err);
+        eprintln!("[Analysis] Falling back to a telemetry-only report.");
+        match analyze(None) {
+            Ok(()) => return true,
+            Err(e) => e,
+        }
+    } else {
+        err
+    };
+
+    eprintln!("\n========================================");
+    eprintln!("ERROR: The report for this match could not be generated: {}", err);
+    eprintln!("\nPlease report this error via Discord:");
+    eprintln!("https://discord.gg/A9QXpDUHX");
+    eprintln!("========================================");
+    false
 }
 
 fn wait_for_user() {
@@ -287,15 +312,13 @@ fn run_app() -> Result<(), Box<dyn Error>> {
             match capture::run_capture_loop(&ui_map, &templates) {
                 Ok(Some((telemetry, replay))) => {
                     println!("\n--- Capture & Discovery Complete ---");
-                    run_full_analysis(
-                        &telemetry,
-                        replay.as_deref(),
-                        verbose,
-                        min_spike,
-                        max_duration_ms,
-                    )?;
+                    let delivered = analyze_captured_match(replay.as_deref(), |replay| {
+                        run_full_analysis(&telemetry, replay, verbose, min_spike, max_duration_ms)
+                    });
                     println!("\n════════════════════════════════════════");
-                    println!("♦ The report is delivered, my liege.");
+                    if delivered {
+                        println!("♦ The report is delivered, my liege.");
+                    }
                     println!("♦ Your Squire is standing by, ready to record your next battle.");
                     println!("════════════════════════════════════════\n");
                 }
@@ -311,4 +334,53 @@ fn run_app() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_analysis_success_with_replay_runs_once() {
+        let replay = PathBuf::from("match.aoe2record");
+        let mut calls = vec![];
+        let delivered = analyze_captured_match(Some(&replay), |r| {
+            calls.push(r.map(Path::to_path_buf));
+            Ok(())
+        });
+        assert!(delivered);
+        assert_eq!(calls, vec![Some(replay)]);
+    }
+
+    #[test]
+    fn test_replay_analysis_failure_falls_back_to_telemetry_only() {
+        let replay = PathBuf::from("match.aoe2record");
+        let mut calls = vec![];
+        let delivered = analyze_captured_match(Some(&replay), |r| {
+            calls.push(r.map(Path::to_path_buf));
+            if r.is_some() {
+                Err("unsupported replay format".into())
+            } else {
+                Ok(())
+            }
+        });
+        assert!(delivered);
+        assert_eq!(calls, vec![Some(replay), None]);
+    }
+
+    #[test]
+    fn test_analysis_failure_is_not_propagated() {
+        let replay = PathBuf::from("match.aoe2record");
+        let mut calls = 0;
+        let delivered = analyze_captured_match(Some(&replay), |_| {
+            calls += 1;
+            Err("boom".into())
+        });
+        assert!(!delivered);
+        assert_eq!(calls, 2);
+
+        let delivered = analyze_captured_match(None, |_| Err("boom".into()));
+        assert!(!delivered);
+    }
 }

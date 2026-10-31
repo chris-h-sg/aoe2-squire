@@ -240,6 +240,31 @@ pub fn calculate_squire_grades(
     }
 }
 
+/// Builds the report filename: yyyymmdd-hhmmss-<player name>-<player civilization>.html
+pub fn report_filename(metadata: &MatchMetadata) -> String {
+    let date_part = metadata
+        .start_time
+        .replace(['-', ':'], "")
+        .replace(' ', "-");
+    format!(
+        "{}-{}-{}.html",
+        date_part,
+        sanitize_filename_part(&metadata.rec_player_name),
+        sanitize_filename_part(&metadata.rec_player_civ)
+    )
+}
+
+/// Replaces characters that are invalid in Windows filenames (and spaces) with '_'.
+fn sanitize_filename_part(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' | ' ' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect()
+}
+
 pub fn generate_report(
     metadata: &MatchMetadata,
     idle_stats: &IdleReport,
@@ -249,9 +274,11 @@ pub fn generate_report(
 ) -> Result<String, minijinja::Error> {
     let template_str = load_template();
 
+    // The .html extension enables minijinja's HTML auto-escaping; player and map
+    // names are controlled by other players and must never be rendered raw.
     let mut env = Environment::new();
-    env.add_template("report", &template_str)?;
-    let tmpl = env.get_template("report")?;
+    env.add_template("report.html", &template_str)?;
+    let tmpl = env.get_template("report.html")?;
 
     let chart_js_lib = load_chart_js();
 
@@ -279,8 +306,7 @@ mod tests {
     use crate::replay::PlayerInfo;
     use std::collections::HashMap;
 
-    #[test]
-    fn test_template_loads_and_renders() {
+    fn sample_inputs() -> (IdleReport, HousingReport, FloatingReport, MatchMetadata) {
         let mut age_vs_lost = HashMap::new();
         age_vs_lost.insert("Dark Age".to_string(), 10.0);
 
@@ -337,6 +363,12 @@ mod tests {
             map_name: "Arabia".to_string(),
         };
 
+        (idle, housing, floating, metadata)
+    }
+
+    #[test]
+    fn test_template_loads_and_renders() {
+        let (idle, housing, floating, metadata) = sample_inputs();
         let chart_data = extract_chart_data(&[], &floating);
 
         let html = generate_report(&metadata, &idle, &housing, &floating, &chart_data)
@@ -356,6 +388,37 @@ mod tests {
         assert!(
             html.contains("matchChart"),
             "HTML should contain the chart canvas element"
+        );
+    }
+
+    #[test]
+    fn test_player_controlled_strings_are_escaped() {
+        let (idle, housing, floating, mut metadata) = sample_inputs();
+        metadata.players[1].name = "<img src=x onerror=alert(1)>".to_string();
+        metadata.map_name = "<script>alert(2)</script>".to_string();
+        let chart_data = extract_chart_data(&[], &floating);
+
+        let html = generate_report(&metadata, &idle, &housing, &floating, &chart_data)
+            .expect("Template should render successfully");
+        assert!(!html.contains("<img src=x"), "player name must not be rendered raw");
+        assert!(html.contains("&lt;img src=x"), "player name should be HTML-escaped");
+        assert!(!html.contains("<script>alert(2)"), "map name must not be rendered raw");
+        // The chart data is injected with `| safe` and must not be escaped.
+        assert!(html.contains("const timeLabels = [];"));
+    }
+
+    #[test]
+    fn test_report_filename_is_valid_on_windows() {
+        let (_, _, _, mut metadata) = sample_inputs();
+        assert_eq!(
+            report_filename(&metadata),
+            "20260506-120000-Player_1-Franks.html"
+        );
+
+        metadata.rec_player_name = "a<b>c:d\"e/f\\g|h?i*j\tk".to_string();
+        assert_eq!(
+            report_filename(&metadata),
+            "20260506-120000-a_b_c_d_e_f_g_h_i_j_k-Franks.html"
         );
     }
 

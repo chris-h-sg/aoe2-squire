@@ -14,11 +14,8 @@ use windows::Win32::Graphics::Dxgi::{
 };
 
 #[test]
+#[ignore = "requires a GPU and an interactive desktop session; run with `cargo test -- --ignored`"]
 fn test_live_screen_capture() -> Result<()> {
-    // NOTE: This test will fail in headless CI environments because it requires a physical GPU
-    // and an active Windows Desktop session to duplicate the screen.
-    // If a CI pipeline is added in the future, this test should be flagged with #[ignore].
-
     let mut device = None;
     let mut context = None;
     let feature_levels = [D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0];
