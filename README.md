@@ -66,7 +66,7 @@ After downloading AoE2 Squire, Windows SmartScreen might stop it from running be
 
 | Issue | Detail |
 |-------|--------|
-| **Pausing** | Breaks sync between visual clock and replay timeline |
+| **Pausing** | Pauses are detected, but only tested on simulated pauses so far |
 | **Alt-Tab / Minimize** | Interrupts visual data collection |
 | **UI Mods** | Only `Anne_HK - Better Resource Panel and Idle Villager Icon` is currently supported |
 | **Replay POV** | Analysis is based on the point of view the replay was recorded from |

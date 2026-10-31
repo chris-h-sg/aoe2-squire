@@ -7,12 +7,12 @@ This roadmap outlines the development path for the AoE2 Squire, prioritizing cor
 Once the MVP is providing user value, development will shift toward expanding our data capture capabilities to unlock more complex coaching features.
 
 ### Core Automation & Fundamentals
-*   **Pause Detection:** Implement logic to detect game pauses (e.g., via menu detection or timer stagnation) to prevent temporal drift in the synchronization pipeline.
+*   **Pause Detection:** Sync finds pauses between matched spends (see "Sync Rework" below). Where the in-game clock is visible, it could also find them at the very start and end of a game.
 *   **Civilization Tech Tree Data Integration:** Integrate a comprehensive data file defining what units and technologies each civilization has access to, preventing the tool from penalizing players for missing unavailable upgrades.
 *   **Starting Resource Extraction:** Update the `aoe2rec` parser to correctly extract starting resources for the recorded player, replacing the current "first frame" heuristic with absolute ground truth.
 
 ### Vision Pipeline Expansions
-*   **Game Timer (F11) Capture:** Read the top-screen game clock to enable absolute synchronization between vision data and replay data, replacing heuristic syncing.
+*   **Game Timer (F11) Capture (optional):** When the top-screen game clock is visible, read it as extra time pairs for sync. It is off for many players, so it can only add to spend alignment, never replace it.
 *   **Global Queue Detection:** Read the top-left global queue to verify when a unit (specifically villagers) or technology is actively in production.
 *   **Current Age Detection:** Read the top-center UI element to determine exact Age-up completion times (rather than relying on queue timings).
 *   **Bottom Selection Panel Detection:** Ground-truth active building and unit counts when the player uses "Select All" hotkeys.
@@ -43,13 +43,17 @@ Once the MVP is providing user value, development will shift toward expanding ou
 
 As we bridge the gap between vision-based telemetry and binary replay data, we are maintaining a list of specific technical hurdles to resolve:
 
-*   **Investigate `aoe2rec` Player Stats Parsing**: The forked library currently has trouble reading the correct `PlayerInit` blocks sequentially for DE replays. We've bypassed this by using "First Frame Ground Truth" from telemetry to find starting resources, but we should eventually solve the binary extraction for cleaner logic.
+*   **Investigate `aoe2rec` Player Stats Parsing**: The forked library currently has trouble reading the correct `PlayerInit` blocks sequentially for DE replays. We've bypassed this by using "First Frame Ground Truth" from telemetry to find starting resources. Sync no longer needs starting resources, so this is low priority.
 *   **Sync Granularity Tuning**: Capture runs every 250 ms; evaluate whether that is enough for villager production analysis or whether specific micro-gap detection needs a higher rate.
-*   **Sync Rework (next)**: The two-point calibration assumes one constant speed. The known failures are the ignored tests in `tests/sync_stress.rs`; `cargo test --test sync_stress -- --ignored` lists them. They cover other game speeds, pauses, unread or garbled values, and a late capture start. The rework must also handle a speed that varies: replay playback runs at its own speed, which is not the game speed and can drift. The sample game's measured 1.690 is such a playback speed. Candidate approaches: reading the in-game clock (F11), and aligning replay spends with resource drops over the whole game (the sanity report's spend alignment).
+*   **Sync Rework**:
+    *   **Phase 1 (done)**: Sync is a piecewise-linear time mapping fitted to replay spends matched with resource drops over the whole game (DECISION_LOG.md, "Time Mapping from Spend Alignment"). It handles any speed from 0.5 to 4.0, pauses, a speed that changes or drifts (replay playback), unread values and a late capture start, and fails with an error instead of guessing. `tests/sync_stress.rs` has no ignored scenarios left; all of them are simulated by distorting the sample game.
+    *   **Phase 2 (next, after the sample games are recorded)**: Check spend alignment against the recorded games at other speeds, with real pauses and with replay playback whose speed changes. Those games are the first real test of pause handling; so far pauses are only simulated. Spend alignment stays the main method, because the in-game clock (F11) is off for many players.
+    *   **Optional, when the clock is visible**: feed in-game clock readings to the same mapping fit as extra time pairs (`MappingSource`). They would cover stretches without spends and pauses at the very start or end of a game. Games without the clock keep working exactly as now.
+    *   **Known weak spot**: the sanity report matches spends to drops greedily, closest to the expected time first. In bursts of identical spends (10 houses in 4 s at 30:00 in the sample game), a sync a few ms off can flip one match. The sample game scores 188/189, and 187/189 is equally plausible for a correct sync. Matching bursts in order would remove the flip.
 *   **Cancelled Final Age-up Click**: Only the last click per age counts as the age-up (earlier clicks were cancelled). If that last click was cancelled too and never repeated, the age-up is still counted. Detecting it would mean matching a queue cancellation at the Town Center.
 *   **Typed Readings at the Capture Boundary**: The analysis works on typed observations, but capture still writes the telemetry CSV straight from the vision pipeline's string map (`Results`), and the frame recorder parses that map again (`PanelValues`). A typed panel reading would remove the duplication.
 *   **Duplicated Age Names**: `constants::GAME_AGES` duplicates the names of the `Age` enum.
-*   **Confidence-Based Rejection in Vision**: The matcher always returns its best guess, so a doubtful digit becomes a confidently wrong number. Report low-confidence reads as unread instead. Do it after the sync rework, because sync currently treats an unread value as a resource drop.
+*   **Confidence-Based Rejection in Vision**: The matcher always returns its best guess, so a doubtful digit becomes a confidently wrong number. Report low-confidence reads as unread instead. Sync now skips unread values, so this is no longer blocked.
 *   **Vision CPU Cost**: The live test measured 25–38 ms per frame, about 10% of one core at 4 frames per second. The anchor search, calibration and the main pass each convert the whole frame to RGB again (`to_rgb8`, about 6 MB at 1080p), although only a strip at the top is used. Profile it, then crop the strip once before any processing.
 *   **Sanity Report on Every Recorded Game**: `tests/sanity_report.rs` only checks the sample game. Extend it to every game with a `test_bench/snapshots/<game>.sanity.json`, once more games are recorded (see "Sample games to record" in `test_bench/README.md`).
 

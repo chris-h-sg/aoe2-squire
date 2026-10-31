@@ -1,11 +1,27 @@
 {
   "calibration": {
-    "anchor1_ig_ms": 5467,
-    "anchor1_rw_offset_ms": 2503,
-    "anchor2_ig_ms": 483634,
-    "anchor2_rw_offset_ms": 285388,
-    "game_start_rw_offset_ms": -731.293212890625,
-    "speed_factor": 1.6903229227424572
+    "game_start_rw_offset_ms": -822.005615234375,
+    "knots": [
+      {
+        "ig_ms": 5466.0,
+        "rw_offset_ms": 2412.291748046875
+      },
+      {
+        "ig_ms": 2036540.0,
+        "rw_offset_ms": 1204222.98828125
+      }
+    ],
+    "pauses": 0,
+    "quality": {
+      "matched": 187,
+      "matched_share": 0.9894179894179894,
+      "residual_median_ms": 70.1484375,
+      "residual_p90_ms": 127.770751953125,
+      "spends": 189
+    },
+    "segments": 1,
+    "source": "SpendAlignment",
+    "speed_at_start": 1.6900115850616533
   },
   "floating": {
     "segments": [
@@ -13,82 +29,82 @@
         "age": "Dark Age",
         "end_ms": 423633,
         "resource": "Food",
-        "start_ms": 345979
+        "start_ms": 346069
       },
       {
         "age": "Dark Age",
         "end_ms": 483633,
         "resource": "Wood",
-        "start_ms": 444199
+        "start_ms": 444270
       },
       {
         "age": "Feudal Age",
         "end_ms": 1011543,
         "resource": "Food",
-        "start_ms": 939212
+        "start_ms": 939192
       },
       {
         "age": "Castle Age",
-        "end_ms": 1463450,
+        "end_ms": 1463334,
         "resource": "Gold",
-        "start_ms": 1314857
+        "start_ms": 1314768
       },
       {
         "age": "Castle Age",
-        "end_ms": 1557871,
+        "end_ms": 1557738,
         "resource": "Gold",
-        "start_ms": 1468538
+        "start_ms": 1468421
       },
       {
         "age": "Castle Age",
-        "end_ms": 2045770,
+        "end_ms": 2045546,
         "resource": "Food",
-        "start_ms": 2010996
+        "start_ms": 2010779
       },
       {
         "age": "Castle Age",
-        "end_ms": 2045770,
+        "end_ms": 2045546,
         "resource": "Gold",
-        "start_ms": 1866200
+        "start_ms": 1866009
       },
       {
         "age": "Castle Age",
         "end_ms": 1701525,
         "resource": "Stone",
-        "start_ms": 1339854
+        "start_ms": 1339760
       },
       {
         "age": "Castle Age",
-        "end_ms": 2045770,
+        "end_ms": 2045546,
         "resource": "Stone",
         "start_ms": 1761525
       }
     ],
     "summary": {
       "Castle Age": {
-        "food": 34.774,
-        "gold": 417.496,
-        "stone": 645.9159999999999,
+        "food": 34.767,
+        "gold": 417.41999999999996,
+        "stone": 645.7860000000001,
         "wood": 0.0
       },
       "Dark Age": {
-        "food": 77.654,
+        "food": 77.564,
         "gold": 0.0,
         "stone": 0.0,
-        "wood": 39.434
+        "wood": 39.363
       },
       "Feudal Age": {
-        "food": 72.331,
+        "food": 72.351,
         "gold": 0.0,
         "stone": 0.0,
         "wood": 0.0
       }
     },
     "total": {
-      "food": 184.75900000000001,
-      "gold": 417.496,
-      "stone": 645.9159999999999,
-      "wood": 39.434
+      "food": 184.682,
+      "gold": 417.41999999999996,
+      "stone": 645.7860000000001,
+      "wood": 39.363
     }
   },
   "grades": {
@@ -107,40 +123,40 @@
   "housing": {
     "metrics": {
       "Castle Age": {
-        "housed": 38.164,
-        "normal": 866.256,
-        "queued": 69.807
+        "housed": 38.157,
+        "normal": 866.052,
+        "queued": 69.79400000000001
       },
       "Dark Age": {
-        "housed": 11.009,
-        "normal": 260.04499999999996,
-        "queued": 211.343
+        "housed": 11.007,
+        "normal": 259.99600000000004,
+        "queued": 211.241
       },
       "Feudal Age": {
-        "housed": 33.005,
-        "normal": 255.598,
-        "queued": 299.307
+        "housed": 33.0,
+        "normal": 255.596,
+        "queued": 299.314
       }
     },
-    "recorded_duration_sec": 2044.534,
+    "recorded_duration_sec": 2044.1570000000002,
     "segments": 25,
-    "total_housed_sec": 82.178,
-    "total_queued_sec": 580.457
+    "total_housed_sec": 82.16399999999999,
+    "total_queued_sec": 580.349
   },
   "idle": {
     "age_vs_lost": {
-      "Castle Age": 2214.864,
-      "Dark Age": 61.168000000000006,
-      "Feudal Age": 602.0
+      "Castle Age": 2214.419,
+      "Dark Age": 61.147000000000006,
+      "Feudal Age": 601.932
     },
     "segments": 89,
-    "total_idle_duration_sec": 1360.378,
-    "total_vs_lost": 2878.032,
-    "total_vs_overall": 62282.98200000001
+    "total_idle_duration_sec": 1360.1240000000005,
+    "total_vs_lost": 2877.498,
+    "total_vs_overall": 62271.48299999997
   },
   "merged": {
-    "first_in_game_ms": 1236,
-    "last_in_game_ms": 2045770,
+    "first_in_game_ms": 1389,
+    "last_in_game_ms": 2045546,
     "rec_events": 197,
     "rows": 5022,
     "screen_grabs": 4825

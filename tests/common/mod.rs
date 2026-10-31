@@ -117,11 +117,30 @@ impl Csv {
 
     /// Simulates another game speed: real-world time since the first row is scaled by `k`.
     pub fn stretch(&mut self, k: f64) {
-        let t0 = self.first_ts();
+        let t0 = self.first_ts() as f64;
+        self.warp(|t| t0 + (t - t0) * k);
+    }
+
+    /// Moves every row to real-world time `f(timestamp)`; `f` must be increasing.
+    pub fn warp(&mut self, f: impl Fn(f64) -> f64) {
         for r in &mut self.rows {
-            let ts: u64 = r[0].parse().unwrap();
-            r[0] = (t0 + ((ts - t0) as f64 * k).round() as u64).to_string();
+            let ts: f64 = r[0].parse().unwrap();
+            r[0] = (f(ts).round() as u64).to_string();
         }
+    }
+
+    /// Keeps only rows at least `interval_ms` after the previously kept one, as a capture at
+    /// that rate would see a game played back faster than it was recorded.
+    pub fn resample(&mut self, interval_ms: u64) {
+        let mut last: Option<u64> = None;
+        self.rows.retain(|r| {
+            let ts: u64 = r[0].parse().unwrap();
+            let keep = last.is_none_or(|l| ts >= l + interval_ms);
+            if keep {
+                last = Some(ts);
+            }
+            keep
+        });
     }
 
     /// Simulates a pause of `duration_ms` before row `i`: the screen keeps showing the

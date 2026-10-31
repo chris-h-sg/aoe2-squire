@@ -29,15 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", serde_json::to_string_pretty(&report)?);
     } else {
         if let Some(c) = calibration {
-            println!(
-                "Sync: speed {:.4}, Feudal anchor {}",
-                c.speed_factor,
-                if c.anchor2_rw > 0 {
-                    "found"
-                } else {
-                    "NOT found (fallback speed)"
-                }
-            );
+            println!("Sync: {}", c.summary());
         }
         print!("{}", report.to_text());
     }

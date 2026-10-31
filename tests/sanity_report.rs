@@ -1,5 +1,8 @@
 //! The sanity report (src/validation.rs) on the sample game, and a check that its spend
-//! alignment score actually notices broken sync (scenarios from tests/sync_stress.rs).
+//! alignment score actually notices broken sync (scenarios from tests/sync_stress.rs). The
+//! sync recovers those scenarios, so broken sync is simulated by meshing the distorted
+//! telemetry with the undistorted game's mapping, which is what the old constant-speed sync
+//! did; the same telemetry synced properly must score as well as the sample game.
 //!
 //! Every finding on the sample game has been reviewed and explained in REVIEWED_FINDINGS;
 //! the test fails on any new, vanished or changed finding, so after a change only the
@@ -8,7 +11,11 @@
 //! empty explanation that must be filled in for the test to pass.
 mod common;
 
-use aoe2_squire::analysis::format_time;
+use aoe2_squire::analysis::{format_time, mesher};
+use aoe2_squire::constants::{
+    CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
+};
+use aoe2_squire::sync::TimeMapping;
 use aoe2_squire::validation::{self, Finding, SanityReport};
 use common::Csv;
 use serde::{Deserialize, Serialize};
@@ -78,8 +85,11 @@ fn reviewable(r: &SanityReport) -> ReviewedReport {
 const SAMPLE_MIN_SCORE: f64 = 0.99;
 /// Broken sync must push the score clearly below that.
 const BROKEN_SYNC_MAX_SCORE: f64 = 0.8;
-/// Real-world offsets from the first CSV row: between the two sync anchors (first spend
-/// at 2.5 s, Feudal click at 285 s), and a minute after Feudal.
+/// The distorted games synced properly. A sync a few ms off can flip one or two greedy
+/// matches in a burst of identical spends (10 houses at 30:00), so allow a little less.
+const RECOVERED_MIN_SCORE: f64 = 0.97;
+/// Real-world offsets from the first CSV row: between the first spend (2.5 s) and the
+/// Feudal click (285 s), and a minute after Feudal.
 const BEFORE_FEUDAL_MS: u64 = 144_000;
 const AFTER_FEUDAL_MS: u64 = 345_000;
 
@@ -180,14 +190,45 @@ fn sample_game_findings_are_all_reviewed() {
     );
 }
 
+/// The sanity report of `csv` meshed with `mapping` instead of its own calibration.
+fn report_with_mapping(csv: &Csv, name: &str, mapping: &TimeMapping) -> SanityReport {
+    let rows = mesher::load_telemetry(
+        &csv.write(name),
+        SMOOTH_VILS_MIN_SPIKE,
+        (SMOOTH_VILS_MAX_DURATION_MS / CAPTURE_INTERVAL_MS) as usize,
+    )
+    .expect("telemetry");
+    let events = mesher::load_player_events(&common::test_bench("1v1-RM-sample.aoe2record"))
+        .expect("replay");
+    let report = validation::check(&mesher::merge(rows, events, mapping));
+    println!("{} (sample game's mapping):\n{}", name, report.to_text());
+    report
+}
+
 fn assert_detected(name: &str, csv: &Csv) {
-    let r = report(csv, name);
-    let score = r.spends.expect("spend alignment").score;
+    let sample = common::analyze(
+        &common::test_bench("1v1-RM-sample.csv"),
+        Some(&common::test_bench("1v1-RM-sample.aoe2record")),
+    )
+    .expect("sample analysis failed");
+    let mapping = sample.calibration.expect("sample calibration").mapping;
+    let broken = report_with_mapping(csv, &format!("{}_broken", name), &mapping)
+        .spends
+        .expect("spend alignment")
+        .score;
     assert!(
-        score <= BROKEN_SYNC_MAX_SCORE,
+        broken <= BROKEN_SYNC_MAX_SCORE,
         "{}: broken sync not detected, spend alignment {:.3}",
         name,
-        score
+        broken
+    );
+    let synced = report(csv, name).spends.expect("spend alignment").score;
+    assert!(
+        synced >= RECOVERED_MIN_SCORE,
+        "{}: synced spend alignment {:.3} below {}",
+        name,
+        synced,
+        RECOVERED_MIN_SCORE
     );
 }
 

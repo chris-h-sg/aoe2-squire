@@ -10,20 +10,21 @@ const SNAPSHOT: &str = "test_bench/snapshots/1v1-RM-sample.analysis.json";
 fn summarize(a: &MatchAnalysis, first_csv_ts: u64) -> Value {
     let cal = a.calibration.as_ref().map(|c| {
         // Real-world timestamps are stored relative to the first CSV row to stay readable.
-        let rel = |ts: u64| {
-            if ts == 0 {
-                Value::Null
-            } else {
-                json!(ts as i64 - first_csv_ts as i64)
-            }
-        };
+        let rel = |ts: f64| ts - first_csv_ts as f64;
+        let m = &c.mapping;
+        let knots: Vec<Value> = m
+            .knots()
+            .iter()
+            .map(|k| json!({ "rw_offset_ms": rel(k.rw_ms), "ig_ms": k.ig_ms }))
+            .collect();
         json!({
-            "speed_factor": c.speed_factor,
-            "game_start_rw_offset_ms": c.game_start_rw_ms - first_csv_ts as f64,
-            "anchor1_ig_ms": c.anchor1_ig,
-            "anchor1_rw_offset_ms": rel(c.anchor1_rw),
-            "anchor2_ig_ms": c.anchor2_ig,
-            "anchor2_rw_offset_ms": rel(c.anchor2_rw),
+            "source": c.source,
+            "game_start_rw_offset_ms": rel(m.game_start_rw_ms()),
+            "speed_at_start": m.speed_at(0.0),
+            "segments": m.segments(),
+            "pauses": m.pauses().len(),
+            "knots": knots,
+            "quality": c.quality,
         })
     });
 
