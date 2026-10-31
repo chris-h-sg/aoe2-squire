@@ -1,7 +1,7 @@
 use crate::analysis::smoothing;
 use crate::replay::{extract_events, ReplayEvent};
 use crate::sync::Calibration;
-use crate::types::{CsvRow, MergedRow};
+use crate::types::{CsvRow, HousingStatus, MergedRow};
 use csv::ReaderBuilder;
 use std::path::Path;
 
@@ -38,7 +38,7 @@ pub fn generate_merged_observations_with_calibration(
             let pop_max = record[10].parse().ok();
             let pop_vils = record.get(11).and_then(|s| s.parse().ok());
             let idle_vils = record.get(12).and_then(|s| s.parse().ok());
-            let housing = record.get(13).map(|s| s.to_string());
+            let housing = record.get(13).and_then(HousingStatus::parse);
             csv_rows.push(CsvRow {
                 timestamp_ms: ts,
                 food,
@@ -279,7 +279,10 @@ pub fn generate_merged_observations_with_calibration(
                 pop_curr: row.pop_curr.map(|v| v.to_string()).unwrap_or_default(),
                 pop_max: row.pop_max.map(|v| v.to_string()).unwrap_or_default(),
                 pop_vils: row.pop_vils.map(|v| v.to_string()).unwrap_or_default(),
-                housing: row.housing.clone().unwrap_or_default(),
+                housing: row
+                    .housing
+                    .map(|h| h.as_str().to_string())
+                    .unwrap_or_default(),
             });
         }
     }
