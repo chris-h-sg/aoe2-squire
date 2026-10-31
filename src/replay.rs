@@ -179,7 +179,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     reader.read_to_end(&mut buffer)?;
 
     let mut cursor = std::io::Cursor::new(&buffer);
-    let savegame: Savegame = cursor.read_le()?;
+    // Fully qualified: std may add a `read_le` method that would shadow binrw's.
+    let savegame: Savegame = BinReaderExt::read_le(&mut cursor)?;
 
     println!("Replay parsed successfully!");
     println!("Build: {:?}", savegame.zheader.build);
