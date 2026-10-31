@@ -30,6 +30,7 @@ BENCH = ROOT / "test_bench"
 OUT_DIR = BENCH / "video_frames"
 
 # Regions kept (fractions of width, height); everything else is blacked out.
+# Keep in sync with KEEP_REGIONS in src/capture/record.rs (--record-frames uses the same masking).
 # - Resource panel: the ui_map.json elements end at x=708, y=63 px at UI scale 1.0.
 # - Anchor: searched at x 50-95% of the width, y 1.5-3.5% of the height (+9 px density box),
 #   see ANCHOR_* in src/constants.rs and src/pipeline/anchor.rs. The rightmost red pixel

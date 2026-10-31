@@ -137,7 +137,15 @@ cargo run -- --parse-replay "path/to/match.aoe2record"
 
 # Test vision pipeline on a screenshot
 cargo run -- "test_bench/aoe2_16x9.png"
+
+# Also save masked frames of each match (for checking readings and building fixtures)
+cargo run --release -- --record-frames recordings
+
+# Re-read recorded frames through the capture loop
+cargo run --release -- --replay-frames "recordings/telemetry_<start>"
 ```
+
+Recording a game and turning it into test fixtures: [`test_bench/README.md`](test_bench/README.md).
 
 Further reading: [`DECISION_LOG.md`](DECISION_LOG.md) · [`TECHNICAL_SPEC.md`](TECHNICAL_SPEC.md) · [`LOW_ELO_ISSUES.md`](LOW_ELO_ISSUES.md)
 
