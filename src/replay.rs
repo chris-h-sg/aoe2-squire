@@ -1,3 +1,4 @@
+use crate::types::Age;
 use aoe2rec::Savegame;
 use binrw::BinReaderExt;
 use chrono::{Local, TimeZone};
@@ -15,7 +16,7 @@ pub struct ResourceCost {
     pub stone: u32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub enum ReplayEvent {
     TechResearch {
         timestamp_ms: u32,
@@ -55,6 +56,88 @@ pub enum ReplayEvent {
         object_id: u32,
         object_name: String,
     },
+}
+
+impl ReplayEvent {
+    pub fn timestamp_ms(&self) -> u32 {
+        match self {
+            ReplayEvent::TechResearch { timestamp_ms, .. }
+            | ReplayEvent::UnitQueued { timestamp_ms, .. }
+            | ReplayEvent::QueueCancellation { timestamp_ms, .. }
+            | ReplayEvent::BuildingConstruction { timestamp_ms, .. }
+            | ReplayEvent::Deletion { timestamp_ms, .. } => *timestamp_ms,
+        }
+    }
+
+    pub fn player_id(&self) -> u8 {
+        match self {
+            ReplayEvent::TechResearch { player_id, .. }
+            | ReplayEvent::UnitQueued { player_id, .. }
+            | ReplayEvent::QueueCancellation { player_id, .. }
+            | ReplayEvent::BuildingConstruction { player_id, .. }
+            | ReplayEvent::Deletion { player_id, .. } => *player_id,
+        }
+    }
+
+    /// What the command costs; None for commands that spend nothing.
+    pub fn cost(&self) -> Option<&ResourceCost> {
+        match self {
+            ReplayEvent::TechResearch { cost, .. }
+            | ReplayEvent::UnitQueued { cost, .. }
+            | ReplayEvent::BuildingConstruction { cost, .. } => Some(cost),
+            ReplayEvent::QueueCancellation { .. } | ReplayEvent::Deletion { .. } => None,
+        }
+    }
+
+    /// Short description, e.g. "Research Feudal Age", "Queue Villager", "Build House".
+    pub fn description(&self) -> String {
+        match self {
+            ReplayEvent::TechResearch { tech_type, .. } => format!("Research {}", tech_type),
+            ReplayEvent::UnitQueued { unit_type, .. } => format!("Queue {}", unit_type),
+            ReplayEvent::QueueCancellation { .. } => "Unqueue".to_string(),
+            ReplayEvent::BuildingConstruction { building_type, .. } => {
+                format!("Build {}", building_type)
+            }
+            ReplayEvent::Deletion { object_name, .. } => format!("Delete {}", object_name),
+        }
+    }
+
+    /// The building(s) involved, comma-separated for queues across several buildings.
+    pub fn building_type(&self) -> String {
+        match self {
+            ReplayEvent::TechResearch { building_type, .. }
+            | ReplayEvent::BuildingConstruction { building_type, .. } => building_type.clone(),
+            ReplayEvent::UnitQueued { building_types, .. }
+            | ReplayEvent::QueueCancellation { building_types, .. } => building_types.join(","),
+            ReplayEvent::Deletion { .. } => String::new(),
+        }
+    }
+
+    /// Ids of the buildings the command was given to (none for construction and deletion).
+    pub fn building_ids(&self) -> Vec<u32> {
+        match self {
+            ReplayEvent::TechResearch { building_id, .. } => vec![*building_id],
+            ReplayEvent::UnitQueued { building_ids, .. }
+            | ReplayEvent::QueueCancellation { building_ids, .. } => building_ids.clone(),
+            ReplayEvent::BuildingConstruction { .. } | ReplayEvent::Deletion { .. } => vec![],
+        }
+    }
+
+    /// The age this command starts researching, if it is an age-up click.
+    pub fn age_researched(&self) -> Option<Age> {
+        match self {
+            ReplayEvent::TechResearch { tech_type, .. } => Age::from_tech(tech_type),
+            _ => None,
+        }
+    }
+
+    /// Commands that give resources back: queue cancellations and deletions.
+    pub fn is_refund(&self) -> bool {
+        matches!(
+            self,
+            ReplayEvent::QueueCancellation { .. } | ReplayEvent::Deletion { .. }
+        )
+    }
 }
 
 pub fn format_time(ms: u32) -> String {

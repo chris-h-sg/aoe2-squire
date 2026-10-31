@@ -1,6 +1,6 @@
 use crate::analysis::{calculate_housing_metrics, format_time, segment_game, SegmentEndReason};
 use crate::constants::GAME_AGES;
-use crate::types::MergedRow;
+use crate::types::Observation;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
@@ -24,18 +24,12 @@ pub struct HousingReport {
 }
 
 pub fn analyze_housing(
-    rows: impl Iterator<Item = MergedRow>,
+    rows: &[Observation],
     verbose: bool,
 ) -> Result<HousingReport, Box<dyn Error>> {
     println!("\n=== HOUSING EFFICIENCY ANALYSIS ===");
 
-    let segments = segment_game(rows, |r| {
-        if r.housing.is_empty() {
-            None
-        } else {
-            Some(r.housing.clone())
-        }
-    });
+    let segments = segment_game(rows, |r| r.housing);
 
     let mut report_segments = Vec::new();
 
@@ -51,7 +45,7 @@ pub fn analyze_housing(
     for seg in &segments {
         let duration_sec = (seg.end_ms - seg.start_ms) as f64 / 1000.0;
         let annotation = match &seg.end_reason {
-            SegmentEndReason::AgeResearch(age) => format!(" ({} Click)", age),
+            SegmentEndReason::AgeResearch(age) => format!(" ({} Click)", age.name()),
             _ => "".to_string(),
         };
 
@@ -62,14 +56,18 @@ pub fn analyze_housing(
             start_formatted: start_formatted.clone(),
             end_formatted: end_formatted.clone(),
             duration_sec,
-            status: seg.value.clone(),
+            status: seg.value.as_str().to_string(),
             annotation: annotation.clone(),
         });
 
         if verbose {
             println!(
                 "{:>10} | {:>10} | {:>9.1}s | {:>10}{}",
-                start_formatted, end_formatted, duration_sec, seg.value, annotation
+                start_formatted,
+                end_formatted,
+                duration_sec,
+                seg.value.as_str(),
+                annotation
             );
         }
     }
