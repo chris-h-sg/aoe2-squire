@@ -10,4 +10,5 @@ pub mod replay_discovery;
 pub mod report;
 pub mod sync;
 pub mod types;
+pub mod validation;
 pub mod version;
