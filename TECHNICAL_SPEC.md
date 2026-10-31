@@ -25,6 +25,6 @@
 
 ## Fallback Mechanisms
 - **Telemetry-Only Fallback**:
-  - **Condition**: Triggers when both automated discovery and manual replay file selection are skipped or fail.
+  - **Condition**: Triggers when both automated discovery and manual replay file selection are skipped or fail, or when the replay cannot be analysed (e.g. its format changed after a game patch).
   - **Execution**: Employs a fallback speed factor constant of `1.7` (representing standard Normal speed in AoE2:DE) to calibrate real-time timestamps into in-game milliseconds.
   - **Visualization**: Hides per-age stat breakdown tables and presents total/aggregate metrics only. Overrides player labels to a standard active player identifier.
