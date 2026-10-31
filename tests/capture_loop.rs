@@ -246,6 +246,16 @@ fn housed_video_housing_is_interpolated() {
     );
 }
 
+/// The match ends right after a white frame inside a housed bridge (the overlay last
+/// showed at 8.5 s): the frame keeps the housed state instead of falling back to normal.
+#[test]
+fn match_ending_mid_bridge_keeps_housing_state() {
+    let mut video = video_frames("extract-housed_expected_0.5s.csv", "extract-housed");
+    video.retain(|f| f.timestamp_ms <= BASE_MS + 9000);
+    assert_eq!(video.last().unwrap().housing.as_deref(), Some("housed"));
+    check_match("mid_bridge", video);
+}
+
 #[test]
 fn no_match_on_screen_records_nothing() {
     let tmp = TempDir::new("no_match");

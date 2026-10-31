@@ -151,7 +151,38 @@ impl InterpolationEngine {
         output_rows
     }
 
+    /// Writes out the held-back frames at the end of a match. No later anchor will close
+    /// the open bridges, so each white frame keeps the state of the latest anchor before
+    /// it (housed after an overlay, queued after a yellow or once the housed timeout has
+    /// passed), within that anchor's timeout. A frame whose population gap grew since the
+    /// anchor (e.g. a house finished) stays normal. Held-back yellow frames stay queued.
     pub fn flush(&mut self) -> Vec<(Results, u64)> {
+        // An overlay always flushes the buffer, and a yellow outside a housed bridge
+        // resets it, so the anchor just before the buffer is the housed one if any.
+        let mut anchor = self
+            .last_housed_anchor
+            .as_ref()
+            .or(self.last_queued_anchor.as_ref())
+            .map(|a| (a.timestamp_ms, a.pop_diff(), a.pop_color == "overlay"));
+        for bf in self.pending_buffer.iter_mut() {
+            if bf.pop_color == "overlay" || bf.pop_color == "yellow" {
+                anchor = Some((bf.timestamp_ms, bf.pop_diff(), bf.pop_color == "overlay"));
+                continue;
+            }
+            let Some((anchor_ms, anchor_diff, is_overlay)) = anchor else {
+                continue;
+            };
+            let elapsed = bf.timestamp_ms - anchor_ms;
+            if get_housing_status(&bf.row_data) != "normal" || bf.pop_diff() > anchor_diff {
+                continue;
+            }
+            if is_overlay && elapsed <= self.housed_timeout_ms {
+                set_housing_status(&mut bf.row_data, "housed");
+            } else if elapsed <= self.queued_timeout_ms {
+                set_housing_status(&mut bf.row_data, "queued");
+            }
+        }
+
         let mut output_rows = Vec::new();
         while let Some(bf) = self.pending_buffer.pop_front() {
             output_rows.push((bf.row_data, bf.timestamp_ms));
@@ -245,6 +276,80 @@ mod tests {
                 i, name
             );
         }
+    }
+
+    fn frame(timestamp_ms: u64, pop_curr: u32, pop_max: u32, color: &str) -> CapturedFrame {
+        CapturedFrame {
+            timestamp_ms,
+            frame_idx: timestamp_ms / 250,
+            pop_color: color.to_string(),
+            pop_curr,
+            pop_max,
+            row_data: Results::new(),
+        }
+    }
+
+    /// Feeds the frames, ends the match with `flush`, returns every row's housing status.
+    fn statuses_at_match_end(frames: Vec<CapturedFrame>) -> Vec<String> {
+        let mut engine = InterpolationEngine::new();
+        let mut rows = vec![];
+        for f in frames {
+            rows.extend(engine.process_frame(f));
+        }
+        rows.extend(engine.flush());
+        rows.iter()
+            .map(|(r, _)| get_housing_status(r).to_string())
+            .collect()
+    }
+
+    #[test]
+    fn test_match_end_keeps_open_bridge_state() {
+        // Queue-blocked: white frames after the last yellow stay queued.
+        assert_eq!(
+            statuses_at_match_end(vec![
+                frame(0, 22, 25, "yellow"),
+                frame(250, 22, 25, "white"),
+                frame(500, 22, 25, "white"),
+            ]),
+            ["queued", "queued", "queued"]
+        );
+        // Housed: white frames after the last overlay stay housed.
+        assert_eq!(
+            statuses_at_match_end(vec![
+                frame(0, 25, 25, "overlay"),
+                frame(250, 25, 25, "white"),
+                frame(500, 25, 25, "white"),
+            ]),
+            ["housed", "housed", "housed"]
+        );
+        // States already decided are kept: the yellow bridged the white frame before it
+        // to queued, and the white frame after the yellow follows it.
+        assert_eq!(
+            statuses_at_match_end(vec![
+                frame(0, 25, 25, "overlay"),
+                frame(250, 25, 25, "white"),
+                frame(500, 25, 25, "yellow"),
+                frame(750, 25, 25, "white"),
+            ]),
+            ["housed", "queued", "queued", "queued"]
+        );
+        // Past the housed timeout, the overlay still counts as a queued anchor.
+        assert_eq!(
+            statuses_at_match_end(vec![
+                frame(0, 25, 25, "overlay"),
+                frame(500, 25, 25, "white"),
+                frame(1500, 25, 25, "white"),
+            ]),
+            ["housed", "housed", "queued"]
+        );
+        // A house finished (gap grew) before the match ended: back to normal.
+        assert_eq!(
+            statuses_at_match_end(vec![
+                frame(0, 25, 25, "overlay"),
+                frame(250, 25, 30, "white"),
+            ]),
+            ["housed", "normal"]
+        );
     }
 
     #[test]
