@@ -510,11 +510,10 @@ pub fn capture_match<S: FrameSource>(
         source.end_tick();
     }
 
-    if state == CaptureState::Recording {
-        // The source ran out mid-match: keep the rows held back for housing interpolation.
-        if let Some(ref mut w) = writer {
-            write_rows(w, engine.flush())?;
-        }
+    // Write the rows still held back for housing interpolation (up to the 2 s queued
+    // timeout before the match ended or the source ran out).
+    if let Some(ref mut w) = writer {
+        write_rows(w, engine.flush())?;
     }
     if let (Some(r), Some(dir)) = (recorder.take(), &frames_dir) {
         let summary = r.finish();
