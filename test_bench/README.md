@@ -111,12 +111,16 @@ cargo run --release --features dev-tools -- --record-frames recordings --record-
 - Options: `--ffmpeg <path>` (or `SQUIRE_FFMPEG`; default `ffmpeg` on PATH),
   `--video-encoder nvenc|amf|qsv|x264` and `--video-fps <n>`. At startup Squire checks
   that ffmpeg has the `ddagrab` screen capture filter and tries the GPU encoders in that
-  order with a short test capture. A GPU encoder only works on the GPU the monitor is
-  plugged into, and NVENC needs an NVIDIA driver recent enough for the ffmpeg build
-  (ffmpeg 9 needs 610 or newer). x264 is the CPU fallback.
-- Measured on an i7 with the monitor on Intel HD 630 (QuickSync, 1080p): ffmpeg used about
-  13% of one core, the video ran at 29.9 fps (a few single-frame gaps, plus about 0.3 s
-  at the start), and took 30-35 MB per minute.
+  order with a short test capture. x264 is the CPU fallback.
+- The encoder must be on the GPU that drives the screen, because that is where the captured
+  frames are. On laptops with hybrid graphics (NVIDIA Optimus) the built-in screen is wired
+  to the integrated Intel GPU, even when the game renders on the NVIDIA card, so QuickSync
+  is the encoder there. That is normal and leaves the NVIDIA card to the game. NVENC also
+  needs a driver recent enough for the ffmpeg build (ffmpeg 9 needs 610+); Pascal cards
+  such as the GTX 1050 Ti stay on the 580 driver series, which is too old for it.
+- Measured on a laptop (i7, GTX 1050 Ti, built-in 1080p screen on the Intel HD 630,
+  QuickSync): ffmpeg used about 13% of one core, the video ran at 29.9 fps (a few
+  single-frame gaps, plus about 0.3 s at the start), and took 30-35 MB per minute.
 
 ### 2. Check the recording
 
