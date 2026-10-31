@@ -188,7 +188,9 @@ impl<'a> ExtractorPipeline<'a> {
             .insert("ui_scale".to_string(), format!("{:.4}", self.ui_scale));
 
         for (name, coords) in &self.ui_map.elements {
-            if let Some((box_img, digits, _clipped, overlay_bg)) = self.process_box(&rgb, name, coords) {
+            if let Some((box_img, digits, _clipped, overlay_bg)) =
+                self.process_box(&rgb, name, coords)
+            {
                 let mut match_results: Vec<(char, f32)> = digits
                     .iter()
                     .enumerate()

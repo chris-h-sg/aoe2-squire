@@ -111,7 +111,11 @@ fn find_split_valleys(
     ui_scale: f64,
 ) -> (Option<u32>, Option<u32>) {
     let max_allowed_val = (0.3 * h as f32) as u32;
-    let max_allowed_val = if max_allowed_val < 2 { 2 } else { max_allowed_val };
+    let max_allowed_val = if max_allowed_val < 2 {
+        2
+    } else {
+        max_allowed_val
+    };
 
     let min_dist = (3.0 * ui_scale) as i32;
     let min_dist = if min_dist < 2 { 2 } else { min_dist as u32 };
@@ -133,8 +137,7 @@ fn find_split_valleys(
     if w > min_dist * 2 {
         for cx in min_dist..(w - min_dist) {
             let val = proj[cx as usize];
-            let is_local_min =
-                val <= proj[(cx - 1) as usize] && val <= proj[(cx + 1) as usize];
+            let is_local_min = val <= proj[(cx - 1) as usize] && val <= proj[(cx + 1) as usize];
 
             if is_local_min && val <= max_allowed_val {
                 regular_valleys.push((cx, val));
@@ -172,8 +175,8 @@ fn find_split_valleys(
         for &(v, proj_val) in &regular_valleys {
             let w_left = v;
             let w_right = w - v;
-            let num_wide = (if w_left + 2 > h { 1 } else { 0 })
-                + (if w_right + 2 > h { 1 } else { 0 });
+            let num_wide =
+                (if w_left + 2 > h { 1 } else { 0 }) + (if w_right + 2 > h { 1 } else { 0 });
 
             if num_wide < best_num_wide {
                 best_num_wide = num_wide;
@@ -495,14 +498,7 @@ mod tests {
         let bg = [100u8, 100u8, 100u8];
 
         // Call segment_into_digits with overlay_bg and ui_scale = 0.1 to force min_area to 1
-        let digits = segment_into_digits(
-            &box_img,
-            &out_img,
-            0.1,
-            Some(bg),
-            false,
-            false,
-        );
+        let digits = segment_into_digits(&box_img, &out_img, 0.1, Some(bg), false, false);
 
         // This should run without panicking.
         let _ = digits;

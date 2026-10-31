@@ -1,5 +1,6 @@
 use crate::analysis::smoothing;
 use crate::replay::{extract_events, ReplayEvent};
+use crate::sync::Calibration;
 use crate::types::{CsvRow, MergedRow};
 use csv::ReaderBuilder;
 use std::path::Path;
@@ -10,6 +11,18 @@ pub fn generate_merged_observations(
     min_spike: i32,
     max_duration: usize,
 ) -> Result<Vec<MergedRow>, Box<dyn std::error::Error>> {
+    generate_merged_observations_with_calibration(csv_path, replay_path, min_spike, max_duration)
+        .map(|(merged, _)| merged)
+}
+
+/// Same as `generate_merged_observations`, but also returns the replay/CSV timing
+/// calibration (None when no replay was given).
+pub fn generate_merged_observations_with_calibration(
+    csv_path: &Path,
+    replay_path: Option<&Path>,
+    min_spike: i32,
+    max_duration: usize,
+) -> Result<(Vec<MergedRow>, Option<Calibration>), Box<dyn std::error::Error>> {
     // 1. Parse CSV
     let mut rdr = ReaderBuilder::new().from_path(csv_path)?;
     let mut csv_rows = Vec::new();
@@ -72,6 +85,7 @@ pub fn generate_merged_observations(
     }
 
     let mut merged: Vec<MergedRow> = Vec::new();
+    let mut calibration_out = None;
     let speed_factor;
     let game_start_rw_f64;
 
@@ -97,6 +111,7 @@ pub fn generate_merged_observations(
         let calibration = crate::sync::calibrate_timing(&csv_rows, &events, start_ts_rw)?;
         speed_factor = calibration.speed_factor;
         game_start_rw_f64 = calibration.game_start_rw_ms;
+        calibration_out = Some(calibration);
 
         // 4. Filter events to ignore anything after the final captured frame
         let last_captured_ig_ms = if let Some(last_row) = csv_rows.last() {
@@ -270,5 +285,5 @@ pub fn generate_merged_observations(
     }
 
     merged.sort_by_key(|k| k.in_game_ms);
-    Ok(merged)
+    Ok((merged, calibration_out))
 }

@@ -201,7 +201,9 @@ pub fn calculate_squire_grades(
     // 2. Housed Stats
     // Housed percentage: Time Housed / Recorded match duration in percent
     let housed_pct = if housing_stats.recorded_duration_sec > 0.0 {
-        ((housing_stats.total_housed_sec / housing_stats.recorded_duration_sec * 100.0) * 10.0).round() / 10.0
+        ((housing_stats.total_housed_sec / housing_stats.recorded_duration_sec * 100.0) * 10.0)
+            .round()
+            / 10.0
     } else {
         0.0
     };
@@ -400,9 +402,18 @@ mod tests {
 
         let html = generate_report(&metadata, &idle, &housing, &floating, &chart_data)
             .expect("Template should render successfully");
-        assert!(!html.contains("<img src=x"), "player name must not be rendered raw");
-        assert!(html.contains("&lt;img src=x"), "player name should be HTML-escaped");
-        assert!(!html.contains("<script>alert(2)"), "map name must not be rendered raw");
+        assert!(
+            !html.contains("<img src=x"),
+            "player name must not be rendered raw"
+        );
+        assert!(
+            html.contains("&lt;img src=x"),
+            "player name should be HTML-escaped"
+        );
+        assert!(
+            !html.contains("<script>alert(2)"),
+            "map name must not be rendered raw"
+        );
         // The chart data is injected with `| safe` and must not be escaped.
         assert!(html.contains("const timeLabels = [];"));
     }
