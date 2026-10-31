@@ -4,6 +4,7 @@
 //! Ignored tests are known bugs; run them with `cargo test --test sync_stress -- --ignored`.
 mod common;
 
+use common::Csv;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -13,81 +14,9 @@ const SPEED_REL_TOL: f64 = 0.01;
 const GAME_START_TOL_MS: f64 = 500.0;
 /// How far a known replay event may be placed from where it really shows on screen.
 const CHECKPOINT_TOL_MS: f64 = 1000.0;
-const CAPTURE_INTERVAL_MS: u64 = 250;
 
 const FOOD: usize = 1;
 const WOOD: usize = 3;
-
-#[derive(Clone)]
-struct Csv {
-    header: String,
-    rows: Vec<Vec<String>>,
-}
-
-impl Csv {
-    fn load() -> Csv {
-        let text = std::fs::read_to_string(common::test_bench("1v1-RM-sample.csv")).unwrap();
-        let mut lines = text.lines();
-        let header = lines.next().unwrap().to_string();
-        let rows = lines
-            .filter(|l| !l.is_empty())
-            .map(|l| l.split(',').map(str::to_string).collect())
-            .collect();
-        Csv { header, rows }
-    }
-
-    fn ts(&self, i: usize) -> u64 {
-        self.rows[i][0].parse().unwrap()
-    }
-
-    fn first_ts(&self) -> u64 {
-        self.ts(0)
-    }
-
-    /// Index of the first row at or after real-world timestamp `ts`.
-    fn index_at(&self, ts: u64) -> usize {
-        (0..self.rows.len()).find(|&i| self.ts(i) >= ts).unwrap()
-    }
-
-    fn write(&self, name: &str) -> PathBuf {
-        let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("sync_{}.csv", name));
-        let mut out = self.header.clone() + "\n";
-        for r in &self.rows {
-            out += &r.join(",");
-            out.push('\n');
-        }
-        std::fs::write(&path, out).unwrap();
-        path
-    }
-
-    /// Simulates another game speed: real-world time since the first row is scaled by `k`.
-    fn stretch(&mut self, k: f64) {
-        let t0 = self.first_ts();
-        for r in &mut self.rows {
-            let ts: u64 = r[0].parse().unwrap();
-            r[0] = (t0 + ((ts - t0) as f64 * k).round() as u64).to_string();
-        }
-    }
-
-    /// Simulates a pause of `duration_ms` before row `i`: the screen keeps showing the
-    /// last values while the capture keeps sampling.
-    fn pause(&mut self, i: usize, duration_ms: u64) {
-        for r in &mut self.rows[i..] {
-            let ts: u64 = r[0].parse().unwrap();
-            r[0] = (ts + duration_ms).to_string();
-        }
-        let frozen = self.rows[i - 1].clone();
-        let start: u64 = frozen[0].parse().unwrap();
-        let fill: Vec<Vec<String>> = (1..=duration_ms / CAPTURE_INTERVAL_MS)
-            .map(|n| {
-                let mut r = frozen.clone();
-                r[0] = (start + n * CAPTURE_INTERVAL_MS).to_string();
-                r
-            })
-            .collect();
-        self.rows.splice(i..i, fill);
-    }
-}
 
 struct Baseline {
     csv: Csv,
