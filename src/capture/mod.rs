@@ -1,7 +1,13 @@
+pub mod record;
+pub mod source;
+
 use crate::types::{Results, Templates, UiMap};
 use chrono::Local;
+use record::{FrameRecorder, PanelValues, RecordOptions};
+use source::{Frame, FrameSource, SourceEvent};
 use std::fs::OpenOptions;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use image::{DynamicImage, RgbImage};
 use windows::core::{Interface, Result};
@@ -189,6 +195,52 @@ impl CaptureSession {
     }
 }
 
+/// Live frame source: DXGI desktop duplication, paced to one capture per `interval`.
+pub struct DxgiSource {
+    session: CaptureSession,
+    interval: Duration,
+    next_tick: Instant,
+}
+
+impl DxgiSource {
+    pub fn new(interval: Duration) -> Result<Self> {
+        Ok(Self {
+            session: CaptureSession::new()?,
+            interval,
+            next_tick: Instant::now(),
+        })
+    }
+
+    pub fn dimensions(&self) -> (u32, u32) {
+        self.session.dimensions()
+    }
+}
+
+impl FrameSource for DxgiSource {
+    fn next_frame(&mut self) -> BoxResult<SourceEvent> {
+        self.next_tick = Instant::now() + self.interval;
+        Ok(match self.session.capture_frame()? {
+            Some(image) => SourceEvent::Frame(Frame {
+                image,
+                timestamp_ms: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64,
+            }),
+            None => SourceEvent::Pending,
+        })
+    }
+
+    fn end_tick(&mut self) {
+        let now = Instant::now();
+        if self.next_tick > now {
+            std::thread::sleep(self.next_tick - now);
+        }
+    }
+}
+
+type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
 #[derive(PartialEq)]
 enum CaptureState {
     WaitingForGame,
@@ -196,26 +248,112 @@ enum CaptureState {
     GameEnded,
 }
 
+pub struct CaptureOptions {
+    /// Directory for `telemetry_<match start>.csv`.
+    pub log_dir: PathBuf,
+    /// Save masked frames of the match to `<dir>/telemetry_<match start>/` (see `record`).
+    pub record_frames: Option<PathBuf>,
+    pub record: RecordOptions,
+}
+
+impl Default for CaptureOptions {
+    fn default() -> Self {
+        Self {
+            log_dir: PathBuf::from("logs"),
+            record_frames: None,
+            record: RecordOptions::default(),
+        }
+    }
+}
+
+pub struct CapturedMatch {
+    pub telemetry: PathBuf,
+    /// Capture time of the frame on which the match was detected.
+    pub session_start: SystemTime,
+    /// The match UI disappeared; false if the frame source ran out first.
+    pub game_ended: bool,
+    pub frames_dir: Option<PathBuf>,
+}
+
+pub const TELEMETRY_HEADER: [&str; 14] = [
+    "timestamp_ms",
+    "food_total",
+    "food_vils",
+    "wood_total",
+    "wood_vils",
+    "gold_total",
+    "gold_vils",
+    "stone_total",
+    "stone_vils",
+    "pop_curr",
+    "pop_max",
+    "pop_vils",
+    "idle_vils",
+    "housing",
+];
+
+/// Live capture: waits for a match on the primary monitor, records it, then looks for its
+/// replay. Returns the telemetry CSV and replay paths once the match UI disappears.
 pub fn run_capture_loop(
     ui_map: &UiMap,
     templates: &Templates,
-) -> Result<Option<(std::path::PathBuf, Option<std::path::PathBuf>)>> {
-    let mut session = CaptureSession::new()?;
-    let (w, h) = session.dimensions();
+    record_frames: Option<PathBuf>,
+) -> BoxResult<Option<(PathBuf, Option<PathBuf>)>> {
+    let mut source = DxgiSource::new(Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS))?;
+    let (w, h) = source.dimensions();
     let fps = 1000.0 / crate::constants::CAPTURE_INTERVAL_MS as f64;
     println!(
         "Started capture loop ({}x{}) at ~{:.1} FPS. Press Ctrl+C or close this window to exit.",
         w, h, fps
     );
 
+    let opts = CaptureOptions {
+        record_frames,
+        ..Default::default()
+    };
+    let captured = match capture_match(&mut source, ui_map, templates, &opts)? {
+        Some(captured) if captured.game_ended => captured,
+        _ => return Ok(None),
+    };
+
+    println!("Capture loop finished successfully.");
+    let (start, telemetry) = (captured.session_start, captured.telemetry);
+    println!("[Discovery] Waiting 3s for game to write replay file...");
+    std::thread::sleep(Duration::from_secs(3));
+    if let Some(replay) = crate::replay_discovery::find_latest_replay(start, None) {
+        println!("[Discovery] Discovered latest replay: {:?}", replay);
+        Ok(Some((telemetry, Some(replay))))
+    } else {
+        eprintln!("[Discovery] Could not find a replay file modified after the session start.");
+        if let Some(replay) = crate::replay_discovery::pick_replay_manually() {
+            println!("[Discovery] Manually selected replay: {:?}", replay);
+            Ok(Some((telemetry, Some(replay))))
+        } else {
+            println!("[Discovery] No replay selected. Fallback mode: generating report from telemetry data only.");
+            Ok(Some((telemetry, None)))
+        }
+    }
+}
+
+/// Reads frames from `source` until a match has been recorded: waits for the match UI
+/// (all resource fields readable), writes one telemetry row per frame (with housing
+/// interpolated), and stops when the UI disappears or the source runs out.
+/// Returns None if no match was seen.
+pub fn capture_match<S: FrameSource>(
+    source: &mut S,
+    ui_map: &UiMap,
+    templates: &Templates,
+    opts: &CaptureOptions,
+) -> BoxResult<Option<CapturedMatch>> {
     let mut state = CaptureState::WaitingForGame;
     let mut writer: Option<csv::Writer<std::fs::File>> = None;
     let mut engine = pipeline::interpolation::InterpolationEngine::new();
     let mut frame_idx = 0;
     let mut tick_count = 0;
     let mut session_start: Option<SystemTime> = None;
-    let mut telemetry_path: Option<std::path::PathBuf> = None;
-    let capture_interval = Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS);
+    let mut telemetry_path: Option<PathBuf> = None;
+    let mut recorder: Option<FrameRecorder> = None;
+    let mut frames_dir: Option<PathBuf> = None;
 
     loop {
         // Park the main thread indefinitely if we are shutting down via Ctrl-C
@@ -223,11 +361,19 @@ pub fn run_capture_loop(
             std::thread::park();
         }
 
-        let next_tick = std::time::Instant::now() + capture_interval;
+        let frame = match source.next_frame()? {
+            SourceEvent::Frame(frame) => Some(frame),
+            SourceEvent::Pending => None,
+            SourceEvent::Exhausted => break,
+        };
 
-        if let Some(dyn_image) = session.capture_frame()? {
-            let start = std::time::Instant::now();
-            let process_result = pipeline::process_frame(&dyn_image, ui_map, templates);
+        if let Some(Frame {
+            image,
+            timestamp_ms,
+        }) = frame
+        {
+            let start = Instant::now();
+            let process_result = pipeline::process_frame(&image, ui_map, templates);
 
             match state {
                 CaptureState::WaitingForGame => {
@@ -259,49 +405,42 @@ pub fn run_capture_loop(
                                 );
                             }
                             state = CaptureState::Recording;
-                            session_start = Some(SystemTime::now());
+                            session_start = Some(UNIX_EPOCH + Duration::from_millis(timestamp_ms));
 
                             // Open writer
-                            let timestamp_str = Local::now().format("%Y%m%d_%H%M%S").to_string();
-                            let log_path = format!("logs/telemetry_{}.csv", timestamp_str);
-                            let _ = std::fs::create_dir_all("logs");
-                            let path_buf = std::path::PathBuf::from(&log_path);
+                            let stem = format!(
+                                "telemetry_{}",
+                                local_time(timestamp_ms).format("%Y%m%d_%H%M%S")
+                            );
+                            let _ = std::fs::create_dir_all(&opts.log_dir);
+                            let path_buf = opts.log_dir.join(format!("{}.csv", stem));
 
                             let file = OpenOptions::new()
                                 .write(true)
                                 .create(true)
                                 .truncate(true)
-                                .open(&path_buf)
-                                .map_err(|e| {
-                                    windows::core::Error::new(
-                                        windows::core::HRESULT(-1),
-                                        e.to_string(),
-                                    )
-                                })?;
+                                .open(&path_buf)?;
 
                             telemetry_path = Some(path_buf);
                             let mut w = csv::Writer::from_writer(file);
-                            w.write_record([
-                                "timestamp_ms",
-                                "food_total",
-                                "food_vils",
-                                "wood_total",
-                                "wood_vils",
-                                "gold_total",
-                                "gold_vils",
-                                "stone_total",
-                                "stone_vils",
-                                "pop_curr",
-                                "pop_max",
-                                "pop_vils",
-                                "idle_vils",
-                                "housing",
-                            ])
-                            .map_err(|e| {
-                                windows::core::Error::new(windows::core::HRESULT(-1), e.to_string())
-                            })?;
-
+                            w.write_record(TELEMETRY_HEADER)?;
                             writer = Some(w);
+
+                            if let Some(dir) = &opts.record_frames {
+                                let dir = dir.join(&stem);
+                                match FrameRecorder::start(&dir, opts.record.clone()) {
+                                    Ok(r) => {
+                                        println!("[Record] Saving frames to {}", dir.display());
+                                        recorder = Some(r);
+                                        frames_dir = Some(dir);
+                                    }
+                                    Err(e) => eprintln!(
+                                        "[Record] Could not record frames in {}: {}",
+                                        dir.display(),
+                                        e
+                                    ),
+                                }
+                            }
                         }
                     }
                 }
@@ -313,11 +452,6 @@ pub fn run_capture_loop(
                         }
 
                         // Prepare CapturedFrame for interpolation
-                        let timestamp_ms = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis();
-
                         let pop_curr = results
                             .get("population")
                             .and_then(|m| m.get("total"))
@@ -336,8 +470,12 @@ pub fn run_capture_loop(
                             .cloned()
                             .unwrap_or_else(|| "white".to_string());
 
+                        let values = recorder
+                            .as_ref()
+                            .map(|_| PanelValues::from_results(&results));
+
                         let frame = pipeline::interpolation::CapturedFrame {
-                            timestamp_ms: timestamp_ms as u64,
+                            timestamp_ms,
                             frame_idx,
                             pop_color,
                             pop_curr,
@@ -348,22 +486,18 @@ pub fn run_capture_loop(
                         let interpolated_rows = engine.process_frame(frame);
 
                         if let Some(ref mut w) = writer {
-                            for (row_data, row_timestamp_ms) in interpolated_rows {
-                                let row =
-                                    prepare_telemetry_row(&row_data, row_timestamp_ms as u128);
-                                w.write_record(&row).map_err(|e| {
-                                    windows::core::Error::new(
-                                        windows::core::HRESULT(-1),
-                                        e.to_string(),
-                                    )
-                                })?;
-                            }
-                            let _ = w.flush();
+                            write_rows(w, interpolated_rows)?;
+                        }
+                        if let (Some(r), Some(values)) = (recorder.as_mut(), values) {
+                            r.offer(image, timestamp_ms, values);
                         }
                         frame_idx += 1;
                     } else {
                         if crate::RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
                             println!("Match UI lost. Ending recording...");
+                        }
+                        if let Some(r) = recorder.as_mut() {
+                            r.offer_end(image, timestamp_ms);
                         }
                         state = CaptureState::GameEnded;
                         break;
@@ -373,36 +507,53 @@ pub fn run_capture_loop(
             }
         }
 
-        let now = std::time::Instant::now();
-        if next_tick > now {
-            std::thread::sleep(next_tick - now);
-        }
+        source.end_tick();
     }
 
-    if state == CaptureState::GameEnded {
-        println!("Capture loop finished successfully.");
-        if let (Some(start), Some(telemetry)) = (session_start, telemetry_path) {
-            println!("[Discovery] Waiting 3s for game to write replay file...");
-            std::thread::sleep(Duration::from_secs(3));
-            if let Some(replay) = crate::replay_discovery::find_latest_replay(start, None) {
-                println!("[Discovery] Discovered latest replay: {:?}", replay);
-                return Ok(Some((telemetry, Some(replay))));
-            } else {
-                eprintln!(
-                    "[Discovery] Could not find a replay file modified after the session start."
-                );
-                if let Some(replay) = crate::replay_discovery::pick_replay_manually() {
-                    println!("[Discovery] Manually selected replay: {:?}", replay);
-                    return Ok(Some((telemetry, Some(replay))));
-                } else {
-                    println!("[Discovery] No replay selected. Fallback mode: generating report from telemetry data only.");
-                    return Ok(Some((telemetry, None)));
-                }
-            }
+    // Write the rows still held back for housing interpolation (up to the 2 s queued
+    // timeout before the match ended or the source ran out).
+    if let Some(ref mut w) = writer {
+        write_rows(w, engine.flush())?;
+    }
+    if let (Some(r), Some(dir)) = (recorder.take(), &frames_dir) {
+        let summary = r.finish();
+        print!(
+            "[Record] Saved {} frames ({:.1} MB) to {}",
+            summary.saved,
+            summary.bytes as f64 / 1e6,
+            dir.display()
+        );
+        if summary.dropped + summary.failed > 0 {
+            print!(
+                " ({} dropped while the writer was busy, {} failed)",
+                summary.dropped, summary.failed
+            );
         }
+        println!();
     }
 
-    Ok(None)
+    Ok(session_start
+        .zip(telemetry_path)
+        .map(|(session_start, telemetry)| CapturedMatch {
+            telemetry,
+            session_start,
+            game_ended: state == CaptureState::GameEnded,
+            frames_dir,
+        }))
+}
+
+fn write_rows(w: &mut csv::Writer<std::fs::File>, rows: Vec<(Results, u64)>) -> csv::Result<()> {
+    for (row_data, row_timestamp_ms) in rows {
+        w.write_record(prepare_telemetry_row(&row_data, row_timestamp_ms as u128))?;
+    }
+    let _ = w.flush();
+    Ok(())
+}
+
+fn local_time(timestamp_ms: u64) -> chrono::DateTime<Local> {
+    chrono::DateTime::from_timestamp_millis(timestamp_ms as i64)
+        .unwrap_or_default()
+        .with_timezone(&Local)
 }
 
 fn print_telemetry(results: &crate::types::Results, duration: Duration) {
