@@ -1,6 +1,6 @@
 use crate::analysis::{calculate_vs_lost, format_time, segment_game, SegmentEndReason};
 use crate::constants::GAME_AGES;
-use crate::types::MergedRow;
+use crate::types::Observation;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
@@ -24,18 +24,12 @@ pub struct IdleReport {
     pub total_vs_overall: f64,
 }
 
-pub fn analyze_idle(
-    rows: impl Iterator<Item = MergedRow>,
-    verbose: bool,
-) -> Result<IdleReport, Box<dyn Error>> {
+pub fn analyze_idle(rows: &[Observation], verbose: bool) -> Result<IdleReport, Box<dyn Error>> {
     println!("\n=== IDLE VILLAGER ANALYSIS ===");
 
-    let rows_vec: Vec<MergedRow> = rows.collect();
-    let segments = segment_game(rows_vec.iter().cloned(), |r| {
-        r.idle_vils.parse::<u32>().ok()
-    });
+    let segments = segment_game(rows, |r| r.idle_vils);
 
-    let pop_segments = segment_game(rows_vec.iter().cloned(), |r| r.pop_vils.parse::<u32>().ok());
+    let pop_segments = segment_game(rows, |r| r.pop_vils);
     let mut total_vs_overall = 0.0;
     for seg in &pop_segments {
         let duration_sec = (seg.end_ms - seg.start_ms) as f64 / 1000.0;
@@ -63,7 +57,7 @@ pub fn analyze_idle(
         }
 
         let annotation = match &seg.end_reason {
-            SegmentEndReason::AgeResearch(age) => format!(" ({} Click)", age),
+            SegmentEndReason::AgeResearch(age) => format!(" ({} Click)", age.name()),
             _ => "".to_string(),
         };
 

@@ -4,7 +4,7 @@ use crate::constants::{
     OVERALL_SILVER_MIN_STARS,
 };
 use crate::replay::MatchMetadata;
-use crate::types::MergedRow;
+use crate::types::{HousingStatus, Observation};
 use minijinja::{context, Environment};
 #[cfg(debug_assertions)]
 use std::fs;
@@ -54,7 +54,7 @@ pub struct ChartData {
     pub resource_stone_json: String,
 }
 
-pub fn extract_chart_data(rows: &[MergedRow], floating_report: &FloatingReport) -> ChartData {
+pub fn extract_chart_data(rows: &[Observation], floating_report: &FloatingReport) -> ChartData {
     let mut time_labels = Vec::new();
     let mut pop_vils = Vec::new();
     let mut idle_vils = Vec::new();
@@ -70,16 +70,20 @@ pub fn extract_chart_data(rows: &[MergedRow], floating_report: &FloatingReport) 
     let mut age_ups = Vec::new();
 
     for row in rows {
-        if row.observation_type == "ScreenGrab" {
-            let label = crate::analysis::format_time(row.in_game_ms);
+        if let Observation::Screen {
+            in_game_ms,
+            reading,
+        } = row
+        {
+            let label = crate::analysis::format_time(*in_game_ms);
             // simplify label by removing ms
             let label_no_ms = label.split('.').next().unwrap_or(&label).to_string();
             time_labels.push(label_no_ms);
-            pop_vils.push(row.pop_vils.parse::<u32>().ok());
-            idle_vils.push(row.idle_vils.parse::<u32>().ok());
-            housed_flags.push(row.housing == "housed");
+            pop_vils.push(reading.pop_vils);
+            idle_vils.push(reading.idle_vils);
+            housed_flags.push(reading.housing == Some(HousingStatus::Housed));
 
-            let ms = row.in_game_ms;
+            let ms = *in_game_ms;
             floating_food.push(
                 floating_report
                     .segments
@@ -105,19 +109,16 @@ pub fn extract_chart_data(rows: &[MergedRow], floating_report: &FloatingReport) 
                     .any(|s| s.resource == "Stone" && ms >= s.start_ms && ms <= s.end_ms),
             );
 
-            res_food.push(row.food.parse::<u32>().ok());
-            res_wood.push(row.wood.parse::<u32>().ok());
-            res_gold.push(row.gold.parse::<u32>().ok());
-            res_stone.push(row.stone.parse::<u32>().ok());
-        } else if row.observation_type == "RecEvent"
-            && row.event_desc.starts_with("Research ")
-            && row.event_desc.ends_with(" Age")
-        {
-            let label = crate::analysis::format_time(row.in_game_ms);
+            res_food.push(reading.food);
+            res_wood.push(reading.wood);
+            res_gold.push(reading.gold);
+            res_stone.push(reading.stone);
+        } else if let Some(age) = row.event().and_then(|e| e.age_researched()) {
+            let label = crate::analysis::format_time(row.in_game_ms());
             let label_no_ms = label.split('.').next().unwrap_or(&label).to_string();
             age_ups.push(serde_json::json!({
                 "label": label_no_ms,
-                "age": format!("{} queued", row.event_desc.replace("Research ", ""))
+                "age": format!("{} queued", age.name())
             }));
         }
     }

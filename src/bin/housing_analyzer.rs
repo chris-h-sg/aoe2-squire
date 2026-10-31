@@ -1,5 +1,5 @@
 use aoe2_squire::analysis::{housing, load_merged_observations};
-use aoe2_squire::types::MergedRow;
+use aoe2_squire::types::{MergedRow, Observation};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -15,15 +15,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut rdr = csv::ReaderBuilder::new().from_path(path)?;
         rdr.deserialize()
             .filter_map(|r: Result<MergedRow, _>| r.ok())
+            .filter_map(|r| Observation::from_merged_row(&r))
             .collect::<Vec<_>>()
     } else {
         let mut rdr = load_merged_observations()?;
         rdr.deserialize()
             .filter_map(|r: Result<MergedRow, _>| r.ok())
+            .filter_map(|r| Observation::from_merged_row(&r))
             .collect::<Vec<_>>()
     };
 
-    housing::analyze_housing(rows.into_iter(), verbose)?;
+    housing::analyze_housing(&rows, verbose)?;
 
     Ok(())
 }

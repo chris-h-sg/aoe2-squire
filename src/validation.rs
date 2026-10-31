@@ -3,7 +3,7 @@
 //! Run on a real game with `cargo run --bin sanity_report -- <csv> [replay] [--json]`.
 
 use crate::analysis::format_time;
-use crate::types::MergedRow;
+use crate::types::{CsvRow, Observation};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -98,7 +98,7 @@ struct Spend {
 /// One field's readings: (frame index, value), skipping frames without a reading.
 type Series = Vec<(usize, u32)>;
 
-pub fn check(merged: &[MergedRow]) -> SanityReport {
+pub fn check(merged: &[Observation]) -> SanityReport {
     let all_fields: Vec<&'static str> = RESOURCES
         .iter()
         .chain(POP_FIELDS.iter())
@@ -110,35 +110,34 @@ pub fn check(merged: &[MergedRow]) -> SanityReport {
     let mut spends = vec![];
     let mut refunds = vec![];
     for row in merged {
-        match row.observation_type.as_str() {
-            "ScreenGrab" => frames.push(Frame {
-                ig_ms: row.in_game_ms,
-                rw_ms: row.rw_timestamp_ms.parse().unwrap_or(0),
+        match row {
+            Observation::Screen {
+                in_game_ms,
+                reading,
+            } => frames.push(Frame {
+                ig_ms: *in_game_ms,
+                rw_ms: reading.timestamp_ms,
                 values: all_fields
                     .iter()
-                    .filter_map(|&f| field_str(row, f).parse().ok().map(|v| (f, v)))
+                    .filter_map(|&f| reading_field(reading, f).map(|v| (f, v)))
                     .collect(),
             }),
-            "RecEvent" => {
-                if row.event_desc == "Unqueue" || row.event_desc.starts_with("Delete") {
-                    refunds.push(row.in_game_ms);
+            Observation::Event(event) => {
+                if event.is_refund() {
+                    refunds.push(row.in_game_ms());
                 }
-                let cost = RESOURCES.map(|r| {
-                    field_str(row, r)
-                        .trim_start_matches('-')
-                        .parse()
-                        .unwrap_or(0)
-                });
+                let cost = event
+                    .cost()
+                    .map_or([0; 4], |c| [c.food, c.wood, c.gold, c.stone]);
                 if cost.iter().any(|&c| c > 0) {
                     spends.push(Spend {
-                        ig_ms: row.in_game_ms,
-                        desc: row.event_desc.clone(),
+                        ig_ms: row.in_game_ms(),
+                        desc: event.description(),
                         cost,
-                        buildings: row.building_ids.split(',').count().max(1) as u32,
+                        buildings: event.building_ids().len().max(1) as u32,
                     });
                 }
             }
-            _ => {}
         }
     }
 
@@ -220,17 +219,17 @@ pub fn check(merged: &[MergedRow]) -> SanityReport {
     }
 }
 
-fn field_str<'a>(row: &'a MergedRow, field: &str) -> &'a str {
+fn reading_field(reading: &CsvRow, field: &str) -> Option<u32> {
     match field {
-        "food" => &row.food,
-        "wood" => &row.wood,
-        "gold" => &row.gold,
-        "stone" => &row.stone,
-        "pop_curr" => &row.pop_curr,
-        "pop_max" => &row.pop_max,
-        "pop_vils" => &row.pop_vils,
-        "idle_vils" => &row.idle_vils,
-        _ => "",
+        "food" => reading.food,
+        "wood" => reading.wood,
+        "gold" => reading.gold,
+        "stone" => reading.stone,
+        "pop_curr" => reading.pop_curr,
+        "pop_max" => reading.pop_max,
+        "pop_vils" => reading.pop_vils,
+        "idle_vils" => reading.idle_vils,
+        _ => None,
     }
 }
 
@@ -589,9 +588,10 @@ fn section(line: &mut dyn FnMut(String), title: &str, findings: &[Finding]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::MergedRow;
 
-    fn grab(ms: u64, food: &str, wood: &str, pop: (&str, &str, &str, &str)) -> MergedRow {
-        MergedRow {
+    fn grab(ms: u64, food: &str, wood: &str, pop: (&str, &str, &str, &str)) -> Observation {
+        Observation::from_merged_row(&MergedRow {
             in_game_ms: ms,
             observation_type: "ScreenGrab".to_string(),
             food: food.to_string(),
@@ -604,11 +604,12 @@ mod tests {
             pop_vils: pop.2.to_string(),
             idle_vils: pop.3.to_string(),
             ..Default::default()
-        }
+        })
+        .unwrap()
     }
 
-    fn event(ms: u64, desc: &str, food: &str, wood: &str, buildings: &str) -> MergedRow {
-        MergedRow {
+    fn event(ms: u64, desc: &str, food: &str, wood: &str, buildings: &str) -> Observation {
+        Observation::from_merged_row(&MergedRow {
             in_game_ms: ms,
             observation_type: "RecEvent".to_string(),
             event_desc: desc.to_string(),
@@ -616,7 +617,8 @@ mod tests {
             wood: wood.to_string(),
             building_ids: buildings.to_string(),
             ..Default::default()
-        }
+        })
+        .unwrap()
     }
 
     const POP: (&str, &str, &str, &str) = ("4", "5", "3", "0");

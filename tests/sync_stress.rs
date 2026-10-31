@@ -4,6 +4,7 @@
 //! Ignored tests are known bugs; run them with `cargo test --test sync_stress -- --ignored`.
 mod common;
 
+use aoe2_squire::types::Age;
 use common::Csv;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -46,17 +47,12 @@ fn baseline() -> &'static Baseline {
         let analysis =
             common::analyze(&csv.write("baseline"), Some(&replay())).expect("baseline failed");
         let cal = analysis.calibration.expect("baseline calibration missing");
-        let rec_events = || {
-            analysis
-                .merged
-                .iter()
-                .filter(|r| r.observation_type == "RecEvent")
-        };
+        let rec_events = || analysis.merged.iter().filter(|r| r.event().is_some());
         let castle_ms = rec_events()
-            .find(|r| r.event_desc == "Research Castle Age")
+            .find(|r| r.event().and_then(|e| e.age_researched()) == Some(Age::Castle))
             .expect("no Castle Age click in the sample replay")
-            .in_game_ms;
-        let last_event_ms = rec_events().next_back().unwrap().in_game_ms;
+            .in_game_ms();
+        let last_event_ms = rec_events().next_back().unwrap().in_game_ms();
         Baseline {
             speed: cal.speed_factor,
             game_start_rw: cal.game_start_rw_ms,

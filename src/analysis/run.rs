@@ -6,13 +6,14 @@ use crate::constants::CAPTURE_INTERVAL_MS;
 use crate::replay::{MatchMetadata, PlayerInfo};
 use crate::report::{self, SquireGrades};
 use crate::sync::Calibration;
-use crate::types::MergedRow;
+use crate::types::Observation;
 use std::error::Error;
 use std::path::Path;
 
 /// Everything the HTML report is built from, for one captured match.
 pub struct MatchAnalysis {
-    pub merged: Vec<MergedRow>,
+    /// The merged in-game timeline: screen readings and replay events.
+    pub merged: Vec<Observation>,
     /// None when no replay was given (telemetry-only analysis).
     pub calibration: Option<Calibration>,
     pub metadata: MatchMetadata,
@@ -51,9 +52,9 @@ pub fn analyze_match(
     };
 
     // 2. Run Analyzers
-    let idle_stats = idle::analyze_idle(merged.iter().cloned(), verbose)?;
-    let housing_stats = housing::analyze_housing(merged.iter().cloned(), verbose)?;
-    let floating_stats = floating::analyze_floating(merged.clone(), verbose)?;
+    let idle_stats = idle::analyze_idle(&merged, verbose)?;
+    let housing_stats = housing::analyze_housing(&merged, verbose)?;
+    let floating_stats = floating::analyze_floating(&merged, verbose)?;
 
     let grades = report::calculate_squire_grades(
         metadata.has_replay,
@@ -73,9 +74,9 @@ pub fn analyze_match(
     })
 }
 
-fn telemetry_only_metadata(merged: &[MergedRow]) -> MatchMetadata {
+fn telemetry_only_metadata(merged: &[Observation]) -> MatchMetadata {
     let start_time = if let Some(first_row) = merged.first() {
-        if let Ok(ts_rw) = first_row.rw_timestamp_ms.parse::<i64>() {
+        if let Some(ts_rw) = first_row.reading().map(|r| r.timestamp_ms as i64) {
             use chrono::TimeZone;
             if let Some(datetime) = chrono::Local.timestamp_millis_opt(ts_rw).single() {
                 datetime.format("%Y-%m-%d %H:%M:%S").to_string()
@@ -90,7 +91,7 @@ fn telemetry_only_metadata(merged: &[MergedRow]) -> MatchMetadata {
     };
 
     let duration_sec = if let (Some(first), Some(last)) = (merged.first(), merged.last()) {
-        (last.in_game_ms - first.in_game_ms) as f64 / 1000.0
+        (last.in_game_ms() - first.in_game_ms()) as f64 / 1000.0
     } else {
         0.0
     };

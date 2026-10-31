@@ -28,11 +28,7 @@ fn summarize(a: &MatchAnalysis, first_csv_ts: u64) -> Value {
     });
 
     let m = &a.metadata;
-    let screen_grabs = a
-        .merged
-        .iter()
-        .filter(|r| r.observation_type == "ScreenGrab")
-        .count();
+    let screen_grabs = a.merged.iter().filter(|r| r.reading().is_some()).count();
     json!({
         // start_time is rendered in the local timezone and app_version changes every release.
         "metadata": {
@@ -49,8 +45,8 @@ fn summarize(a: &MatchAnalysis, first_csv_ts: u64) -> Value {
             "rows": a.merged.len(),
             "screen_grabs": screen_grabs,
             "rec_events": a.merged.len() - screen_grabs,
-            "first_in_game_ms": a.merged.first().map(|r| r.in_game_ms),
-            "last_in_game_ms": a.merged.last().map(|r| r.in_game_ms),
+            "first_in_game_ms": a.merged.first().map(|r| r.in_game_ms()),
+            "last_in_game_ms": a.merged.last().map(|r| r.in_game_ms()),
         },
         "idle": {
             "age_vs_lost": a.idle.age_vs_lost,

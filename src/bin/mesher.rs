@@ -2,6 +2,7 @@ use aoe2_squire::analysis::mesher;
 use aoe2_squire::constants::{
     CAPTURE_INTERVAL_MS, SMOOTH_VILS_MAX_DURATION_MS, SMOOTH_VILS_MIN_SPIKE,
 };
+use aoe2_squire::types::MergedRow;
 use std::env;
 use std::path::Path;
 
@@ -57,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "pop_vils",
         "housing",
     ])?;
-    for record in merged {
+    for record in merged.iter().map(MergedRow::from) {
         wtr.write_record([
             record.in_game_ms.to_string(),
             record.observation_type,

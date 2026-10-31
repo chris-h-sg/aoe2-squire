@@ -2,7 +2,8 @@ use crate::analysis::format_time;
 use crate::constants::{
     FLOATING_MIN_DURATION_MS, FLOATING_THRESHOLDS, GAME_AGES, SAVE_UP_WINDOW_MS,
 };
-use crate::types::MergedRow;
+use crate::replay::ReplayEvent;
+use crate::types::{Age, Observation};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
@@ -42,26 +43,28 @@ pub struct Suppressions {
 /// Pre-index every major spend event and its per-resource suppression intervals:
 /// - Age-up clicks (suppress food / food+gold)
 /// - Castle placements (suppress stone)
-pub fn index_save_up_events(rows: &[MergedRow]) -> Suppressions {
+pub fn index_save_up_events(rows: &[Observation]) -> Suppressions {
     let mut food = Vec::new();
     let mut gold = Vec::new();
     let mut stone = Vec::new();
 
-    for r in rows.iter().filter(|r| r.observation_type == "RecEvent") {
-        let window_start = r.in_game_ms.saturating_sub(SAVE_UP_WINDOW_MS);
-        let window_end = r.in_game_ms;
-        match r.event_desc.as_str() {
-            "Research Feudal Age" => {
+    for event in rows.iter().filter_map(Observation::event) {
+        let window_end = event.timestamp_ms() as u64;
+        let window_start = window_end.saturating_sub(SAVE_UP_WINDOW_MS);
+        match event.age_researched() {
+            Some(Age::Feudal) => {
                 food.push((window_start, window_end));
             }
-            "Research Castle Age" | "Research Imperial Age" => {
+            Some(Age::Castle) | Some(Age::Imperial) => {
                 food.push((window_start, window_end));
                 gold.push((window_start, window_end));
             }
-            "Build Castle" => {
-                stone.push((window_start, window_end));
+            _ => {
+                if matches!(event, ReplayEvent::BuildingConstruction { building_type, .. } if building_type == "Castle")
+                {
+                    stone.push((window_start, window_end));
+                }
             }
-            _ => {}
         }
     }
 
@@ -103,25 +106,14 @@ fn apply_suppression(start_ms: u64, end_ms: u64, intervals: &[(u64, u64)]) -> Ve
 /// exceeded its age-specific threshold continuously for at least
 /// `FLOATING_MIN_DURATION_MS`, after applying save-up window suppression.
 pub fn calculate_floating_seconds(
-    rows: impl Iterator<Item = MergedRow>,
+    rows: &[Observation],
     suppressions: &Suppressions,
 ) -> (HashMap<String, FloatingSeconds>, Vec<FloatingSegment>) {
-    let rows: Vec<MergedRow> = rows.collect();
-
     // Find the last click for each age-up to ensure cancelled clicks do not prematurely transition the age
-    let mut last_feudal_ms = None;
-    let mut last_castle_ms = None;
-    let mut last_imperial_ms = None;
-
-    for r in &rows {
-        if r.observation_type == "RecEvent" {
-            if r.event_desc == "Research Feudal Age" {
-                last_feudal_ms = Some(r.in_game_ms);
-            } else if r.event_desc == "Research Castle Age" {
-                last_castle_ms = Some(r.in_game_ms);
-            } else if r.event_desc == "Research Imperial Age" {
-                last_imperial_ms = Some(r.in_game_ms);
-            }
+    let mut last_click_ms: HashMap<Age, u64> = HashMap::new();
+    for event in rows.iter().filter_map(Observation::event) {
+        if let Some(age) = event.age_researched() {
+            last_click_ms.insert(age, event.timestamp_ms() as u64);
         }
     }
 
@@ -133,8 +125,7 @@ pub fn calculate_floating_seconds(
     let mut gold_run_start: Option<u64> = None;
     let mut stone_run_start: Option<u64> = None;
 
-    let mut current_age = "Dark Age".to_string();
-    let mut age_index: usize = 0;
+    let mut current_age = Age::Dark;
     let mut last_ts = 0;
 
     macro_rules! close_run {
@@ -148,7 +139,7 @@ pub fn calculate_floating_seconds(
                             start_ms: eff_start,
                             end_ms: eff_end,
                             resource: $res_name.to_string(),
-                            age: current_age.clone(),
+                            age: current_age.name().to_string(),
                         });
                     }
                 }
@@ -157,51 +148,37 @@ pub fn calculate_floating_seconds(
     }
 
     for row in rows {
-        last_ts = row.in_game_ms;
+        last_ts = row.in_game_ms();
 
-        if row.observation_type == "RecEvent" {
-            let new_age = if row.event_desc == "Research Feudal Age"
-                && Some(row.in_game_ms) == last_feudal_ms
-            {
-                Some(("Feudal Age", 1usize))
-            } else if row.event_desc == "Research Castle Age"
-                && Some(row.in_game_ms) == last_castle_ms
-            {
-                Some(("Castle Age", 2usize))
-            } else if row.event_desc == "Research Imperial Age"
-                && Some(row.in_game_ms) == last_imperial_ms
-            {
-                Some(("Imperial Age", 3usize))
-            } else {
-                None
-            };
+        let reading = match row {
+            Observation::Event(event) => {
+                let ts = row.in_game_ms();
+                let new_age = event
+                    .age_researched()
+                    .filter(|age| last_click_ms.get(age) == Some(&ts));
 
-            if let Some((name, idx)) = new_age {
-                let bucket = summary.entry(current_age.clone()).or_default();
-                let ts = row.in_game_ms;
-                close_run!(food_run_start, ts, "Food", &suppressions.food, bucket.food);
-                close_run!(wood_run_start, ts, "Wood", &[], bucket.wood);
-                close_run!(gold_run_start, ts, "Gold", &suppressions.gold, bucket.gold);
-                close_run!(
-                    stone_run_start,
-                    ts,
-                    "Stone",
-                    &suppressions.stone,
-                    bucket.stone
-                );
+                if let Some(age) = new_age {
+                    let bucket = summary.entry(current_age.name().to_string()).or_default();
+                    close_run!(food_run_start, ts, "Food", &suppressions.food, bucket.food);
+                    close_run!(wood_run_start, ts, "Wood", &[], bucket.wood);
+                    close_run!(gold_run_start, ts, "Gold", &suppressions.gold, bucket.gold);
+                    close_run!(
+                        stone_run_start,
+                        ts,
+                        "Stone",
+                        &suppressions.stone,
+                        bucket.stone
+                    );
 
-                current_age = name.to_string();
-                age_index = idx;
+                    current_age = age;
+                }
+                continue;
             }
-            continue;
-        }
+            Observation::Screen { reading, .. } => reading,
+        };
 
-        if row.observation_type != "ScreenGrab" {
-            continue;
-        }
-
-        let ts = row.in_game_ms;
-        let thresholds = &FLOATING_THRESHOLDS[age_index];
+        let ts = row.in_game_ms();
+        let thresholds = &FLOATING_THRESHOLDS[current_age.index()];
 
         macro_rules! update_resource {
             ($value_field:expr, $threshold:expr, $run_start:expr, $res_name:expr, $intervals:expr, $summary_field:expr) => {
@@ -217,12 +194,12 @@ pub fn calculate_floating_seconds(
             };
         }
 
-        let food_val = row.food.parse::<u32>().ok();
-        let wood_val = row.wood.parse::<u32>().ok();
-        let gold_val = row.gold.parse::<u32>().ok();
-        let stone_val = row.stone.parse::<u32>().ok();
+        let food_val = reading.food;
+        let wood_val = reading.wood;
+        let gold_val = reading.gold;
+        let stone_val = reading.stone;
 
-        let bucket = summary.entry(current_age.clone()).or_default();
+        let bucket = summary.entry(current_age.name().to_string()).or_default();
         update_resource!(
             food_val,
             thresholds.food,
@@ -258,7 +235,7 @@ pub fn calculate_floating_seconds(
     }
 
     // Close any runs still active at the end of the telemetry
-    let bucket = summary.entry(current_age.clone()).or_default();
+    let bucket = summary.entry(current_age.name().to_string()).or_default();
     close_run!(
         food_run_start,
         last_ts,
@@ -288,12 +265,12 @@ pub fn calculate_floating_seconds(
 // --- Entry point ---
 
 pub fn analyze_floating(
-    rows: Vec<MergedRow>,
+    rows: &[Observation],
     verbose: bool,
 ) -> Result<FloatingReport, Box<dyn Error>> {
     println!("\n=== FLOATING RESOURCE ANALYSIS ===");
-    let suppressions = index_save_up_events(&rows);
-    let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &suppressions);
+    let suppressions = index_save_up_events(rows);
+    let (summary, segments) = calculate_floating_seconds(rows, &suppressions);
 
     if verbose {
         // 1. Chronological Log
@@ -367,8 +344,8 @@ mod tests {
     use super::*;
     use crate::types::MergedRow;
 
-    fn grab(ms: u64, food: u32, wood: u32, gold: u32, stone: u32) -> MergedRow {
-        MergedRow {
+    fn grab(ms: u64, food: u32, wood: u32, gold: u32, stone: u32) -> Observation {
+        Observation::from_merged_row(&MergedRow {
             in_game_ms: ms,
             observation_type: "ScreenGrab".to_string(),
             food: food.to_string(),
@@ -376,16 +353,18 @@ mod tests {
             gold: gold.to_string(),
             stone: stone.to_string(),
             ..Default::default()
-        }
+        })
+        .unwrap()
     }
 
-    fn age_event(ms: u64, desc: &str) -> MergedRow {
-        MergedRow {
+    fn age_event(ms: u64, desc: &str) -> Observation {
+        Observation::from_merged_row(&MergedRow {
             in_game_ms: ms,
             observation_type: "RecEvent".to_string(),
             event_desc: desc.to_string(),
             ..Default::default()
-        }
+        })
+        .unwrap()
     }
 
     fn no_sup() -> Suppressions {
@@ -404,7 +383,7 @@ mod tests {
     #[test]
     fn test_floating_basic_single_resource() {
         let rows = vec![grab(0, 100, 300, 50, 100), grab(40_000, 100, 100, 50, 100)];
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, _) = calculate_floating_seconds(&rows, &no_sup());
         assert_eq!(summary.get("Dark Age").unwrap().wood, 40.0);
     }
 
@@ -412,7 +391,7 @@ mod tests {
     #[test]
     fn test_floating_closed_at_end() {
         let rows = vec![grab(0, 100, 300, 50, 100), grab(40_000, 100, 300, 50, 100)];
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, segments) = calculate_floating_seconds(&rows, &no_sup());
         let dark = summary.get("Dark Age").unwrap();
         assert_eq!(dark.wood, 40.0);
         assert_eq!(segments.len(), 1);
@@ -423,14 +402,14 @@ mod tests {
     #[test]
     fn test_floating_exact_threshold_not_flagged() {
         let rows = vec![grab(0, 100, 200, 50, 100), grab(60_000, 100, 200, 50, 100)];
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, _) = calculate_floating_seconds(&rows, &no_sup());
         assert_eq!(summary.get("Dark Age").unwrap().wood, 0.0);
     }
 
     #[test]
     fn test_floating_below_minimum_duration_not_flagged() {
         let rows = vec![grab(0, 100, 300, 50, 100), grab(29_000, 100, 100, 50, 100)];
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, _) = calculate_floating_seconds(&rows, &no_sup());
         assert_eq!(summary.get("Dark Age").unwrap().wood, 0.0);
     }
 
@@ -443,7 +422,7 @@ mod tests {
             grab(70_000, 100, 100, 400, 100),
             grab(115_000, 100, 100, 100, 100),
         ];
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, _) = calculate_floating_seconds(&rows, &no_sup());
         assert_eq!(summary.get("Dark Age").unwrap().food, 60.0);
         assert_eq!(summary.get("Feudal Age").unwrap().gold, 45.0);
     }
@@ -457,7 +436,7 @@ mod tests {
             grab(40_000, 100, 600, 50, 100),
             grab(80_000, 100, 100, 50, 100),
         ];
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, segments) = calculate_floating_seconds(&rows, &no_sup());
         assert_eq!(summary.get("Dark Age").unwrap().wood, 40.0);
         assert_eq!(summary.get("Feudal Age").unwrap().wood, 40.0);
         assert_eq!(segments.len(), 2);
@@ -473,7 +452,7 @@ mod tests {
             age_event(20_000, "Research Feudal Age"),
             grab(20_000, 100, 100, 50, 100),
         ];
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, segments) = calculate_floating_seconds(&rows, &no_sup());
         assert_eq!(summary.get("Dark Age").unwrap().wood, 0.0);
         assert!(segments.is_empty());
     }
@@ -516,7 +495,7 @@ mod tests {
             grab(feudal_click, 100, 100, 50, 100),
         ];
         let sup = feudal_sup(feudal_click);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
         assert_eq!(
             summary
                 .get("Dark Age")
@@ -538,7 +517,7 @@ mod tests {
             grab(feudal_click, 100, 100, 50, 100),
         ];
         let sup = feudal_sup(feudal_click);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
         // Effective run: [click-90s, click-60s] = 30s — exactly at FLOATING_MIN_DURATION_MS
         assert_eq!(summary.get("Dark Age").unwrap().food, 30.0);
         assert_eq!(segments.len(), 1);
@@ -554,7 +533,7 @@ mod tests {
             grab(feudal_click, 100, 100, 50, 100),
         ];
         let sup = feudal_sup(feudal_click);
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, _) = calculate_floating_seconds(&rows, &sup);
         // Gold threshold in Dark Age is 100; 400 > 100 for 50s → flagged
         assert_eq!(summary.get("Dark Age").unwrap().gold, 50.0);
     }
@@ -568,7 +547,7 @@ mod tests {
             grab(castle_click, 100, 100, 50, 100),
         ];
         let sup = castle_age_sup(castle_click);
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, _) = calculate_floating_seconds(&rows, &sup);
         // Feudal wood threshold is 500; 900 > 500 for 50s → flagged
         assert_eq!(summary.get("Dark Age").unwrap().wood, 50.0);
     }
@@ -583,7 +562,7 @@ mod tests {
             grab(castle_click, 100, 100, 50, 100),
         ];
         let sup = castle_age_sup(castle_click);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
         let default = FloatingSeconds::default();
         let bucket = summary.get("Dark Age").unwrap_or(&default);
         assert_eq!(bucket.food, 0.0, "food should be suppressed");
@@ -600,7 +579,7 @@ mod tests {
             grab(build_ms, 100, 100, 50, 100),
         ];
         let sup = castle_build_sup(build_ms);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
         // Stone threshold in Dark Age is 200; 600 > 200 for 40s — but fully suppressed
         let default = FloatingSeconds::default();
         let bucket = summary.get("Dark Age").unwrap_or(&default);
@@ -618,7 +597,7 @@ mod tests {
             grab(build_ms, 100, 100, 50, 100),
         ];
         let sup = castle_build_sup(build_ms);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
         // Effective run: [build-90s, build-60s] = 30s — exactly at FLOATING_MIN_DURATION_MS
         assert_eq!(summary.get("Dark Age").unwrap().stone, 30.0);
         assert_eq!(segments.len(), 1);
@@ -634,7 +613,7 @@ mod tests {
             grab(build_ms, 100, 100, 50, 100),
         ];
         let sup = castle_build_sup(build_ms);
-        let (summary, _) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, _) = calculate_floating_seconds(&rows, &sup);
         let bucket = summary.get("Dark Age").unwrap();
         // Food (Dark threshold 200): 900 for 40s → flagged
         assert_eq!(bucket.food, 40.0);
@@ -655,7 +634,7 @@ mod tests {
             grab(feudal_click, 100, 100, 50, 100),
         ];
         let sup = feudal_sup(feudal_click);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
         // Effective: [click-120s, click-60s] = 60s
         assert_eq!(summary.get("Dark Age").unwrap().food, 60.0);
         assert_eq!(segments.len(), 1);
@@ -675,7 +654,7 @@ mod tests {
             grab(feudal_click + 60_000, 1500, 100, 50, 100),
         ];
         let sup = feudal_sup(feudal_click);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
 
         assert_eq!(summary.get("Dark Age").unwrap().food, 60.0);
         assert_eq!(summary.get("Feudal Age").unwrap().food, 60.0);
@@ -700,7 +679,7 @@ mod tests {
             grab(build_ms + 60_000, 100, 100, 50, 1350),
         ];
         let sup = castle_build_sup(build_ms);
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &sup);
+        let (summary, segments) = calculate_floating_seconds(&rows, &sup);
 
         assert_eq!(summary.get("Dark Age").unwrap().stone, 120.0);
         assert_eq!(segments.len(), 2);
@@ -724,7 +703,7 @@ mod tests {
             grab(90_000, 100, 100, 50, 100),          // Drop food back to 100
         ];
 
-        let (summary, segments) = calculate_floating_seconds(rows.into_iter(), &no_sup());
+        let (summary, segments) = calculate_floating_seconds(&rows, &no_sup());
 
         // The floating food run starts at 50,000 and is closed at 80,000 (30s duration) due to the age transition.
         // It must be attributed to "Dark Age" since Feudal Age only starts at 80,000.
