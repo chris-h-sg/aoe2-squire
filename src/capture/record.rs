@@ -45,7 +45,7 @@ pub fn mask_panel(img: &RgbImage) -> RgbImage {
 /// Encodes `img` as a PNG file.
 pub fn save_png(img: &RgbImage, path: &Path) -> image::ImageResult<()> {
     let file = BufWriter::new(File::create(path)?);
-    PngEncoder::new_with_quality(file, CompressionType::Default, FilterType::Adaptive).write_image(
+    PngEncoder::new_with_quality(file, CompressionType::Fast, FilterType::Adaptive).write_image(
         img.as_raw(),
         img.width(),
         img.height(),
