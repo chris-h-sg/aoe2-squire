@@ -9,6 +9,10 @@ default-run = "aoe2-squire"
 name = "aoe2-squire"
 path = "src/main.rs"
 
+[features]
+# Developer tools that never ship in release builds: --record-video (src/capture/video.rs).
+dev-tools = ["windows/Win32_System_JobObjects", "windows/Win32_Security"]
+
 [dependencies]
 ureq = { version = "2.9", features = ["json"] }
 ctrlc = "3.4"

@@ -1,5 +1,7 @@
 pub mod record;
 pub mod source;
+#[cfg(feature = "dev-tools")]
+pub mod video;
 
 use crate::types::{Results, Templates, UiMap};
 use chrono::Local;
@@ -254,6 +256,9 @@ pub struct CaptureOptions {
     /// Save masked frames of the match to `<dir>/telemetry_<match start>/` (see `record`).
     pub record_frames: Option<PathBuf>,
     pub record: RecordOptions,
+    /// Record the screen with ffmpeg for the length of each match (dev builds only).
+    #[cfg(feature = "dev-tools")]
+    pub record_video: Option<video::VideoOptions>,
 }
 
 impl Default for CaptureOptions {
@@ -262,6 +267,8 @@ impl Default for CaptureOptions {
             log_dir: PathBuf::from("logs"),
             record_frames: None,
             record: RecordOptions::default(),
+            #[cfg(feature = "dev-tools")]
+            record_video: None,
         }
     }
 }
@@ -297,7 +304,7 @@ pub const TELEMETRY_HEADER: [&str; 14] = [
 pub fn run_capture_loop(
     ui_map: &UiMap,
     templates: &Templates,
-    record_frames: Option<PathBuf>,
+    opts: &CaptureOptions,
 ) -> BoxResult<Option<(PathBuf, Option<PathBuf>)>> {
     let mut source = DxgiSource::new(Duration::from_millis(crate::constants::CAPTURE_INTERVAL_MS))?;
     let (w, h) = source.dimensions();
@@ -307,11 +314,7 @@ pub fn run_capture_loop(
         w, h, fps
     );
 
-    let opts = CaptureOptions {
-        record_frames,
-        ..Default::default()
-    };
-    let captured = match capture_match(&mut source, ui_map, templates, &opts)? {
+    let captured = match capture_match(&mut source, ui_map, templates, opts)? {
         Some(captured) if captured.game_ended => captured,
         _ => return Ok(None),
     };
@@ -354,6 +357,8 @@ pub fn capture_match<S: FrameSource>(
     let mut telemetry_path: Option<PathBuf> = None;
     let mut recorder: Option<FrameRecorder> = None;
     let mut frames_dir: Option<PathBuf> = None;
+    #[cfg(feature = "dev-tools")]
+    let _stop_video = opts.record_video.as_ref().map(|_| video::StopOnDrop);
 
     loop {
         // Park the main thread indefinitely if we are shutting down via Ctrl-C
@@ -441,6 +446,21 @@ pub fn capture_match<S: FrameSource>(
                                     ),
                                 }
                             }
+                            #[cfg(feature = "dev-tools")]
+                            if let Some(video_opts) = &opts.record_video {
+                                match video::start(video_opts, &stem, timestamp_ms) {
+                                    Ok(path) => println!(
+                                        "[Video] Recording the screen to {} ({})",
+                                        path.display(),
+                                        video_opts.encoder.codec()
+                                    ),
+                                    Err(e) => eprintln!(
+                                        "[Video] Could not start {}: {}",
+                                        video_opts.ffmpeg.display(),
+                                        e
+                                    ),
+                                }
+                            }
                         }
                     }
                 }
@@ -508,6 +528,12 @@ pub fn capture_match<S: FrameSource>(
         }
 
         source.end_tick();
+    }
+
+    // Stop the video as soon as the match ends (also done on return by `_stop_video`).
+    #[cfg(feature = "dev-tools")]
+    if opts.record_video.is_some() {
+        video::stop_active();
     }
 
     // Write the rows still held back for housing interpolation (up to the 2 s queued
