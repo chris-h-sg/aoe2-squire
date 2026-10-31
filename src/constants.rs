@@ -3,6 +3,13 @@ pub const CAPTURE_INTERVAL_MS: u64 = 250;
 pub const HOUSED_INTERPOLATION_TIMEOUT_MS: u64 = 1000;
 pub const QUEUED_INTERPOLATION_TIMEOUT_MS: u64 = 2000;
 
+// --- Frame recording (--record-frames) ---
+pub const RECORD_INTERVAL_MS: u64 = 5000;
+pub const RECORD_MIN_GAP_MS: u64 = 1000; // between extra frames saved for sharp changes
+pub const RECORD_RESOURCE_JUMP: i64 = 150; // per tick; gathering adds well under 50 per 250 ms
+pub const RECORD_COUNT_JUMP: i64 = 3; // villager / population counts
+pub const RECORD_QUEUE_CAPACITY: usize = 2;
+
 // --- Anchor detection (image crate uses RGB, not BGR) ---
 pub const RED_PIXEL_MIN_COUNT: usize = 12;
 pub const RED_DIFF_THRESHOLD: i16 = 140; // Red must be this much higher than Green and Blue

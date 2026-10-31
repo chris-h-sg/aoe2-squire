@@ -190,7 +190,35 @@ fn run_app() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    if args.len() > 1 && args[1] != "--live" {
+    // Re-read frames saved with --record-frames through the capture loop:
+    // cargo run -- --replay-frames <dir>  (writes <dir>/replayed/telemetry_*.csv)
+    if args.len() > 1 && args[1] == "--replay-frames" {
+        if args.len() < 3 {
+            eprintln!("Usage: aoe2-squire --replay-frames <recorded frames dir>");
+            std::process::exit(1);
+        }
+        let dir = Path::new(&args[2]);
+        let mut source = capture::source::ImageSequenceSource::from_dir(dir)?;
+        let opts = capture::CaptureOptions {
+            log_dir: dir.join("replayed"),
+            ..Default::default()
+        };
+        match capture::capture_match(&mut source, &ui_map, &templates, &opts)? {
+            Some(captured) => println!("Telemetry: {}", captured.telemetry.display()),
+            None => eprintln!("No match UI found in {}", dir.display()),
+        }
+        return Ok(());
+    }
+
+    // Saves masked frames of each match next to its telemetry: --record-frames <dir>
+    let record_frames = args
+        .iter()
+        .position(|arg| arg == "--record-frames")
+        .and_then(|pos| args.get(pos + 1))
+        .map(std::path::PathBuf::from);
+
+    // Any leading flag (--live, --verbose, --record-frames, ...) means live mode.
+    if args.len() > 1 && !args[1].starts_with('-') {
         let image_path = &args[1];
         let img = image::open(image_path)
             .map_err(|e| format!("failed to load image {}: {}", image_path, e))?;
@@ -254,7 +282,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
         }
 
         loop {
-            match capture::run_capture_loop(&ui_map, &templates) {
+            match capture::run_capture_loop(&ui_map, &templates, record_frames.clone()) {
                 Ok(Some((telemetry, replay))) => {
                     println!("\n--- Capture & Discovery Complete ---");
                     let delivered = analyze_captured_match(replay.as_deref(), |replay| {
@@ -273,7 +301,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
                     println!("♦ Your Squire remains at his post, waiting for the next battle.");
                     println!("════════════════════════════════════════\n");
                 }
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
         }
     }
