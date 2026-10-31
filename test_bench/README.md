@@ -10,6 +10,52 @@ Reference data for the automated tests (`cargo test`, no game needed):
 | `interpolation/` | housing interpolation unit tests |
 | `snapshots/` | regression baselines (`UPDATE_SNAPSHOTS=1` regenerates them), and the sample game's sanity report findings with explanations (`1v1-RM-sample.sanity.json`) |
 
+## Sample games to record
+
+The only full game so far (`1v1-RM-sample`) was captured from a replay playing back, at
+normal speed, with no pauses and one click per Age-up. These 2–3 games cover what the
+tests can only simulate today.
+
+**Every game:** record with `--record-frames` (see below) and a video (Steam recording
+until the planned `--record-video` exists), keep the `.aoe2record`, and turn the in-game
+clock on (F11) for the whole game. Play live, not from a replay: only a live game runs at
+the true game speed. Note the rough in-game time of each deliberate scenario below; that
+makes the sanity report's findings quick to explain.
+
+**Game 1: Normal speed (1.7), economy and edge cases**
+- Age-ups: click Feudal, cancel, click again; the same for Castle. Late in the game, click an
+  Age-up, cancel it and do not click again (known limitation: the last click counts as an
+  age-up).
+- Queues with 2–3 buildings selected (TCs, stables, ranges), single clicks and one
+  shift-click batch of 5.
+- Refunds: cancel queued units, and delete a foundation before it is started.
+- Housing: stay housed for 10+ s; be queue-blocked (yellow population) once; let a house
+  finish while housed.
+- Idle villagers: leave a few idle for 20+ s, at least twice.
+- Floating: bank 500+ food or wood in Feudal for 30+ s; build a Castle (stone save-up).
+- Spends the replay parser does not read: palisade and stone walls, market buy and sell,
+  repairing a building, farm reseeds both pre-queued at the mill and manual.
+- Several hunters on a boar or sheep at the TC (simultaneous drop-offs).
+- Play into late Castle or Imperial Age so numbers get large: 5-digit resources, 100+
+  villagers, population 150+.
+- End with a resignation (match end and winner detection).
+
+**Game 2: another game speed (Casual 1.5× or Fast 2.0×), timing**
+- Pause twice: about 10 s between the first spend and the Feudal click, and about 40 s in
+  Castle Age.
+- Start Squire 10–20 s after the game has started (late capture start, after the first
+  spends).
+- A couple of repeated Age-up clicks at this speed too.
+- In the last minute only: open the in-game menu and alt-tab out briefly. Capture currently
+  ends the match on the first frame without the resource panel, so this would cut the
+  recording short if done earlier.
+
+**Game 3: replay playback and vision variety (optional)**
+- Capture one of the games above while playing back its replay, and change the playback
+  speed midway (e.g. 1× → 2× → 1×) and pause it once. Replay playback has its own speed,
+  which is not the game speed and can drift, so this tests sync with a varying speed.
+- If possible, a different resolution or in-game UI size, and the Anne_HK mod if you use it.
+
 ## Recording a game and turning it into fixtures
 
 A recorded game gives three things that belong together: the telemetry CSV, masked frames

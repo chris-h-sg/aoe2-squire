@@ -68,6 +68,8 @@ pub fn extract_chart_data(rows: &[Observation], floating_report: &FloatingReport
     let mut res_gold = Vec::new();
     let mut res_stone = Vec::new();
     let mut age_ups = Vec::new();
+    // Earlier clicks for the same age were cancelled; mark only the one that went through.
+    let last_clicks = crate::analysis::last_age_up_clicks(rows);
 
     for row in rows {
         if let Observation::Screen {
@@ -113,7 +115,7 @@ pub fn extract_chart_data(rows: &[Observation], floating_report: &FloatingReport
             res_wood.push(reading.wood);
             res_gold.push(reading.gold);
             res_stone.push(reading.stone);
-        } else if let Some(age) = row.event().and_then(|e| e.age_researched()) {
+        } else if let Some(age) = crate::analysis::effective_age_up(row, &last_clicks) {
             let label = crate::analysis::format_time(row.in_game_ms());
             let label_no_ms = label.split('.').next().unwrap_or(&label).to_string();
             age_ups.push(serde_json::json!({
@@ -367,6 +369,36 @@ mod tests {
         };
 
         (idle, housing, floating, metadata)
+    }
+
+    #[test]
+    fn test_chart_marks_only_the_age_up_click_that_went_through() {
+        let (_, _, floating, _) = sample_inputs();
+        let click = |ms: u64, tech: &str| {
+            crate::types::Observation::Event(crate::replay::ReplayEvent::TechResearch {
+                timestamp_ms: ms as u32,
+                player_id: 1,
+                tech_type: tech.to_string(),
+                cost: crate::replay::ResourceCost {
+                    food: 500,
+                    wood: 0,
+                    gold: 0,
+                    stone: 0,
+                },
+                building_id: 1,
+                building_type: "Town Center".to_string(),
+            })
+        };
+        let rows = vec![
+            click(400_000, "Feudal Age"), // cancelled
+            click(470_000, "Feudal Age"),
+            click(900_000, "Castle Age"),
+        ];
+        let chart = extract_chart_data(&rows, &floating);
+        assert_eq!(
+            chart.age_ups_json,
+            r#"[{"age":"Feudal Age queued","label":"07:50"},{"age":"Castle Age queued","label":"15:00"}]"#
+        );
     }
 
     #[test]
