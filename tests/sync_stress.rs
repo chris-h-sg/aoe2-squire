@@ -127,7 +127,7 @@ fn baseline() -> &'static Baseline {
             .find(|r| r.event_desc == "Research Castle Age")
             .expect("no Castle Age click in the sample replay")
             .in_game_ms;
-        let last_event_ms = rec_events().last().unwrap().in_game_ms;
+        let last_event_ms = rec_events().next_back().unwrap().in_game_ms;
         Baseline {
             speed: cal.speed_factor,
             game_start_rw: cal.game_start_rw_ms,
