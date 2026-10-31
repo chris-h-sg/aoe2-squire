@@ -357,14 +357,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                             stone: 0,
                         });
 
-                    let buildings_count = building_ids.len() as u32;
-                    let total_cost = ResourceCost {
-                        food: base_cost.food * buildings_count,
-                        wood: base_cost.wood * buildings_count,
-                        gold: base_cost.gold * buildings_count,
-                        stone: base_cost.stone * buildings_count,
-                    };
-
+                    // `amount` is the total number of units, spread across the selected
+                    // buildings, so each queued unit costs the base cost once.
                     for _ in 0..amount {
                         let unit_name = unit_map
                             .get(&unit_id)
@@ -375,7 +369,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                             timestamp_ms: current_ms,
                             player_id,
                             unit_type: unit_name.to_string(),
-                            cost: total_cost.clone(),
+                            cost: base_cost.clone(),
                             building_ids: building_ids.clone(),
                             building_types: vec![b_type_name.clone(); building_ids.len()],
                         });
@@ -456,20 +450,14 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                             stone: 0,
                         });
 
-                    let buildings_count = building_ids.len() as u32;
-                    let total_cost = ResourceCost {
-                        food: base_cost.food * buildings_count,
-                        wood: base_cost.wood * buildings_count,
-                        gold: base_cost.gold * buildings_count,
-                        stone: base_cost.stone * buildings_count,
-                    };
-
+                    // `count` is the total number of units, spread across the selected
+                    // buildings, so each queued unit costs the base cost once.
                     for _ in 0..count {
                         events.push(ReplayEvent::UnitQueued {
                             timestamp_ms: current_ms,
                             player_id,
                             unit_type: unit_name.to_string(),
-                            cost: total_cost.clone(),
+                            cost: base_cost.clone(),
                             building_ids: building_ids.clone(),
                             building_types: vec![b_type_name.clone(); building_ids.len()],
                         });
