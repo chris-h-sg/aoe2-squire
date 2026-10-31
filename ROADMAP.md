@@ -25,6 +25,10 @@ Once the MVP is providing user value, development will shift toward expanding ou
 *   **Poor Build Order Execution:** Compare player Age-up and construction sequences against a database of standard benchmarks.
 *   **Unit Counter Analysis:** Parse military queue events and use the Civ Tech Tree data to recommend available unit counters based on the opponent's composition.
 
+### Developer Tooling
+*   **Built-in Video Capture (dev only; do before recording the next test game):** A `--record-video` flag behind a `dev-tools` Cargo feature, so it never ships in release builds and the CPU target does not apply. Squire starts `ffmpeg` (6+, `ddagrab` screen capture with GPU encoding) when a match starts and stops it cleanly when it ends. The video is written next to the telemetry CSV (`telemetry_<start>.mkv`, playable even if interrupted), together with the wall-clock start time, so there is no manual starting, stopping or cutting. Roughly 150–250 lines; needs a recent ffmpeg on PATH.
+*   **Video/Telemetry Alignment Tool:** A script in `tools/` that reads the resource panel from a few video frames and matches it against the CSV to find the exact video offset (works for Steam recordings too). Sanity report findings can then be looked up at the right video timestamp.
+
 ### Research Tasks
 *   **Gather Rate Database:** Compile a master JSON of base gather rates and tech multipliers.
 *   **AoE2 Object ID Sequence:** Investigate how the engine assigns IDs to foundations and units to enable exact mapping without explicit Interact actions.
