@@ -8,6 +8,7 @@ pub const RECORD_INTERVAL_MS: u64 = 5000;
 pub const RECORD_MIN_GAP_MS: u64 = 1000; // between extra frames saved for sharp changes
 pub const RECORD_RESOURCE_JUMP: i64 = 150; // per tick; gathering adds well under 50 per 250 ms
 pub const RECORD_COUNT_JUMP: i64 = 3; // villager / population counts
+pub const RECORD_BLINK_WINDOW_MS: u64 = QUEUED_INTERPOLATION_TIMEOUT_MS;
 pub const RECORD_QUEUE_CAPACITY: usize = 2;
 
 // --- Anchor detection (image crate uses RGB, not BGR) ---

@@ -91,8 +91,8 @@ impl PanelValues {
     }
 
     /// Names the first field that changed sharply since `prev`: a resource total moved by
-    /// at least `resource_jump`, a count by at least `count_jump`, a field appeared or
-    /// disappeared, or the population colour changed (housing overlay / queue).
+    /// at least `resource_jump`, a count by at least `count_jump`, or a field appeared or
+    /// disappeared.
     fn sharp_change(&self, prev: &Self, opts: &RecordOptions) -> Option<&'static str> {
         let jumped = |a: Option<i64>, b: Option<i64>, threshold: i64| match (a, b) {
             (Some(a), Some(b)) => (a - b).abs() >= threshold,
@@ -108,7 +108,11 @@ impl PanelValues {
                 return Some(f.2);
             }
         }
-        (prev.color != self.color).then_some("pop_color")
+        None
+    }
+
+    fn is_blinking(&self) -> bool {
+        self.color.as_deref().is_some_and(|c| c != "white")
     }
 }
 
@@ -120,6 +124,8 @@ pub struct RecordOptions {
     pub min_gap_ms: u64,
     pub resource_jump: i64,
     pub count_jump: i64,
+    /// The population colour blink has ended after this long without a yellow or overlay.
+    pub blink_window_ms: u64,
     /// Frames waiting for the worker; further frames are dropped.
     pub queue_capacity: usize,
 }
@@ -132,6 +138,7 @@ impl Default for RecordOptions {
             min_gap_ms: RECORD_MIN_GAP_MS,
             resource_jump: RECORD_RESOURCE_JUMP,
             count_jump: RECORD_COUNT_JUMP,
+            blink_window_ms: RECORD_BLINK_WINDOW_MS,
             queue_capacity: RECORD_QUEUE_CAPACITY,
         }
     }
@@ -170,6 +177,8 @@ pub struct FrameRecorder {
     worker: Option<JoinHandle<RecordingSummary>>,
     last_saved_ms: Option<u64>,
     prev: Option<Previous>,
+    /// Last frame with a yellow or overlay population, while it is blinking.
+    last_blink_ms: Option<u64>,
     dropped: usize,
 }
 
@@ -190,15 +199,17 @@ impl FrameRecorder {
             worker: Some(worker),
             last_saved_ms: None,
             prev: None,
+            last_blink_ms: None,
             dropped: 0,
         })
     }
 
     /// Offers a frame that produced a telemetry row. Saves it if the save interval has
-    /// passed or a reading changed sharply. For a jump in a number, the frame before is
-    /// saved too (if it was not), to tell a misread from a real change; not for a colour
-    /// change, as the housed overlay blinks every second.
+    /// passed, a reading changed sharply (then also the frame before, if not saved, to
+    /// tell a misread from a real change), or the population colour starts or stops
+    /// blinking.
     pub fn offer(&mut self, image: DynamicImage, timestamp_ms: u64, values: PanelValues) {
+        let blink = self.blink_event(timestamp_ms, &values);
         let since_save = self.last_saved_ms.map(|t| timestamp_ms.saturating_sub(t));
         let change = match (&self.prev, since_save) {
             (Some(prev), Some(gap)) if gap >= self.opts.min_gap_ms => {
@@ -206,16 +217,17 @@ impl FrameRecorder {
             }
             _ => None,
         };
-        let reason = match (change, since_save) {
-            (Some(field), _) => Some(format!("change:{}", field)),
-            (None, None) => Some("first".to_string()),
-            (None, Some(gap)) if gap >= self.opts.interval_ms => Some("interval".to_string()),
+        let reason = match (change, blink, since_save) {
+            (Some(field), _, _) => Some(format!("change:{}", field)),
+            (None, Some(event), _) => Some(event.to_string()),
+            (None, None, None) => Some("first".to_string()),
+            (None, None, Some(gap)) if gap >= self.opts.interval_ms => Some("interval".to_string()),
             _ => None,
         };
 
         let mut image = Some(image);
         if let Some(reason) = reason {
-            if change.is_some_and(|field| field != "pop_color") {
+            if change.is_some() {
                 if let Some((prev_image, prev_ts)) = self
                     .prev
                     .as_mut()
@@ -232,6 +244,26 @@ impl FrameRecorder {
             timestamp_ms,
             values,
         });
+    }
+
+    /// The population number blinks between white, yellow and the housed overlay for as
+    /// long as the player is housed or queue-blocked. Rather than every colour change,
+    /// marks the first yellow/overlay frame (`pop_color:start`) and the first frame after
+    /// `blink_window_ms` without one (`pop_color:end`).
+    fn blink_event(&mut self, timestamp_ms: u64, values: &PanelValues) -> Option<&'static str> {
+        if values.is_blinking() {
+            let starts = self.last_blink_ms.is_none();
+            self.last_blink_ms = Some(timestamp_ms);
+            starts.then_some("pop_color:start")
+        } else if self
+            .last_blink_ms
+            .is_some_and(|t| timestamp_ms.saturating_sub(t) >= self.opts.blink_window_ms)
+        {
+            self.last_blink_ms = None;
+            Some("pop_color:end")
+        } else {
+            None
+        }
     }
 
     /// Saves the frame on which the match UI was lost (it has no telemetry row).
@@ -358,8 +390,54 @@ mod tests {
         );
         assert_eq!(
             values("500", "10", "overlay").sharp_change(&base, &opts),
-            Some("pop_color")
+            None
         );
+    }
+
+    #[test]
+    fn test_recorder_saves_blink_start_and_end_not_every_colour_change() {
+        let dir = std::env::temp_dir().join(format!("squire_recorder_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let opts = RecordOptions {
+            queue_capacity: 64, // never drop in the test
+            ..Default::default()
+        };
+        let mut recorder = FrameRecorder::start(&dir, opts).unwrap();
+        let frames = [
+            (0, "500", "white"),
+            (250, "500", "overlay"),
+            (500, "500", "white"),
+            (750, "500", "overlay"),
+            (1000, "500", "yellow"),
+            (1250, "500", "white"),
+            (1500, "50", "white"), // a jump while blinking is still saved, with the frame before
+            (1750, "50", "white"),
+            (2000, "50", "white"),
+            (2250, "50", "white"),
+            (2500, "50", "white"),
+            (2750, "50", "white"),
+            (3000, "50", "white"), // 2 s after the last yellow
+            (3250, "50", "white"),
+        ];
+        for (ts, wood, color) in frames {
+            let image = DynamicImage::ImageRgb8(RgbImage::new(4, 4));
+            recorder.offer(image, ts, values(wood, "10", color));
+        }
+        let summary = recorder.finish();
+        let index = std::fs::read_to_string(dir.join(FRAMES_INDEX)).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        let reasons: Vec<&str> = index.lines().skip(1).collect();
+        assert_eq!(
+            reasons,
+            [
+                "0,0.png,first",
+                "250,250.png,pop_color:start",
+                "1250,1250.png,before",
+                "1500,1500.png,change:wood_total",
+                "3000,3000.png,pop_color:end",
+            ]
+        );
+        assert_eq!((summary.saved, summary.dropped), (5, 0));
     }
 
     #[test]

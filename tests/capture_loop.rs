@@ -373,14 +373,12 @@ fn recorded_frames_replay_to_the_same_rows() {
         [
             (ms(0.5), "first"), // first row (0.0 s started the match)
             (ms(2.5), "interval"),
-            (ms(3.5), "change:pop_color"), // housed overlay appears
+            (ms(3.5), "pop_color:start"), // housed overlay appears
             (ms(4.0), "before"),
             (ms(4.5), "change:stone_total"), // castle placed: 749 -> 99 stone
-            (ms(5.5), "change:pop_color"),   // the overlay blinks every second
-            (ms(6.5), "change:pop_color"),
-            (ms(7.5), "change:pop_color"),
-            (ms(8.5), "change:pop_color"),
-            (ms(9.5), "change:pop_color"),
+            // blinking until the clip ends: no frame per colour change
+            (ms(6.5), "interval"),
+            (ms(8.5), "interval"),
             (ms(10.25), "end"), // the black frame that ended the match
         ]
     );

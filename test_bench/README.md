@@ -30,9 +30,11 @@ Play a match as usual. On top of `logs/telemetry_<start>.csv`, this saves
   identical to the full frame).
 - `frames.csv`: `timestamp_ms,file,reason`. `timestamp_ms` equals the `timestamp_ms` of the
   frame's CSV row. Reasons: `first`, `interval` (every 5 s), `change:<column>` (a total
-  moved by 150+ or a count by 3+ in one tick, a field appeared or disappeared, or the
-  population colour changed), `before` (the frame before a jump, to tell a misread from a
-  real change) and `end` (the frame on which the match UI was lost; it has no CSV row).
+  moved by 150+ or a count by 3+ in one tick, or a field appeared or disappeared),
+  `before` (the frame before a jump, to tell a misread from a real change),
+  `pop_color:start` / `pop_color:end` (the population number starts blinking yellow or
+  with the housed overlay, or has stopped for 2 s) and `end` (the frame on which the
+  match UI was lost; it has no CSV row).
 
 The console prints the replay path when the match ends (`[Discovery] ...`); it is in
 `%USERPROFILE%\Games\Age of Empires 2 DE\<profile id>\savegame\`.
