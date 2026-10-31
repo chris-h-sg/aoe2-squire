@@ -346,7 +346,11 @@
             "use_value_set": "baseline_other"
         },
         "enormous.png": {
-            "use_value_set": "enormous_font_test"
+            "use_value_set": "enormous_font_test",
+            "expect_no_game": true,
+            "known_failures": {
+                "game_detected": "known bug: the enormous-font layout (no resource panel) still finds the red anchor and returns readings instead of 'no game'"
+            }
         },
         "housed_overlay.png": {
             "use_value_set": "housed_overlay"
@@ -371,6 +375,48 @@
         },
         "90_vil_Anne_HK.png": {
             "use_value_set": "90_vil_Anne_HK"
+        },
+        "font_smooth/aoe2_16x9_max_smooth.png": {
+            "use_value_set": "baseline_1080p"
+        },
+        "font_smooth/aoe2_16x9_min_smooth.png": {
+            "use_value_set": "baseline_1080p"
+        },
+        "font_sans/aoe2_16x9_max_sans.png": {
+            "use_value_set": "baseline_1080p",
+            "known_failures": {
+                "food.total": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "population.total": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "population.vils": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "stone.vils": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "wood.vils": "known limitation: the sans-serif in-game font is not covered by the digit templates"
+            }
+        },
+        "font_sans/aoe2_16x9_min_sans.png": {
+            "use_value_set": "baseline_1080p",
+            "known_failures": {
+                "food.total": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "gold.total": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "population.housing": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "population.total": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "population.vils": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "stone.total": "known limitation: the sans-serif in-game font is not covered by the digit templates",
+                "wood.vils": "known limitation: the sans-serif in-game font is not covered by the digit templates"
+            }
+        },
+        "font_smooth/enormous_smooth.png": {
+            "use_value_set": "enormous_font_test",
+            "expect_no_game": true,
+            "known_failures": {
+                "game_detected": "known bug: the enormous-font layout (no resource panel) still finds the red anchor and returns readings instead of 'no game'"
+            }
+        },
+        "font_sans/enormous_sans.png": {
+            "use_value_set": "enormous_font_test",
+            "expect_no_game": true,
+            "known_failures": {
+                "game_detected": "known bug: the enormous-font layout (no resource panel) still finds the red anchor and returns readings instead of 'no game'"
+            }
         }
     }
 }
