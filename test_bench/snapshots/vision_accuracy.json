@@ -1,0 +1,20 @@
+{
+  "correct": 907,
+  "fields": {
+    "food.total": "61/63",
+    "food.vils": "63/63",
+    "game_detected": "82/85",
+    "gold.total": "62/63",
+    "gold.vils": "63/63",
+    "idle.vils": "63/63",
+    "population.color": "81/82",
+    "population.housing": "62/63",
+    "population.total": "61/63",
+    "population.vils": "61/63",
+    "stone.total": "62/63",
+    "stone.vils": "62/63",
+    "wood.total": "63/63",
+    "wood.vils": "61/63"
+  },
+  "total": 923
+}

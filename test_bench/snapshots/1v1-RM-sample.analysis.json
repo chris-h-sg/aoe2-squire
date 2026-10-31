@@ -1,0 +1,168 @@
+{
+  "calibration": {
+    "anchor1_ig_ms": 5467,
+    "anchor1_rw_offset_ms": 2503,
+    "anchor2_ig_ms": 483634,
+    "anchor2_rw_offset_ms": 285388,
+    "game_start_rw_offset_ms": -731.293212890625,
+    "speed_factor": 1.6903229227424572
+  },
+  "floating": {
+    "segments": [
+      {
+        "age": "Dark Age",
+        "end_ms": 423633,
+        "resource": "Food",
+        "start_ms": 345979
+      },
+      {
+        "age": "Dark Age",
+        "end_ms": 483633,
+        "resource": "Wood",
+        "start_ms": 444199
+      },
+      {
+        "age": "Feudal Age",
+        "end_ms": 1011543,
+        "resource": "Food",
+        "start_ms": 939212
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1463450,
+        "resource": "Gold",
+        "start_ms": 1314857
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1557871,
+        "resource": "Gold",
+        "start_ms": 1468538
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 2045770,
+        "resource": "Food",
+        "start_ms": 2010996
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 2045770,
+        "resource": "Gold",
+        "start_ms": 1866200
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1701525,
+        "resource": "Stone",
+        "start_ms": 1339854
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 2045770,
+        "resource": "Stone",
+        "start_ms": 1761525
+      }
+    ],
+    "summary": {
+      "Castle Age": {
+        "food": 34.774,
+        "gold": 417.496,
+        "stone": 645.9159999999999,
+        "wood": 0.0
+      },
+      "Dark Age": {
+        "food": 77.654,
+        "gold": 0.0,
+        "stone": 0.0,
+        "wood": 39.434
+      },
+      "Feudal Age": {
+        "food": 72.331,
+        "gold": 0.0,
+        "stone": 0.0,
+        "wood": 0.0
+      }
+    },
+    "total": {
+      "food": 184.75900000000001,
+      "gold": 417.496,
+      "stone": 645.9159999999999,
+      "wood": 39.434
+    }
+  },
+  "grades": {
+    "has_replay": true,
+    "housed_grade": "★",
+    "housed_pct": 4.0,
+    "housed_stars": 1,
+    "housed_tier": "bronze",
+    "idle_grade": "★",
+    "idle_pct": 4.6,
+    "idle_stars": 1,
+    "idle_tier": "bronze",
+    "overall_grade": "★",
+    "overall_tier": "bronze"
+  },
+  "housing": {
+    "metrics": {
+      "Castle Age": {
+        "housed": 38.164,
+        "normal": 866.256,
+        "queued": 69.807
+      },
+      "Dark Age": {
+        "housed": 11.009,
+        "normal": 260.04499999999996,
+        "queued": 211.343
+      },
+      "Feudal Age": {
+        "housed": 33.005,
+        "normal": 255.598,
+        "queued": 299.307
+      }
+    },
+    "recorded_duration_sec": 2044.534,
+    "segments": 25,
+    "total_housed_sec": 82.178,
+    "total_queued_sec": 580.457
+  },
+  "idle": {
+    "age_vs_lost": {
+      "Castle Age": 2214.864,
+      "Dark Age": 61.168000000000006,
+      "Feudal Age": 602.0
+    },
+    "segments": 89,
+    "total_idle_duration_sec": 1360.378,
+    "total_vs_lost": 2878.032,
+    "total_vs_overall": 62282.98200000001
+  },
+  "merged": {
+    "first_in_game_ms": 1236,
+    "last_in_game_ms": 2045770,
+    "rec_events": 197,
+    "rows": 5022,
+    "screen_grabs": 4825
+  },
+  "metadata": {
+    "duration_formatted": "34:05.361",
+    "duration_sec": 2045.361,
+    "has_replay": true,
+    "map_name": "Coastal",
+    "players": [
+      {
+        "civ": "Hindustanis",
+        "is_winner": true,
+        "name": "Thrar"
+      },
+      {
+        "civ": "Magyars",
+        "is_winner": false,
+        "name": "Horka Bulcsú"
+      }
+    ],
+    "rec_player_civ": "Hindustanis",
+    "rec_player_name": "Thrar"
+  }
+}

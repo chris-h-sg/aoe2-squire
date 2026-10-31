@@ -107,15 +107,12 @@ pub fn calibrate_timing(
         }
     }
 
-    let mut speed_factor = 1.7;
-    let game_start_rw_ms;
-
-    if anchor2_rw > anchor1_rw {
-        speed_factor = (anchor2_ig - anchor1_ig) as f64 / (anchor2_rw - anchor1_rw) as f64;
-        game_start_rw_ms = anchor1_rw as f64 - (anchor1_ig as f64 / speed_factor);
+    let speed_factor = if anchor2_rw > anchor1_rw {
+        (anchor2_ig - anchor1_ig) as f64 / (anchor2_rw - anchor1_rw) as f64
     } else {
-        game_start_rw_ms = anchor1_rw as f64 - (anchor1_ig as f64 / 1.7);
-    }
+        1.7
+    };
+    let game_start_rw_ms = anchor1_rw as f64 - (anchor1_ig as f64 / speed_factor);
 
     Ok(Calibration {
         speed_factor,

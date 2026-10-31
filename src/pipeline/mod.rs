@@ -9,6 +9,10 @@ use crate::constants::{ANNE_HK_IDLE_W_ADJUST_FACTOR, ANNE_HK_Y_ADJUST_FACTOR};
 use crate::types::{Results, Templates, UiElement, UiMap};
 use image::{DynamicImage, RgbImage};
 
+/// Cropped box, its segmented digits, whether it was clipped to the reference baseline,
+/// and the housed-overlay background colour (if any).
+type ProcessedBox = (RgbImage, Vec<image::GrayImage>, bool, Option<[u8; 3]>);
+
 struct ExtractorPipeline<'a> {
     ui_map: &'a UiMap,
     templates: &'a Templates,
@@ -121,12 +125,7 @@ impl<'a> ExtractorPipeline<'a> {
         (x, y, w, h, clipped)
     }
 
-    fn process_box(
-        &self,
-        img: &RgbImage,
-        name: &str,
-        coords: &UiElement,
-    ) -> Option<(RgbImage, Vec<image::GrayImage>, bool, Option<[u8; 3]>)> {
+    fn process_box(&self, img: &RgbImage, name: &str, coords: &UiElement) -> Option<ProcessedBox> {
         let (x, y, w, h, clipped) = self.get_element_coords(name, coords);
         if x + w > img.width() || y + h > img.height() {
             return None;
@@ -188,7 +187,9 @@ impl<'a> ExtractorPipeline<'a> {
             .insert("ui_scale".to_string(), format!("{:.4}", self.ui_scale));
 
         for (name, coords) in &self.ui_map.elements {
-            if let Some((box_img, digits, _clipped, overlay_bg)) = self.process_box(&rgb, name, coords) {
+            if let Some((box_img, digits, _clipped, overlay_bg)) =
+                self.process_box(&rgb, name, coords)
+            {
                 let mut match_results: Vec<(char, f32)> = digits
                     .iter()
                     .enumerate()
