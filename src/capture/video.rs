@@ -468,7 +468,30 @@ pub fn start(opts: &VideoOptions, stem: &str, match_start_unix_ms: u64) -> io::R
 
 /// Stops the running recording, if any, and reports how it ended. Returns the video path.
 pub fn stop_active() -> Option<PathBuf> {
-    let active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).take()?;
+    let active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).take();
+    report_stop(active?)
+}
+
+/// Makes a panic stop the running recording before the current panic hook runs. Squire's
+/// hook waits for Enter, which would otherwise keep ffmpeg recording until someone
+/// presses it. Call it after setting the panic hook.
+pub fn stop_on_panic() {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        // try_lock: the panicking thread may hold the lock (it is only held briefly).
+        let active = match ACTIVE.try_lock() {
+            Ok(mut guard) => guard.take(),
+            Err(std::sync::TryLockError::Poisoned(e)) => e.into_inner().take(),
+            Err(std::sync::TryLockError::WouldBlock) => None,
+        };
+        if let Some(active) = active {
+            report_stop(active);
+        }
+        previous(info);
+    }));
+}
+
+fn report_stop(active: Active) -> Option<PathBuf> {
     let path = active.video.display().to_string();
     match active.recording.stop(STOP_TIMEOUT) {
         Ok(Stopped::Finished(status)) if status.success() => {
@@ -661,5 +684,56 @@ mod tests {
             Stopped::ExitedEarly(status) => assert_eq!(status.code(), Some(3)),
             other => panic!("expected an early exit, got {:?}", other),
         }
+    }
+
+    /// A panic stops the recording before the previous hook runs (Squire's waits for
+    /// Enter). The stand-in for ffmpeg is a batch file that writes what it reads on stdin
+    /// to stopped.txt, since `start` passes ffmpeg's arguments.
+    #[test]
+    fn panic_stops_the_recording_before_the_previous_hook() {
+        use std::sync::{Arc, Mutex};
+        let dir = std::env::temp_dir().join(format!("squire_video_panic_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let ffmpeg = dir.join("ffmpeg.cmd");
+        std::fs::write(
+            &ffmpeg,
+            "@echo off\r\nset /p key=\r\necho %key% > \"%~dp0stopped.txt\"\r\n",
+        )
+        .unwrap();
+        let opts = VideoOptions {
+            dir: dir.join("videos"),
+            ffmpeg,
+            encoder: Encoder::Nvenc,
+            fps: 30,
+        };
+        start(&opts, "telemetry_panic", 0).unwrap();
+        std::thread::sleep(Duration::from_millis(500));
+
+        // Whether the stand-in had been stopped when the previous hook ran; only this
+        // test's thread counts, other tests may panic meanwhile.
+        let stopped = dir.join("stopped.txt");
+        let seen: Arc<Mutex<Option<String>>> = Arc::default();
+        let original = std::panic::take_hook();
+        let seen_in_hook = Arc::clone(&seen);
+        std::panic::set_hook(Box::new(move |_| {
+            if std::thread::current().name() == Some("panicking-capture") {
+                *seen_in_hook.lock().unwrap() = std::fs::read_to_string(&stopped).ok();
+            }
+        }));
+        stop_on_panic();
+        let result = std::thread::Builder::new()
+            .name("panicking-capture".into())
+            .spawn(|| panic!("vision bug"))
+            .unwrap()
+            .join();
+        let _ = std::panic::take_hook();
+        std::panic::set_hook(original);
+
+        assert!(result.is_err());
+        let seen = seen.lock().unwrap().clone();
+        assert_eq!(seen.as_deref().map(str::trim), Some("q"));
+        assert!(ACTIVE.lock().unwrap().is_none());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

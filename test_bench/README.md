@@ -105,9 +105,10 @@ cargo run --release --features dev-tools -- --record-frames recordings --record-
   `ffmpeg -i in.mkv -c copy out.mkv` to make it seekable again).
 - `telemetry_<start>.video.json`: when ffmpeg was started, the match start, the encoder and
   the full ffmpeg command. `telemetry_<start>.ffmpeg.log`: ffmpeg's warnings and errors.
-- ffmpeg starts when the match is detected and gets `q` when the match UI disappears, or
-  when Squire is stopped with Ctrl+C. If Squire crashes or its window is closed, Windows
-  kills ffmpeg. The first video frame comes about 0.6 s after the match was detected.
+- ffmpeg starts when the match is detected and gets `q` when the match UI disappears, when
+  Squire is stopped with Ctrl+C, and when Squire panics (before the error message waits
+  for Enter). If Squire is killed or its window is closed, Windows kills ffmpeg. The first
+  video frame comes about 0.6 s after the match was detected.
 - Options: `--ffmpeg <path>` (or `SQUIRE_FFMPEG`; default `ffmpeg` on PATH),
   `--video-encoder nvenc|amf|qsv|x264` and `--video-fps <n>`. At startup Squire checks
   that ffmpeg has the `ddagrab` screen capture filter and tries the GPU encoders in that

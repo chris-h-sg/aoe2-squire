@@ -68,6 +68,9 @@ fn main() {
         eprintln!("========================================");
         wait_for_user();
     }));
+    // Stop a running screen recording before that hook waits for Enter.
+    #[cfg(feature = "dev-tools")]
+    aoe2_squire::capture::video::stop_on_panic();
 
     // Set a thematic Ctrl-C handler to exit gracefully and prevent ugly console error dumps
     let _ = ctrlc::set_handler(move || {
