@@ -182,11 +182,9 @@ fn find_split_valleys(
                 best_num_wide = num_wide;
                 best_valley = Some(v);
                 best_proj_val = proj_val;
-            } else if num_wide == best_num_wide {
-                if proj_val < best_proj_val {
-                    best_valley = Some(v);
-                    best_proj_val = proj_val;
-                }
+            } else if num_wide == best_num_wide && proj_val < best_proj_val {
+                best_valley = Some(v);
+                best_proj_val = proj_val;
             }
         }
         best_valley

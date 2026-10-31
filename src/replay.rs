@@ -586,7 +586,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         })
         .unwrap_or_else(|| ("Unknown".to_string(), "Unknown".to_string()));
 
-    let resolved_map_id = savegame.zheader.game_settings.resolved_map_id as u32;
+    let resolved_map_id = savegame.zheader.game_settings.resolved_map_id;
     let map_name = map_map
         .get(&resolved_map_id)
         .cloned()
