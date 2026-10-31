@@ -138,6 +138,9 @@ cargo run -- --parse-replay "path/to/match.aoe2record"
 # Test vision pipeline on a screenshot
 cargo run -- "test_bench/aoe2_16x9.png"
 
+# Check a captured game for plausibility (replay spends vs screen, glitches, invariants)
+cargo run --bin sanity_report -- "path/to/telemetry.csv" "path/to/match.aoe2record"
+
 # Also save masked frames of each match (for checking readings and building fixtures)
 cargo run --release -- --record-frames recordings
 

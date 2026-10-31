@@ -9,6 +9,7 @@ A native Windows background tool that scrapes AoE2:DE resource/villager counts f
 - The Rust production binary is fully functional, with a complete vision pipeline operating under 1% CPU overhead.
 - Master Orchestrator is operational, automating capture, replay discovery, data meshing, and analysis.
 - Interactive, offline-capable HTML reports are automatically generated and bundled with Chart.js for standalone use.
+- The capture loop reads frames from a `FrameSource` (live DXGI capture or a folder of recorded PNGs), so it is tested without a game. `--record-frames` saves masked resource-panel frames of a match next to its telemetry for checking it afterwards.
 
 ## Repo Layout
 ```
@@ -23,7 +24,7 @@ aoe2-squire/
 │   ├── lib.rs              ← module definitions
 │   ├── constants.rs        ← all pipeline constants
 │   ├── analysis/           ← modular analyzer implementation
-│   ├── capture/            ← DXGI screen capture implementation
+│   ├── capture/            ← capture loop, frame sources (DXGI, recorded PNGs), frame recording
 │   ├── pipeline/           ← Vision pipeline implementation
 │   ├── bin/                ← Standalone CLI tools
 │   ├── replay.rs           ← replay parsing logic
@@ -33,7 +34,7 @@ aoe2-squire/
 │   ├── types.rs            ← shared data structures
 │   └── validation.rs       ← sanity checks for a captured game (no ground truth needed)
 ├── templates/              ← HTML report templates
-├── tests/                  ← analysis snapshot, sync stress, vision fixtures, sanity report
+├── tests/                  ← analysis snapshot, sync stress, vision fixtures, sanity report, capture loop
 ├── tools/                  ← one-off scripts (video frame fixture extraction)
 ├── test_bench/             ← reference screenshots, sample game, fixtures, snapshots
 └── research/               ← Python R&D only (reference)
@@ -43,7 +44,7 @@ The replay parser `aoe2rec` is our fork (github.com/chris-h-sg/aoe2rec), pinned 
 
 ## Validating a Change
 Check that a change works without playing a game, in this order:
-1. `cargo test`: analysis snapshot (`UPDATE_SNAPSHOTS=1` regenerates after an intended change), sync stress tests (`#[ignore]`d ones are known bugs; `-- --ignored` runs them), vision fixtures with an accuracy baseline, and the sanity report on the sample game.
+1. `cargo test`: analysis snapshot (`UPDATE_SNAPSHOTS=1` regenerates after an intended change), sync stress tests (`#[ignore]`d ones are known bugs; `-- --ignored` runs them), vision fixtures with an accuracy baseline, the sanity report on the sample game, and the capture loop (game start/end, telemetry rows, housing interpolation, frame recording) on recorded video frames.
 2. `cargo run --bin sanity_report -- <telemetry.csv> [replay.aoe2record] [--json]` on any captured game: spend alignment (replay spends vs resource drops on screen; ~99% on the sample game, far lower when sync is broken), single-frame glitches, invariant violations, unexplained drops and increases.
-3. Spot-check frames where they exist: crop and enlarge the resource panel, read it, and compare with the CSV.
+3. Spot-check frames where they exist: crop and enlarge the resource panel, read it, and compare with the CSV. A game played with `--record-frames <dir>` keeps masked frames in `<dir>/telemetry_<start>/`. They are saved every 5 s, on sharp jumps (with the frame before) and when the population starts or stops blinking. `frames.csv` gives each frame's `timestamp_ms`, which is its CSV row's timestamp and the `rw` timestamp the sanity report prints, so a flagged moment can be looked up in the nearest saved frame. `--replay-frames <dir>/telemetry_<start>` runs a recording back through the capture loop; after a vision change, compare its CSV with the original rows. See `test_bench/README.md`.
 4. Flag anything inexplicable rather than guessing. Known legitimate causes of unexplained drops: automatic farm reseeding, failed placements, walls, market and tributes (not parsed from the replay).
