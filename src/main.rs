@@ -68,10 +68,15 @@ fn main() {
         eprintln!("========================================");
         wait_for_user();
     }));
+    // Stop a running screen recording before that hook waits for Enter.
+    #[cfg(feature = "dev-tools")]
+    aoe2_squire::capture::video::stop_on_panic();
 
     // Set a thematic Ctrl-C handler to exit gracefully and prevent ugly console error dumps
     let _ = ctrlc::set_handler(move || {
         aoe2_squire::RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+        #[cfg(feature = "dev-tools")]
+        aoe2_squire::capture::video::stop_active();
         println!(
             "\n\n♦ Godspeed, my liege! Your Squire stands ready to serve at your next bidding."
         );
@@ -132,6 +137,53 @@ fn wait_for_user() {
     let stdin = io::stdin();
     let mut iterator = stdin.lock().lines();
     let _ = iterator.next();
+}
+
+/// Screen recording options (`dev-tools` builds): `--record-video <dir>` turns it on,
+/// `--ffmpeg <path>` (or `SQUIRE_FFMPEG`) picks the binary, `--video-encoder
+/// nvenc|amf|qsv|x264` overrides the detected encoder and `--video-fps <n>` the frame rate.
+#[cfg(feature = "dev-tools")]
+fn video_options(args: &[String]) -> Result<Option<capture::video::VideoOptions>, Box<dyn Error>> {
+    use capture::video::{self, Encoder};
+    let value = |flag: &str| {
+        args.iter()
+            .position(|arg| arg == flag)
+            .map(|pos| args.get(pos + 1).ok_or(format!("{} needs a value", flag)))
+            .transpose()
+    };
+    let Some(dir) = value("--record-video")? else {
+        return Ok(None);
+    };
+    let encoder = value("--video-encoder")?
+        .map(|name| {
+            Encoder::parse(name).ok_or(format!(
+                "unknown --video-encoder {} (use nvenc, amf, qsv or x264)",
+                name
+            ))
+        })
+        .transpose()?;
+    let fps = match value("--video-fps")? {
+        Some(fps) => fps
+            .parse()
+            .ok()
+            .filter(|&fps| fps > 0)
+            .ok_or(format!("invalid --video-fps {}", fps))?,
+        None => video::DEFAULT_FPS,
+    };
+    let ffmpeg = video::ffmpeg_path(value("--ffmpeg")?.map(String::as_str));
+    println!("[Video] Checking {} ...", ffmpeg.display());
+    let opts = video::VideoOptions::resolve(dir.into(), ffmpeg, encoder, fps)
+        .map_err(|e| format!("--record-video: {}", e))?;
+    if opts.encoder == Encoder::X264 {
+        eprintln!("[Video] No GPU encoder works here; falling back to x264 (high CPU use).");
+    }
+    println!(
+        "[Video] Each match will be recorded to {} with {} at {} fps.",
+        opts.dir.display(),
+        opts.encoder.codec(),
+        opts.fps
+    );
+    Ok(Some(opts))
 }
 
 fn run_app() -> Result<(), Box<dyn Error>> {
@@ -211,34 +263,61 @@ fn run_app() -> Result<(), Box<dyn Error>> {
     }
 
     // Saves masked frames of each match next to its telemetry: --record-frames <dir>
-    let record_frames = args
-        .iter()
-        .position(|arg| arg == "--record-frames")
-        .and_then(|pos| args.get(pos + 1))
-        .map(std::path::PathBuf::from);
+    let flag_value = |flag: &str| {
+        args.iter()
+            .position(|arg| arg == flag)
+            .and_then(|pos| args.get(pos + 1))
+    };
+    let capture_opts = capture::CaptureOptions {
+        record_frames: flag_value("--record-frames").map(std::path::PathBuf::from),
+        #[cfg(feature = "dev-tools")]
+        record_video: video_options(&args).unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            std::process::exit(2);
+        }),
+        ..Default::default()
+    };
+    #[cfg(not(feature = "dev-tools"))]
+    if args.iter().any(|arg| arg == "--record-video") {
+        eprintln!(
+            "--record-video is a developer tool and needs a build with the dev-tools feature:"
+        );
+        eprintln!("  cargo run --release --features dev-tools -- --record-video <dir>");
+        std::process::exit(2);
+    }
 
     // Any leading flag (--live, --verbose, --record-frames, ...) means live mode.
+    // Image mode reads one or more images: aoe2-squire <image> [<image> ...]. With several,
+    // each one's output starts with "File: <path>" (used by tools/align_video.py).
     if args.len() > 1 && !args[1].starts_with('-') {
-        let image_path = &args[1];
-        let img = image::open(image_path)
-            .map_err(|e| format!("failed to load image {}: {}", image_path, e))?;
-        println!("Image: {}x{}", img.width(), img.height());
+        let images: Vec<&String> = args[1..]
+            .iter()
+            .take_while(|arg| !arg.starts_with('-'))
+            .collect();
+        for image_path in &images {
+            if images.len() > 1 {
+                println!("File: {}", image_path);
+            }
+            let img = image::open(image_path)
+                .map_err(|e| format!("failed to load image {}: {}", image_path, e))?;
+            println!("Image: {}x{}", img.width(), img.height());
 
-        match pipeline::process_frame(&img, &ui_map, &templates) {
-            Some(results) => {
-                let mut keys: Vec<_> = results.keys().collect();
-                keys.sort();
-                for cat in keys {
-                    let mut sub: Vec<_> = results[cat].iter().collect();
-                    sub.sort_by_key(|(k, _)| *k);
-                    for (key, val) in sub {
-                        println!("  {}_{}: {}", cat, key, val);
+            match pipeline::process_frame(&img, &ui_map, &templates) {
+                Some(results) => {
+                    let mut keys: Vec<_> = results.keys().collect();
+                    keys.sort();
+                    for cat in keys {
+                        let mut sub: Vec<_> = results[cat].iter().collect();
+                        sub.sort_by_key(|(k, _)| *k);
+                        for (key, val) in sub {
+                            println!("  {}_{}: {}", cat, key, val);
+                        }
                     }
                 }
+                None => eprintln!(
+                    "[no anchor] Red UI reference not found — game not visible or UI changed."
+                ),
             }
-            None => eprintln!(
-                "[no anchor] Red UI reference not found — game not visible or UI changed."
-            ),
         }
     } else {
         println!("╔══════════════════════════════════════╗");
@@ -282,7 +361,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
         }
 
         loop {
-            match capture::run_capture_loop(&ui_map, &templates, record_frames.clone()) {
+            match capture::run_capture_loop(&ui_map, &templates, &capture_opts) {
                 Ok(Some((telemetry, replay))) => {
                     println!("\n--- Capture & Discovery Complete ---");
                     let delivered = analyze_captured_match(replay.as_deref(), |replay| {

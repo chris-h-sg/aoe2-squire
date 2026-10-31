@@ -1,7 +1,8 @@
 //! Runs the capture loop (`capture::capture_match`) on frames from test_bench/video_frames
 //! through `ImageSequenceSource`, without a game: game start/end detection, telemetry rows
 //! (checked against the fixture manifest), housing interpolation, and recording frames
-//! with `--record-frames` and replaying them.
+//! with `--record-frames` and replaying them, and starting and stopping `--record-video`
+//! (`dev-tools` feature) with the match.
 //!
 //! Frame timestamps come from the `timestamp_sec` column of the test_bench expected CSVs.
 //! Black frames stand in for "no match on screen".
@@ -287,6 +288,58 @@ fn source_running_out_mid_match_keeps_all_rows() {
     check_rows(&rows, &video[1..].iter().collect::<Vec<_>>());
 }
 
+/// `--record-video` with a stand-in for ffmpeg (a batch file that saves its arguments and
+/// waits for a line on stdin): the recording starts with the match, gets the match's file
+/// name and sidecar, and is stopped with `q` when the match UI disappears.
+#[cfg(feature = "dev-tools")]
+#[test]
+fn video_recording_starts_and_stops_with_the_match() {
+    use aoe2_squire::capture::video::{Encoder, VideoOptions};
+    let tmp = TempDir::new("video");
+    let stand_in = tmp.0.join("ffmpeg.cmd");
+    std::fs::write(
+        &stand_in,
+        "@echo off\r\necho %* > \"%~dp0args.txt\"\r\nset /p key=\r\necho %key% > \"%~dp0stopped.txt\"\r\n",
+    )
+    .unwrap();
+    let video = video_frames("extract-housed_expected_0.5s.csv", "extract-housed");
+    let match_start = video[0].timestamp_ms;
+    let frames = with_black_frames(&tmp.0, video);
+    let opts = CaptureOptions {
+        record_video: Some(VideoOptions {
+            dir: tmp.0.join("videos"),
+            ffmpeg: stand_in,
+            encoder: Encoder::Nvenc,
+            fps: 30,
+        }),
+        ..options(&tmp.0)
+    };
+
+    let captured = run(&frames, &opts).expect("match detected");
+    assert!(captured.game_ended);
+    let stem = captured.telemetry.file_stem().unwrap().to_str().unwrap();
+
+    let args = std::fs::read_to_string(tmp.0.join("args.txt")).expect("ffmpeg started");
+    assert!(
+        args.contains("ddagrab=output_idx=0:framerate=30"),
+        "{}",
+        args
+    );
+    assert!(args.contains(&format!("{}.mkv", stem)), "{}", args);
+    let stopped = std::fs::read_to_string(tmp.0.join("stopped.txt")).expect("ffmpeg stopped");
+    assert_eq!(stopped.trim(), "q");
+
+    let sidecar: Value = serde_json::from_str(
+        &std::fs::read_to_string(tmp.0.join("videos").join(format!("{}.video.json", stem)))
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(sidecar["video"], format!("{}.mkv", stem));
+    assert_eq!(sidecar["match_start_unix_ms"], match_start);
+    assert_eq!(sidecar["encoder"], "h264_nvenc");
+    assert!(sidecar["ffmpeg_started_unix_ms"].as_u64().unwrap() > 0);
+}
+
 #[test]
 fn image_sequence_from_dir() {
     let tmp = TempDir::new("from_dir");
@@ -347,13 +400,13 @@ fn recorded_frames_replay_to_the_same_rows() {
     let video = video_frames("extract-housed_expected_0.5s.csv", "extract-housed");
     let frames = with_black_frames(&tmp.0, video);
     let opts = CaptureOptions {
-        log_dir: tmp.0.clone(),
         record_frames: Some(tmp.0.join("frames")),
         record: RecordOptions {
             interval_ms: 2000,
             queue_capacity: 64, // never drop in the test
             ..Default::default()
         },
+        ..options(&tmp.0)
     };
     let captured = run(&frames, &opts).unwrap();
     let frames_dir = captured.frames_dir.clone().expect("frames recorded");

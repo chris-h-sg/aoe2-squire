@@ -29,8 +29,8 @@ Once the MVP is providing user value, development will shift toward expanding ou
 *   **Unit Counter Analysis:** Parse military queue events and use the Civ Tech Tree data to recommend available unit counters based on the opponent's composition.
 
 ### Developer Tooling
-*   **Built-in Video Capture (dev only; do before recording the next test game):** A `--record-video` flag behind a `dev-tools` Cargo feature, so it never ships in release builds and the CPU target does not apply. Squire starts `ffmpeg` (6+, `ddagrab` screen capture with GPU encoding) when a match starts and stops it cleanly when it ends. The video is written next to the telemetry CSV (`telemetry_<start>.mkv`, playable even if interrupted), together with the wall-clock start time, so there is no manual starting, stopping or cutting. Roughly 150–250 lines; needs a recent ffmpeg on PATH.
-*   **Video/Telemetry Alignment Tool:** A script in `tools/` that reads the resource panel from a few video frames and matches it against the CSV to find the exact video offset (works for Steam recordings too). Sanity report findings can then be looked up at the right video timestamp.
+*   **Built-in Video Capture (done):** `--record-video <dir>` behind the `dev-tools` Cargo feature (`src/capture/video.rs`) starts ffmpeg (6+, `ddagrab` with a GPU encoder) when a match starts and stops it when it ends or on Ctrl+C. It writes `telemetry_<start>.mkv` with a sidecar holding the wall-clock start time. See "Recording a game" in `test_bench/README.md`.
+*   **Video/Telemetry Alignment Tool (done):** `tools/align_video.py` matches panel readings from video frames against the CSV, gives the video offset to within about ±50 ms, checks for drift, and converts CSV / sanity report times to video times. It also works for Steam recordings.
 *   **Record Sample Games:** 2–3 games covering game speeds, pauses, repeated Age-up clicks, refunds and more, following the checklist in `test_bench/README.md` ("Sample games to record"). They become fixtures for the sync rework and the sanity report, and the evidence for the Digit Recognition Review.
 
 ### Research Tasks

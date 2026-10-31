@@ -20,3 +20,7 @@ jobs:
         run: cargo test --locked
       - name: Clippy
         run: cargo clippy --all-targets --locked
+      - name: Test dev tools
+        run: cargo test --locked --features dev-tools --lib --test capture_loop
+      - name: Clippy dev tools
+        run: cargo clippy --all-targets --features dev-tools --locked
