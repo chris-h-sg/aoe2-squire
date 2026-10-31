@@ -91,7 +91,8 @@ pub fn analyze_idle(rows: &[Observation], verbose: bool) -> Result<IdleReport, B
         println!("{}", "-".repeat(28));
     }
     let age_vs_lost = calculate_vs_lost(&segments);
-    let total: f64 = age_vs_lost.values().sum();
+    // In age order: summing in HashMap order can differ in the last bit between runs.
+    let total: f64 = GAME_AGES.iter().filter_map(|a| age_vs_lost.get(*a)).sum();
 
     if verbose {
         for age in GAME_AGES {

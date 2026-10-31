@@ -14,28 +14,28 @@
     },
     {
       "section": "unexplained_drops",
-      "time": "25:04.080",
+      "time": "25:03.957",
       "field": "wood",
       "detail": "-35 not explained by a replay event",
       "explanation": "Automatic farm reseed (-60 wood, no replay command) in the same frame as two wood drop-offs (~+12 each); confirmed on video. No spending command from the player between 25:00.5 and 25:13.7."
     },
     {
       "section": "glitches",
-      "time": "13:47.023",
+      "time": "13:47.024",
       "field": "pop_max",
       "detail": "30 -> 3 -> 35",
       "explanation": "Vision misread for one frame while a house completes and the cap goes from 30 to 35."
     },
     {
       "section": "invariant_violations",
-      "time": "13:47.023",
+      "time": "13:47.024",
       "field": "pop_curr",
       "detail": "population > housing: pop_curr 30 > pop_max 3 for 1 frame(s) (possible if houses were destroyed)",
-      "explanation": "Same one-frame pop_max misread as the glitch at 13:47.023."
+      "explanation": "Same one-frame pop_max misread as the glitch at 13:47.024."
     },
     {
       "section": "large_increases",
-      "time": "05:45.979",
+      "time": "05:46.069",
       "field": "food",
       "detail": "99 -> 222 (+123)",
       "explanation": "About six hunters dropped off together when the boar they were gathering at the TC ran out (food gatherers 11 -> 9, idle 0 -> 2 in the same frame); confirmed on video."

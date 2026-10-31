@@ -4,19 +4,25 @@ This log captures the high-level architectural and design decisions of the AoE2 
 
 ## Replay/Telemetry Sync
 
-### 1. Two-Point Temporal Calibration
-*   **Decision**: Synchronize replay events and screen telemetry using a two-point linear fit (Anchor 1: Start/First Drop, Anchor 2: Feudal Age Research).
-*   **Reasoning**: 
-    *   Hardcoding the "1.7x" speed factor is unreliable as game clock speed can drift slightly or be adjusted (1.0, 1.5, 2.0).
-    *   Using two distinct anchors allows calculating a precise local `speed_factor` and `RW_GameStart` offset, ensuring sub-second alignment throughout long games.
-    *   Linear interpolation across the two anchors handles initial "frozen" frames at game start and varied loading times.
+### 1. Time Mapping from Spend Alignment (replaces Two-Point Temporal Calibration)
+*   **Decision**: Map real-world time (telemetry) to in-game time (replay) with a monotonic piecewise-linear `TimeMapping` (`src/sync/`), fitted to replay spends matched with resource drops on screen across the whole game. Between knots time runs at a constant speed; two knots at the same in-game time are a pause. Calibration returns the mapping with its quality (matched share, residuals) or a `SyncError`, never a guessed speed.
+*   **How**:
+    *   Drops: a resource reading lower than the previous *read* value (unread values are skipped, single-frame misreads ignored). A drop is timed halfway between the two readings around it, with half their distance as its uncertainty.
+    *   Local alignment: overlapping 2-minute windows of the replay each vote for the speed (0.5–4.0) and offset that line up the most spend↔drop pairs (rare spends weigh more than villagers, whose rhythm would also line up one villager off), refined by least squares.
+    *   Mapping fit: matched pairs are split into straight segments; segments that contradict the rest (time running backwards or faster than any game speed) are dropped. A jump between segments is placed where the screen stood still (a pause); otherwise segments are joined where they cross (speed change). Spends are then matched once more against the mapping, each drop paying for at most what it shows, and the mapping is refitted.
+*   **Reasoning**:
+    *   The two-point fit (first drop + Feudal click) assumed one constant speed. It silently fell back to speed 1.7 when the Feudal drop was outside a ±10 s window that itself assumed 1.7, folded pauses into the speed, took unread values for drops and assumed the first frame showed starting resources. `tests/sync_stress.rs` reproduced each failure.
+    *   Telemetry captured during replay playback runs at the playback speed, which can change mid-game, so sync must allow the speed to vary.
+    *   Spends are spread over the whole game, so every stretch is aligned locally and no single anchor can throw off the rest. On the sample game it gives one segment at 1.690 with a 70 ms median residual, and the sanity report's spend alignment stays at 188/189.
+    *   The mapping does not care where its time pairs come from. Reading the in-game clock (phase 2) produces the same pairs with their own uncertainty and reuses `fit_mapping`; `MappingSource` records which source was used.
+*   **Limits**: a pause before the first or after the last matched spend cannot be seen. A game with almost no spends, or telemetry from another game, fails with an error instead of a mapping.
 
-### 2. "First Frame" Ground Truth for Resources
+### 2. "First Frame" Ground Truth for Resources (no longer used by sync)
 *   **Decision**: Extract starting resources (Food, Wood, Gold, Stone) from the first valid frame of screen telemetry rather than the replay header.
 *   **Reasoning**:
     *   Binary extraction of starting resources from `.aoe2record` headers is fragile and version-dependent for DE.
     *   Using the vision pipeline's first reading is 100% accurate for the current civilization and game mode because it is exactly what the player saw.
-    *   Simplifies synchronization logic and reduces dependency on unstable binary parsing.
+*   **Update**: The time mapping works from resource drops only, so sync no longer needs starting resources or a capture that starts before the first spend. Nothing reads starting resources at the moment.
 
 ### 3. Causal Ordering (Event-before-Update)
 *   **Decision**: Sort `RecEvents` before `ScreenGrabs` in the merged causal stream when they occur in the same millisecond.

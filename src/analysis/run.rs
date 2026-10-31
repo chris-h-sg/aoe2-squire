@@ -43,6 +43,9 @@ pub fn analyze_match(
         max_duration_frames,
     )?;
     println!("Successfully meshed {} rows.", merged.len());
+    if let Some(c) = &calibration {
+        println!("Sync: {}", c.summary());
+    }
 
     let metadata = if let Some(replay) = replay_path {
         let replay_data = crate::replay::extract_events(replay)?;
