@@ -18,6 +18,7 @@ the same values from masked and unmasked frames.
 import argparse
 import csv
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -154,7 +155,14 @@ def main():
     for old in OUT_DIR.glob("*.png"):
         old.unlink()
     full_dir = Path(tempfile.mkdtemp(prefix="squire_full_frames_")) if args.verify else None
+    try:
+        run(args, wanted, previous, manifest_path, full_dir)
+    finally:
+        if full_dir:
+            shutil.rmtree(full_dir, ignore_errors=True)
 
+
+def run(args, wanted, previous, manifest_path, full_dir):
     images = {}
     mismatches = []
     for video, frames in sorted(wanted.items()):
