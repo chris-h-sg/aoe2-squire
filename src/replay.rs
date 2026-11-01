@@ -263,10 +263,19 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
 
     let mut cursor = std::io::Cursor::new(&buffer);
     // Fully qualified: std may add a `read_le` method that would shadow binrw's.
-    let savegame: Savegame = BinReaderExt::read_le(&mut cursor)?;
+    let mut savegame: Savegame = BinReaderExt::read_le(&mut cursor)?;
+    // All chapters' operations in order, owned (what `Savegame::operations()` iterates by reference).
+    let operations: Vec<aoe2rec::Operation> = savegame
+        .chapters
+        .iter_mut()
+        .flat_map(|chapter| std::mem::take(&mut chapter.operations))
+        .collect();
+    let header = savegame
+        .header()
+        .ok_or("replay contains no recorded chapters")?;
 
     println!("Replay parsed successfully!");
-    println!("Build: {:?}", savegame.zheader.build);
+    println!("Build: {:?}", header.build);
 
     // Load reference data
     let units_csv = include_str!("../data/units.csv");
@@ -298,12 +307,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     let mut instance_map: HashMap<u32, String> = HashMap::new();
     let mut pending_builds: HashMap<(i32, i32), String> = HashMap::new();
 
-    for obj in &savegame
-        .zheader
-        .initial
-        .initial_tail
-        .initial_object_instances
-    {
+    for obj in &header.initial.initial_tail.initial_object_instances {
         // Try to identify the object name from buildings or units
         let name = building_map
             .get(&(obj.object_type_id as u32))
@@ -317,7 +321,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     let mut player_names = HashMap::new();
     let mut player_infos = Vec::new();
 
-    for (i, player) in savegame.zheader.game_settings.players.iter().enumerate() {
+    for (i, player) in header.game_settings.players.iter().enumerate() {
         let name: String = player.name.clone().into();
         let ai_name: String = player.ai_name.clone().into();
         let display_name = if !name.trim().is_empty() {
@@ -352,7 +356,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     }
 
     // Ensure POV player is first in the list
-    let pov_id = savegame.zheader.replay.rec_player as u8;
+    let pov_id = header.replay.rec_player as u8;
     if let Some(pov_name) = player_names.get(&pov_id) {
         if let Some(pos) = player_infos.iter().position(|p| &p.name == pov_name) {
             let pov_info = player_infos.remove(pos);
@@ -363,7 +367,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     let mut current_ms = 0;
     let mut loser_id: Option<u8> = None;
 
-    for op in savegame.operations {
+    for op in operations {
         match op {
             aoe2rec::Operation::Sync { time_increment, .. } => {
                 current_ms += time_increment;
@@ -640,13 +644,11 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         }
     }
 
-    let datetime = Local
-        .timestamp_opt(savegame.zheader.timestamp as i64, 0)
-        .unwrap();
+    let datetime = Local.timestamp_opt(header.timestamp as i64, 0).unwrap();
     let start_time = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
 
     let (rec_player_name, rec_player_civ) = player_names
-        .get(&(savegame.zheader.replay.rec_player as u8))
+        .get(&(header.replay.rec_player as u8))
         .map(|name| {
             let civ = player_infos
                 .iter()
@@ -657,7 +659,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         })
         .unwrap_or_else(|| ("Unknown".to_string(), "Unknown".to_string()));
 
-    let resolved_map_id = savegame.zheader.game_settings.resolved_map_id;
+    let resolved_map_id = header.game_settings.resolved_map_id;
     let map_name = map_map
         .get(&resolved_map_id)
         .cloned()
@@ -676,7 +678,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     };
 
     Ok(ReplayData {
-        rec_player: savegame.zheader.replay.rec_player as u32,
+        rec_player: header.replay.rec_player as u32,
         player_names,
         events,
         metadata,
