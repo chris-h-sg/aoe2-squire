@@ -1,9 +1,10 @@
+use crate::game_data::{GameData, Kind};
 use crate::types::Age;
 use aoe2rec::Savegame;
 use binrw::BinReaderExt;
 use chrono::{Local, TimeZone};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
@@ -21,6 +22,7 @@ pub enum ReplayEvent {
     TechResearch {
         timestamp_ms: u32,
         player_id: u8,
+        tech_id: u32,
         tech_type: String,
         cost: ResourceCost,
         building_id: u32,
@@ -29,6 +31,7 @@ pub enum ReplayEvent {
     UnitQueued {
         timestamp_ms: u32,
         player_id: u8,
+        unit_id: u32,
         unit_type: String,
         cost: ResourceCost,
         building_ids: Vec<u32>,
@@ -123,10 +126,22 @@ impl ReplayEvent {
         }
     }
 
+    /// The technology, unit or building ID the command refers to (see `game_data`).
+    pub fn type_id(&self) -> Option<u32> {
+        match self {
+            ReplayEvent::TechResearch { tech_id, .. } => Some(*tech_id),
+            ReplayEvent::UnitQueued { unit_id, .. } => Some(*unit_id),
+            ReplayEvent::BuildingConstruction {
+                building_type_id, ..
+            } => Some(*building_type_id),
+            ReplayEvent::QueueCancellation { .. } | ReplayEvent::Deletion { .. } => None,
+        }
+    }
+
     /// The age this command starts researching, if it is an age-up click.
     pub fn age_researched(&self) -> Option<Age> {
         match self {
-            ReplayEvent::TechResearch { tech_type, .. } => Age::from_tech(tech_type),
+            ReplayEvent::TechResearch { tech_id, .. } => Age::from_tech_id(*tech_id),
             _ => None,
         }
     }
@@ -147,85 +162,50 @@ pub fn format_time(ms: u32) -> String {
     format!("{:02}:{:06.3}", minutes, remaining_seconds)
 }
 
-type ReferenceData = (
-    HashMap<u32, String>,
-    HashMap<u32, ResourceCost>,
-    HashMap<u32, u32>,
-);
-
-fn parse_csv_map(
-    content: &str,
-    id_col: usize,
-    name_col: usize,
-    cost_start_col: Option<usize>,
-    building_col: Option<usize>,
-    num_costs: usize,
-) -> Result<ReferenceData, Box<dyn std::error::Error>> {
-    let mut name_map = HashMap::new();
-    let mut cost_map = HashMap::new();
-    let mut building_map = HashMap::new();
-
+/// `id,name,...` rows of an embedded CSV (civilizations, maps) as id -> name.
+fn parse_id_names(content: &str) -> Result<HashMap<u32, String>, Box<dyn std::error::Error>> {
+    let mut names = HashMap::new();
     let mut rdr = csv::ReaderBuilder::new()
         .flexible(true)
         .from_reader(content.as_bytes());
+    for record in rdr.records() {
+        let record = record?;
+        if let (Some(Ok(id)), Some(name)) = (record.get(0).map(|v| v.trim().parse()), record.get(1))
+        {
+            names.insert(id, name.to_string());
+        }
+    }
+    Ok(names)
+}
 
-    for result in rdr.records() {
-        let record = result?;
-        if record.len() > id_col && !record[id_col].trim().is_empty() {
-            if let Ok(id) = record[id_col].parse::<u32>() {
-                if record.len() > name_col {
-                    name_map.insert(id, record[name_col].to_string());
-                }
+/// Looks up command IDs in the game data and counts the ones it does not know.
+struct Lookup {
+    data: &'static GameData,
+    unknown: BTreeMap<(&'static str, u32), usize>,
+}
 
-                if let Some(start) = cost_start_col {
-                    let food = record.get(start).and_then(|v| v.parse().ok()).unwrap_or(0);
-                    let wood = if num_costs > 1 {
-                        record
-                            .get(start + 1)
-                            .and_then(|v| v.parse().ok())
-                            .unwrap_or(0)
-                    } else {
-                        0
-                    };
-                    let gold = if num_costs > 2 {
-                        record
-                            .get(start + 2)
-                            .and_then(|v| v.parse().ok())
-                            .unwrap_or(0)
-                    } else {
-                        0
-                    };
-                    let stone = if num_costs > 3 {
-                        record
-                            .get(start + 3)
-                            .and_then(|v| v.parse().ok())
-                            .unwrap_or(0)
-                    } else {
-                        0
-                    };
-
-                    cost_map.insert(
-                        id,
-                        ResourceCost {
-                            food,
-                            wood,
-                            gold,
-                            stone,
-                        },
-                    );
-                }
-
-                if let Some(col) = building_col {
-                    if record.len() > col && !record[col].trim().is_empty() {
-                        if let Ok(b_id) = record[col].parse::<u32>() {
-                            building_map.insert(id, b_id);
-                        }
-                    }
-                }
+impl Lookup {
+    fn name_and_cost(&mut self, kind: Kind, id: u32) -> (String, ResourceCost) {
+        match self.data.lookup(kind, id) {
+            Some(entry) => (entry.name.clone(), entry.cost.clone()),
+            None => {
+                *self.unknown.entry((kind.as_str(), id)).or_default() += 1;
+                (
+                    format!("Unknown {} {}", kind.as_str(), id),
+                    ResourceCost {
+                        food: 0,
+                        wood: 0,
+                        gold: 0,
+                        stone: 0,
+                    },
+                )
             }
         }
     }
-    Ok((name_map, cost_map, building_map))
+
+    fn name(&mut self, kind: Kind, id: u32) -> String {
+        self.name_and_cost(kind, id).0
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -253,6 +233,9 @@ pub struct ReplayData {
     pub player_names: HashMap<u8, String>,
     pub events: Vec<ReplayEvent>,
     pub metadata: MatchMetadata,
+    /// Unit, building and technology IDs in commands that `data/game_data.csv` does not
+    /// know, as ("unit" | "building" | "tech", id) -> number of commands.
+    pub unknown_ids: BTreeMap<(&'static str, u32), usize>,
 }
 
 pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::error::Error>> {
@@ -278,41 +261,26 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     println!("Build: {:?}", header.build);
 
     // Load reference data
-    let units_csv = include_str!("../data/units.csv");
-    let techs_csv = include_str!("../data/techs.csv");
-    let buildings_csv = include_str!("../data/buildings.csv");
-    let civs_csv = include_str!("../data/civilizations.csv");
-    let maps_csv = include_str!("../data/maps.csv");
-
-    let (unit_map, unit_cost_map, unit_to_b_raw) =
-        parse_csv_map(units_csv, 0, 1, Some(6), Some(7), 3)?;
-    let (tech_map, tech_cost_map, tech_to_b_raw) =
-        parse_csv_map(techs_csv, 0, 1, Some(2), Some(6), 4)?;
-    let (building_map, building_cost_map, _) =
-        parse_csv_map(buildings_csv, 0, 1, Some(4), None, 4)?;
-    let (civ_map, _, _) = parse_csv_map(civs_csv, 0, 1, None, None, 0)?;
-    let (map_map, _, _) = parse_csv_map(maps_csv, 0, 1, None, None, 0)?;
-
-    // Map building IDs to names for easier lookup
-    let unit_to_b_map: HashMap<u32, String> = unit_to_b_raw
-        .into_iter()
-        .filter_map(|(u_id, b_id)| building_map.get(&b_id).map(|name| (u_id, name.clone())))
-        .collect();
-    let tech_to_b_map: HashMap<u32, String> = tech_to_b_raw
-        .into_iter()
-        .filter_map(|(t_id, b_id)| building_map.get(&b_id).map(|name| (t_id, name.clone())))
-        .collect();
+    let mut lookup = Lookup {
+        data: GameData::get(),
+        unknown: BTreeMap::new(),
+    };
+    let civ_map = parse_id_names(include_str!("../data/civilizations.csv"))?;
+    let map_map = parse_id_names(include_str!("../data/maps.csv"))?;
 
     let mut events = Vec::new();
     let mut instance_map: HashMap<u32, String> = HashMap::new();
     let mut pending_builds: HashMap<(i32, i32), String> = HashMap::new();
 
     for obj in &header.initial.initial_tail.initial_object_instances {
-        // Try to identify the object name from buildings or units
-        let name = building_map
-            .get(&(obj.object_type_id as u32))
-            .or_else(|| unit_map.get(&(obj.object_type_id as u32)))
-            .cloned()
+        // Try to identify the object name from buildings or units. Starting objects include
+        // map objects (trees, mines, animals), so misses are not counted as unknown IDs.
+        let type_id = obj.object_type_id as u32;
+        let name = lookup
+            .data
+            .lookup(Kind::Building, type_id)
+            .or_else(|| lookup.data.lookup(Kind::Unit, type_id))
+            .map(|e| e.name.clone())
             .unwrap_or_else(|| format!("Unknown ({})", obj.object_type_id));
 
         instance_map.insert(obj.object_id, name.clone());
@@ -382,34 +350,19 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                     building_id,
                     ..
                 } => {
-                    let tech_name = tech_map
-                        .get(&(technology_type as u32))
-                        .map(|s| s.as_str())
-                        .unwrap_or("Unknown Tech");
-
-                    if let Some(b_type) = tech_to_b_map.get(&(technology_type as u32)) {
-                        instance_map.insert(building_id, b_type.clone());
-                    }
+                    let tech_id = technology_type as u32;
+                    let (tech_name, cost) = lookup.name_and_cost(Kind::Tech, tech_id);
 
                     let b_type_name = instance_map
                         .get(&building_id)
                         .cloned()
                         .unwrap_or_else(|| "Unknown Building".to_string());
 
-                    let cost = tech_cost_map
-                        .get(&(technology_type as u32))
-                        .cloned()
-                        .unwrap_or(ResourceCost {
-                            food: 0,
-                            wood: 0,
-                            gold: 0,
-                            stone: 0,
-                        });
-
                     events.push(ReplayEvent::TechResearch {
                         timestamp_ms: current_ms,
                         player_id,
-                        tech_type: tech_name.to_string(),
+                        tech_id,
+                        tech_type: tech_name,
                         cost,
                         building_id,
                         building_type: b_type_name,
@@ -424,38 +377,22 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                     ..
                 } => {
                     let unit_id = unit_id as u32;
-                    let b_type_name = building_map
-                        .get(&(building_type as u32))
-                        .map(|s| s.as_str())
-                        .unwrap_or("Unknown Building")
-                        .to_string();
+                    let b_type_name = lookup.name(Kind::Building, building_type as u32);
 
                     for b_id in &building_ids {
                         instance_map.insert(*b_id, b_type_name.clone());
                     }
 
-                    let base_cost = unit_cost_map
-                        .get(&unit_id)
-                        .cloned()
-                        .unwrap_or(ResourceCost {
-                            food: 0,
-                            wood: 0,
-                            gold: 0,
-                            stone: 0,
-                        });
+                    let (unit_name, base_cost) = lookup.name_and_cost(Kind::Unit, unit_id);
 
                     // `amount` is the total number of units, spread across the selected
                     // buildings, so each queued unit costs the base cost once.
                     for _ in 0..amount {
-                        let unit_name = unit_map
-                            .get(&unit_id)
-                            .map(|s| s.as_str())
-                            .unwrap_or("Unknown Unit");
-
                         events.push(ReplayEvent::UnitQueued {
                             timestamp_ms: current_ms,
                             player_id,
-                            unit_type: unit_name.to_string(),
+                            unit_id,
+                            unit_type: unit_name.clone(),
                             cost: base_cost.clone(),
                             building_ids: building_ids.clone(),
                             building_types: vec![b_type_name.clone(); building_ids.len()],
@@ -465,19 +402,11 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                 aoe2rec::actions::ActionData::Order {
                     player_id,
                     order_type,
-                    unknown4,
                     object_ids,
                     unknown5,
                     ..
                 } => {
-                    let unit_id = unknown4 as u32;
                     let building_ids = object_ids;
-
-                    if let Some(b_type) = unit_to_b_map.get(&unit_id) {
-                        for b_id in &building_ids {
-                            instance_map.insert(*b_id, b_type.clone());
-                        }
-                    }
 
                     if order_type == aoe2rec::actions::OrderType::Unqueue {
                         let building_types: Vec<String> = building_ids
@@ -507,11 +436,6 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                     ..
                 } => {
                     let unit_id = unit_type as u32;
-                    if let Some(b_type) = unit_to_b_map.get(&unit_id) {
-                        for b_id in &building_ids {
-                            instance_map.insert(*b_id, b_type.clone());
-                        }
-                    }
 
                     let b_type_name = if !building_ids.is_empty() {
                         instance_map
@@ -522,20 +446,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         "Unknown Building".to_string()
                     };
 
-                    let unit_name = unit_map
-                        .get(&unit_id)
-                        .map(|s| s.as_str())
-                        .unwrap_or("Unknown Unit");
-
-                    let base_cost = unit_cost_map
-                        .get(&unit_id)
-                        .cloned()
-                        .unwrap_or(ResourceCost {
-                            food: 0,
-                            wood: 0,
-                            gold: 0,
-                            stone: 0,
-                        });
+                    let (unit_name, base_cost) = lookup.name_and_cost(Kind::Unit, unit_id);
 
                     // `count` is the total number of units, spread across the selected
                     // buildings, so each queued unit costs the base cost once.
@@ -543,7 +454,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         events.push(ReplayEvent::UnitQueued {
                             timestamp_ms: current_ms,
                             player_id,
-                            unit_type: unit_name.to_string(),
+                            unit_id,
+                            unit_type: unit_name.clone(),
                             cost: base_cost.clone(),
                             building_ids: building_ids.clone(),
                             building_types: vec![b_type_name.clone(); building_ids.len()],
@@ -557,22 +469,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                     y,
                     ..
                 } => {
-                    let b_type_name = building_map
-                        .get(&building_type_id)
-                        .map(|s| s.as_str())
-                        .unwrap_or("Unknown Building")
-                        .to_string();
-
-                    let cost =
-                        building_cost_map
-                            .get(&building_type_id)
-                            .cloned()
-                            .unwrap_or(ResourceCost {
-                                food: 0,
-                                wood: 0,
-                                gold: 0,
-                                stone: 0,
-                            });
+                    let (b_type_name, cost) =
+                        lookup.name_and_cost(Kind::Building, building_type_id);
 
                     let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
                     pending_builds.insert(pos_key, b_type_name.clone());
@@ -677,11 +575,24 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
         map_name,
     };
 
+    if !lookup.unknown.is_empty() {
+        let list: Vec<String> = lookup
+            .unknown
+            .iter()
+            .map(|((kind, id), n)| format!("{} {} ({}x)", kind, id, n))
+            .collect();
+        println!(
+            "Unknown IDs (not in data/game_data.csv, no name or cost): {}",
+            list.join(", ")
+        );
+    }
+
     Ok(ReplayData {
         rec_player: header.replay.rec_player as u32,
         player_names,
         events,
         metadata,
+        unknown_ids: lookup.unknown,
     })
 }
 

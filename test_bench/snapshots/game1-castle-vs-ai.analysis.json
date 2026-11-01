@@ -12,11 +12,11 @@
       },
       {
         "ig_ms": 1032234.0,
-        "rw_offset_ms": 615570.4174804688
+        "rw_offset_ms": 615570.4775390625
       },
       {
         "ig_ms": 1447952.0,
-        "rw_offset_ms": 864819.2216796875
+        "rw_offset_ms": 864817.2038574219
       },
       {
         "ig_ms": 1552724.0,
@@ -29,10 +29,10 @@
     ],
     "pauses": 0,
     "quality": {
-      "matched": 138,
-      "matched_share": 0.9787234042553191,
+      "matched": 139,
+      "matched_share": 0.9858156028368794,
       "residual_median_ms": 57.645751953125,
-      "residual_p90_ms": 135.1689453125,
+      "residual_p90_ms": 135.58251953125,
       "spends": 141
     },
     "segments": 5,
@@ -63,19 +63,19 @@
         "age": "Castle Age",
         "end_ms": 1695100,
         "resource": "Gold",
-        "start_ms": 1249388
+        "start_ms": 1249390
       },
       {
         "age": "Castle Age",
         "end_ms": 1695100,
         "resource": "Food",
-        "start_ms": 1393362
+        "start_ms": 1393365
       }
     ],
     "summary": {
       "Castle Age": {
-        "food": 301.738,
-        "gold": 445.712,
+        "food": 301.735,
+        "gold": 445.71,
         "stone": 0.0,
         "wood": 0.0
       },
@@ -99,8 +99,8 @@
       }
     },
     "total": {
-      "food": 577.3499999999999,
-      "gold": 445.712,
+      "food": 577.347,
+      "gold": 445.71,
       "stone": 0.0,
       "wood": 88.977
     }
@@ -122,7 +122,7 @@
     "metrics": {
       "Castle Age": {
         "housed": 60.404,
-        "normal": 716.917
+        "normal": 716.9169999999999
       },
       "Dark Age": {
         "normal": 155.586,
@@ -136,22 +136,22 @@
         "normal": 24.668
       }
     },
-    "recorded_duration_sec": 1771.566,
+    "recorded_duration_sec": 1771.5659999999998,
     "segments": 16,
     "total_housed_sec": 60.404,
     "total_queued_sec": 430.176
   },
   "idle": {
     "age_vs_lost": {
-      "Castle Age": 745.0339999999999,
+      "Castle Age": 745.028,
       "Dark Age": 115.07199999999999,
       "Feudal Age": 794.154,
       "Imperial Age": 0.0
     },
     "segments": 87,
-    "total_idle_duration_sec": 846.7490000000003,
-    "total_vs_lost": 1654.2599999999998,
-    "total_vs_overall": 52064.24899999999
+    "total_idle_duration_sec": 846.7470000000003,
+    "total_vs_lost": 1654.254,
+    "total_vs_overall": 52064.240000000005
   },
   "merged": {
     "first_in_game_ms": 8202,

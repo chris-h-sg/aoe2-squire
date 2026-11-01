@@ -232,6 +232,7 @@ mod tests {
         ReplayEvent::UnitQueued {
             timestamp_ms: ig_ms,
             player_id: 1,
+            unit_id: 0,
             unit_type: "Unit".to_string(),
             cost: ResourceCost {
                 food,

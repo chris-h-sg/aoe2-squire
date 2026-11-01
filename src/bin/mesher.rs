@@ -57,6 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "pop_max",
         "pop_vils",
         "housing",
+        "type_id",
     ])?;
     for record in merged.iter().map(MergedRow::from) {
         wtr.write_record([
@@ -75,6 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             record.pop_max,
             record.pop_vils,
             record.housing,
+            record.type_id,
         ])?;
     }
 

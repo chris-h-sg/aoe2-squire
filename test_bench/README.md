@@ -24,7 +24,7 @@ gh release download sample-games-2026-11 -R chris-h-sg/aoe2-squire-data
 
 | Game | Files | Data release | Notes |
 |---|---|---|---|
-| Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 138/141 spends matched. |
+| Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 139/141 spends matched (the other two are farms placed without enough wood). |
 
 Game 1 against the checklist below: Castle clicked and cancelled, Imperial
 clicked and cancelled at the end (counted as an age-up, a known limitation); multi-range

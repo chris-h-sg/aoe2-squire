@@ -23,6 +23,7 @@ aoe2-squire/
 │   ├── main.rs             ← entry point
 │   ├── lib.rs              ← module definitions
 │   ├── constants.rs        ← all pipeline constants
+│   ├── game_data.rs        ← unit/building/tech names and costs by ID (data/game_data.csv)
 │   ├── analysis/           ← modular analyzer implementation
 │   ├── capture/            ← capture loop, frame sources (DXGI, recorded PNGs), frame recording
 │   ├── pipeline/           ← Vision pipeline implementation
@@ -33,9 +34,10 @@ aoe2-squire/
 │   ├── sync/               ← replay/telemetry time mapping (spend↔drop alignment, piecewise fit)
 │   ├── types.rs            ← shared data structures
 │   └── validation.rs       ← sanity checks for a captured game (no ground truth needed)
+├── data/                   ← game data (IDs, costs, names; civs, maps); data/SOURCES.md says how to update it after a game patch
 ├── templates/              ← HTML report templates
 ├── tests/                  ← analysis snapshot, sync stress, vision fixtures, sanity report, capture loop
-├── tools/                  ← scripts (video frame fixture extraction, video/telemetry alignment)
+├── tools/                  ← scripts (game data update, video frame fixture extraction, video/telemetry alignment)
 ├── test_bench/             ← reference screenshots, sample game, fixtures, snapshots
 └── research/               ← Python R&D only (reference)
 ```

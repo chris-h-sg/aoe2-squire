@@ -1,3 +1,4 @@
+use crate::game_data::{CASTLE_AGE_TECH, FEUDAL_AGE_TECH, IMPERIAL_AGE_TECH};
 use crate::replay::{ReplayEvent, ResourceCost};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -79,13 +80,23 @@ impl Age {
         self as usize
     }
 
-    /// The age a technology advances to, by its name in data/techs.csv.
-    pub fn from_tech(tech: &str) -> Option<Self> {
-        match tech {
-            "Feudal Age" => Some(Age::Feudal),
-            "Castle Age" => Some(Age::Castle),
-            "Imperial Age" => Some(Age::Imperial),
+    /// The age a technology advances to, by its technology ID.
+    pub fn from_tech_id(tech_id: u32) -> Option<Self> {
+        match tech_id {
+            FEUDAL_AGE_TECH => Some(Age::Feudal),
+            CASTLE_AGE_TECH => Some(Age::Castle),
+            IMPERIAL_AGE_TECH => Some(Age::Imperial),
             _ => None,
+        }
+    }
+
+    /// The technology that advances to this age (None for the Dark Age).
+    pub fn tech_id(self) -> Option<u32> {
+        match self {
+            Age::Dark => None,
+            Age::Feudal => Some(FEUDAL_AGE_TECH),
+            Age::Castle => Some(CASTLE_AGE_TECH),
+            Age::Imperial => Some(IMPERIAL_AGE_TECH),
         }
     }
 }
@@ -179,11 +190,13 @@ impl Observation {
                         .map(str::to_string)
                         .collect()
                 };
+                let type_id: u32 = row.type_id.parse().unwrap_or(0);
                 let desc = row.event_desc.as_str();
                 let event = if let Some(tech) = desc.strip_prefix("Research ") {
                     ReplayEvent::TechResearch {
                         timestamp_ms,
                         player_id,
+                        tech_id: type_id,
                         tech_type: tech.to_string(),
                         cost,
                         building_id: building_ids.first().copied().unwrap_or(0),
@@ -193,6 +206,7 @@ impl Observation {
                     ReplayEvent::UnitQueued {
                         timestamp_ms,
                         player_id,
+                        unit_id: type_id,
                         unit_type: unit.to_string(),
                         cost,
                         building_types: building_types(),
@@ -211,7 +225,7 @@ impl Observation {
                         timestamp_ms,
                         player_id,
                         building_type: building.to_string(),
-                        building_type_id: 0,
+                        building_type_id: type_id,
                         x: 0.0,
                         y: 0.0,
                         cost,
@@ -250,6 +264,10 @@ pub struct MergedRow {
     pub pop_max: String,
     pub pop_vils: String,
     pub housing: String,
+    /// The technology, unit or building ID of an event (empty for other rows and in files
+    /// written before it was added).
+    #[serde(default)]
+    pub type_id: String,
 }
 
 impl From<&Observation> for MergedRow {
@@ -301,6 +319,7 @@ impl From<&Observation> for MergedRow {
                         .map(|id| id.to_string())
                         .collect::<Vec<_>>()
                         .join(","),
+                    type_id: event.type_id().map(|id| id.to_string()).unwrap_or_default(),
                     ..Default::default()
                 }
             }
