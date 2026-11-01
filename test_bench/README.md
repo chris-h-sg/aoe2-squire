@@ -26,7 +26,7 @@ gh release download sample-games-2026-11 -R chris-h-sg/aoe2-squire-data
 |---|---|---|---|
 | Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 138/141 spends matched. |
 
-Game 1 against the checklist below: Feudal and Castle clicked and cancelled, Imperial
+Game 1 against the checklist below: Castle clicked and cancelled, Imperial
 clicked and cancelled at the end (counted as an age-up, a known limitation); multi-range
 archer queues (single clicks and a shift batch); militia queued and cancelled; two Market
 foundations placed and deleted; housed for about 36 s right after the Castle click, and
@@ -34,8 +34,9 @@ queue-blocked often; boar hunters dropping off together; a palisade wall; 10 far
 none pre-queued at the mill. Not covered: 5-digit resources, 100+ villagers and population
 150+ (the game ended at 61 population), stone walls, market buy and sell, repairs,
 pre-queued reseeds. The frame-level timestamps of the 15-frame `pop_vils` 111 misread at
-00:35 are in `snapshots/game1-castle-vs-ai.sanity.json`. Open question: the extra Feudal
-clicks left no trace in the replay or on screen (see ROADMAP.md).
+00:35 are in `snapshots/game1-castle-vs-ai.sanity.json`. Only one Feudal click registered
+(05:44.8): food first reached 500 at 05:38, so earlier clicks were refused and left no
+trace in the replay or on screen.
 
 ## Sample games to record
 

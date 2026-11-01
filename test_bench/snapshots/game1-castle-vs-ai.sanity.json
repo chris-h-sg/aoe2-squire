@@ -24,14 +24,14 @@
       "time": "21:46.588",
       "field": "food",
       "detail": "Queue Militia: food: no drop of ~60 on screen",
-      "explanation": "The player queued and cancelled militia (DeQueue x5 at the Barracks at 21:48-21:50). The militia's 20 gold is seen (unexplained gold -20 at 21:46.744); the 60 food drop is masked by simultaneous farm drop-offs."
+      "explanation": "Cost table out of date: Militia costs 50 food, 20 gold in this game version (in-game tooltip on video), data/units.csv says 60. A shift-click queued 5 militia (5 Queue events at 21:46.588): food 465 -> 215 (-250) and gold 775 -> 675 (-100) in one frame, then cancelled one by one (DeQueue x5 at 21:48-21:50), each refunding +50 food, +20 gold; checked on the CSV and the video at 30 fps. The matcher looks for 5 x 60 food, so one food spend is left over."
     },
     {
       "section": "unexplained_drops",
       "time": "21:46.744",
       "field": "gold",
       "detail": "-20 not explained by a replay event",
-      "explanation": "The gold of the militia queued at 21:46.588 (see that unmatched spend); the matcher does not pair it because the food half of the cost is not seen."
+      "explanation": "Part of the 5-militia queue at 21:46.588 (see that unmatched spend): with 60 food per militia in the cost table, the -250 food / -100 gold drop does not pair up with all five spends, so 20 gold is left unexplained."
     },
     {
       "section": "unexplained_drops",
