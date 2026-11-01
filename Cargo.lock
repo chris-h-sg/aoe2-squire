@@ -81,7 +81,7 @@ dependencies = [
 [[package]]
 name = "aoe2rec"
 version = "0.10.0"
-source = "git+https://github.com/chris-h-sg/aoe2rec?rev=01953a681b3b4330a66a3260569b7eb51d2e0467#01953a681b3b4330a66a3260569b7eb51d2e0467"
+source = "git+https://github.com/chris-h-sg/aoe2rec?tag=aoe2-squire%2Fai-fast-speed-fix#01953a681b3b4330a66a3260569b7eb51d2e0467"
 dependencies = [
  "binrw",
  "bytes",
