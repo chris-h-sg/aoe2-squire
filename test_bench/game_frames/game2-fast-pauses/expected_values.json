@@ -1,0 +1,152 @@
+{
+  "_comment": "Frames from game 2 (test_bench/game2-fast-pauses.csv), saved by --record-frames: masked except for the resource panel and the anchor search band. File names are the CSV row timestamps. Values read by eye from the enlarged panel. This game uses the wooden panel style.",
+  "images": {
+    "1793535286653.png": {
+      "source": "game 2 frame 1793535286653: first frame (capture started late), population queued (yellow)",
+      "values": {
+        "wood": {
+          "total": "40",
+          "vils": "3"
+        },
+        "food": {
+          "total": "58",
+          "vils": "10"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "14",
+          "housing": "15",
+          "vils": "13",
+          "color": "yellow"
+        },
+        "idle": {
+          "vils": "0"
+        }
+      }
+    },
+    "1793535296694.png": {
+      "source": "game 2 frame 1793535296694: housed at 15/15, highlight overlay on the population",
+      "values": {
+        "wood": {
+          "total": "45",
+          "vils": "2"
+        },
+        "food": {
+          "total": "57",
+          "vils": "11"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "color": "overlay"
+        },
+        "idle": {
+          "vils": "0"
+        }
+      }
+    },
+    "1793535493867.png": {
+      "source": "game 2 frame 1793535493867: during the 19 s pause after reaching Feudal, 2 idle villagers",
+      "values": {
+        "wood": {
+          "total": "125",
+          "vils": "12"
+        },
+        "food": {
+          "total": "214",
+          "vils": "7"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "23",
+          "housing": "25",
+          "vils": "22",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "2"
+        }
+      }
+    },
+    "1793535816772.png": {
+      "source": "game 2 frame 1793535816772: 4-digit wood, Castle Age",
+      "values": {
+        "wood": {
+          "total": "1085",
+          "vils": "15"
+        },
+        "food": {
+          "total": "359",
+          "vils": "13"
+        },
+        "gold": {
+          "total": "445",
+          "vils": "14"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "60",
+          "housing": "100",
+          "vils": "43",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "1"
+        }
+      }
+    },
+    "1793536039091.png": {
+      "source": "game 2 frame 1793536039091: last frame before alt-tab, four 4-digit totals",
+      "values": {
+        "wood": {
+          "total": "2215",
+          "vils": "11"
+        },
+        "food": {
+          "total": "1162",
+          "vils": "13"
+        },
+        "gold": {
+          "total": "1372",
+          "vils": "9"
+        },
+        "stone": {
+          "total": "359",
+          "vils": "7"
+        },
+        "population": {
+          "total": "67",
+          "housing": "120",
+          "vils": "50",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "1"
+        }
+      }
+    }
+  }
+}

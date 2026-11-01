@@ -1,0 +1,604 @@
+kind,id,name,food,wood,gold,stone
+unit,4,Archer,0,25,45,0
+unit,5,Hand Cannoneer,45,0,50,0
+unit,6,Elite Skirmisher,25,35,0,0
+unit,7,Skirmisher,25,35,0,0
+unit,8,Longbowman,0,35,40,0
+unit,11,Mangudai,0,55,65,0
+unit,13,Fishing Ship,0,75,0,0
+unit,17,Trade Cog,0,100,50,0
+unit,21,War Galley,0,90,30,0
+unit,24,Crossbowman,0,25,45,0
+unit,25,Teutonic Knight,85,0,30,0
+unit,36,Bombard Cannon,0,225,225,0
+unit,38,Knight,60,0,75,0
+unit,39,Cavalry Archer,0,40,60,0
+unit,40,Cataphract,70,0,75,0
+unit,41,Huskarl,75,0,35,0
+unit,42,Trebuchet,0,200,200,0
+unit,46,Janissary,60,0,55,0
+unit,73,Chu Ko Nu,0,40,35,0
+unit,74,Militia,50,0,20,0
+unit,75,Man-at-Arms,50,0,20,0
+unit,77,Long Swordsman,50,0,20,0
+unit,83,Villager,50,0,0,0
+unit,93,Spearman,35,25,0,0
+unit,125,Monk,0,0,100,0
+unit,128,Trade Cart (Empty),0,100,50,0
+unit,185,Slinger,50,25,0,0
+unit,207,Imperial Camel Rider,55,0,60,0
+unit,232,Woad Raider,70,0,25,0
+unit,239,War Elephant,170,0,85,0
+unit,250,Longship,0,100,50,0
+unit,279,Scorpion,0,75,75,0
+unit,280,Mangonel,0,160,135,0
+unit,281,Throwing Axeman,55,0,25,0
+unit,282,Mameluke,55,0,85,0
+unit,283,Cavalier,60,0,75,0
+unit,291,Samurai,45,0,30,0
+unit,329,Camel Rider,55,0,60,0
+unit,330,Heavy Camel Rider,55,0,60,0
+unit,331,Trebuchet (Packed),0,200,200,0
+unit,358,Pikeman,35,25,0,0
+unit,359,Halberdier,35,25,0,0
+unit,420,Cannon Galleon,0,200,150,0
+unit,422,Capped Ram,0,160,75,0
+unit,440,Petard,65,0,20,0
+unit,441,Hussar,80,0,0,0
+unit,442,Galleon,0,90,30,0
+unit,448,Scout Cavalry,80,0,0,0
+unit,473,Two-Handed Swordsman,50,0,20,0
+unit,474,Heavy Cavalry Archer,0,40,60,0
+unit,492,Arbalester,0,25,45,0
+unit,527,Demolition Ship,0,45,80,0
+unit,528,Heavy Demolition Ship,0,45,80,0
+unit,529,Fire Ship,0,75,45,0
+unit,530,Elite Longbowman,0,35,40,0
+unit,531,Elite Throwing Axeman,55,0,25,0
+unit,532,Fast Fire Ship,0,75,45,0
+unit,533,Elite Longship,0,100,50,0
+unit,534,Elite Woad Raider,70,0,25,0
+unit,539,Galley,0,90,30,0
+unit,542,Heavy Scorpion,0,75,75,0
+unit,545,Transport Ship,0,125,0,0
+unit,546,Light Cavalry,80,0,0,0
+unit,548,Siege Ram,0,160,75,0
+unit,550,Onager,0,160,135,0
+unit,553,Elite Cataphract,70,0,75,0
+unit,554,Elite Teutonic Knight,85,0,30,0
+unit,555,Elite Huskarl,75,0,35,0
+unit,556,Elite Mameluke,55,0,85,0
+unit,557,Elite Janissary,60,0,55,0
+unit,558,Elite War Elephant,170,0,85,0
+unit,559,Elite Chu Ko Nu,0,40,35,0
+unit,560,Elite Samurai,45,0,30,0
+unit,561,Elite Mangudai,0,55,65,0
+unit,567,Champion,50,0,20,0
+unit,569,Paladin,60,0,75,0
+unit,588,Siege Onager,0,160,135,0
+unit,691,Elite Cannon Galleon,0,200,150,0
+unit,692,Berserk,65,0,20,0
+unit,694,Elite Berserk,65,0,20,0
+unit,725,Jaguar Warrior,60,0,30,0
+unit,726,Elite Jaguar Warrior,60,0,30,0
+unit,751,Eagle Scout,20,0,50,0
+unit,752,Elite Eagle Warrior,20,0,50,0
+unit,753,Eagle Warrior,20,0,50,0
+unit,755,Tarkan,60,0,60,0
+unit,757,Elite Tarkan,60,0,60,0
+unit,759,Huskarl,75,0,35,0
+unit,761,Elite Huskarl,75,0,35,0
+unit,763,Plumed Archer,0,55,55,0
+unit,765,Elite Plumed Archer,0,55,55,0
+unit,771,Conquistador,75,0,60,0
+unit,773,Elite Conquistador,75,0,60,0
+unit,775,Missionary,30,0,100,0
+unit,827,War Wagon,0,200,60,0
+unit,829,Elite War Wagon,0,200,60,0
+unit,831,Turtle Ship,0,190,130,0
+unit,832,Elite Turtle Ship,0,190,130,0
+unit,866,Genoese Crossbowman,0,45,40,0
+unit,868,Elite Genoese Crossbowman,0,45,40,0
+unit,869,Magyar Huszar,35,0,45,0
+unit,871,Elite Magyar Huszar,35,0,45,0
+unit,873,Elephant Archer,70,0,80,0
+unit,875,Elite Elephant Archer,70,0,80,0
+unit,876,Boyar,60,0,70,0
+unit,878,Elite Boyar,60,0,70,0
+unit,879,Kamayuk,70,0,30,0
+unit,881,Elite Kamayuk,70,0,30,0
+unit,882,Condottiero,50,0,35,0
+unit,886,Tarkan,60,0,60,0
+unit,887,Elite Tarkan,60,0,60,0
+unit,1001,Organ Gun,0,80,70,0
+unit,1003,Elite Organ Gun,0,80,70,0
+unit,1004,Caravel,0,90,43,0
+unit,1006,Elite Caravel,0,90,43,0
+unit,1007,Camel Archer,0,50,60,0
+unit,1009,Elite Camel Archer,0,50,60,0
+unit,1010,Genitour,40,35,0,0
+unit,1012,Elite Genitour,40,35,0,0
+unit,1013,Gbeto,50,0,40,0
+unit,1015,Elite Gbeto,50,0,40,0
+unit,1016,Shotel Warrior,50,0,30,0
+unit,1018,Elite Shotel Warrior,50,0,30,0
+unit,1103,Fire Galley,0,75,45,0
+unit,1104,Demolition Raft,0,45,80,0
+unit,1105,Siege Tower,0,100,120,0
+unit,1120,Ballista Elephant,100,0,80,0
+unit,1122,Elite Ballista Elephant,100,0,80,0
+unit,1123,Karambit Warrior,25,0,15,0
+unit,1125,Elite Karambit Warrior,25,0,15,0
+unit,1126,Arambai,0,75,60,0
+unit,1128,Elite Arambai,0,75,60,0
+unit,1129,Rattan Archer,0,50,45,0
+unit,1131,Elite Rattan Archer,0,50,45,0
+unit,1132,Battle Elephant,100,0,70,0
+unit,1134,Elite Battle Elephant,100,0,70,0
+unit,1155,Imperial Skirmisher,25,35,0,0
+unit,1225,Konnik,60,0,70,0
+unit,1227,Elite Konnik,60,0,70,0
+unit,1228,Keshik,60,0,40,0
+unit,1230,Elite Keshik,60,0,40,0
+unit,1231,Kipchak,0,60,35,0
+unit,1233,Elite Kipchak,0,60,35,0
+unit,1234,Leitis,70,0,50,0
+unit,1236,Elite Leitis,70,0,50,0
+unit,1252,Konnik (Dismounted),0,0,0,0
+unit,1253,Elite Konnik (Dismounted),0,0,0,0
+unit,1254,Konnik,60,0,70,0
+unit,1255,Elite Konnik,60,0,70,0
+unit,1258,Battering Ram,0,160,75,0
+unit,1260,Elite Kipchak,0,0,0,0
+unit,1263,Flaming Camel,75,0,30,0
+unit,1302,Dragon Ship,0,75,45,0
+unit,1370,Steppe Lancer,70,0,40,0
+unit,1372,Elite Steppe Lancer,70,0,40,0
+unit,1570,Xolotl Warrior,60,0,75,0
+unit,1655,Coustillier,55,0,55,0
+unit,1657,Elite Coustillier,55,0,55,0
+unit,1658,Serjeant,55,0,25,0
+unit,1659,Elite Serjeant,55,0,25,0
+unit,1660,Serjeant,55,0,25,0
+unit,1661,Elite Serjeant,55,0,25,0
+unit,1699,Flemish Militia,35,0,25,0
+unit,1701,Obuch,55,0,20,0
+unit,1703,Elite Obuch,55,0,20,0
+unit,1704,Hussite Wagon,0,110,80,0
+unit,1706,Elite Hussite Wagon,0,110,80,0
+unit,1707,Winged Hussar,80,0,0,0
+unit,1709,Houfnice,0,225,225,0
+unit,1735,Urumi Swordsman,65,0,20,0
+unit,1737,Elite Urumi Swordsman,65,0,20,0
+unit,1738,Ratha (Melee),0,60,60,0
+unit,1740,Elite Ratha (Melee),0,60,60,0
+unit,1741,Chakram Thrower,65,0,30,0
+unit,1743,Elite Chakram Thrower,65,0,30,0
+unit,1744,Armored Elephant,120,0,95,0
+unit,1746,Siege Elephant,120,0,95,0
+unit,1747,Ghulam,30,0,45,0
+unit,1749,Elite Ghulam,30,0,45,0
+unit,1750,Thirisadai,0,180,60,0
+unit,1751,Shrivamsha Rider,70,0,30,0
+unit,1753,Elite Shrivamsha Rider,70,0,30,0
+unit,1755,Camel Scout,55,0,60,0
+unit,1759,Ratha (Ranged),0,60,60,0
+unit,1761,Elite Ratha (Ranged),0,60,60,0
+unit,1786,Spearman,35,25,0,0
+unit,1787,Pikeman,35,25,0,0
+unit,1788,Halberdier,35,25,0,0
+unit,1790,Centurion,75,0,85,0
+unit,1792,Elite Centurion,75,0,85,0
+unit,1793,Legionary,50,0,20,0
+unit,1795,Dromon,0,175,150,0
+unit,1800,Composite Bowman,0,35,45,0
+unit,1802,Elite Composite Bowman,0,35,45,0
+unit,1803,Monaspa,60,0,45,0
+unit,1805,Elite Monaspa,60,0,45,0
+unit,1811,Warrior Priest,40,0,50,0
+unit,1813,Savar,60,0,75,0
+unit,1901,Fire Lancer,0,45,45,0
+unit,1903,Elite Fire Lancer,0,45,45,0
+unit,1904,Rocket Cart,0,135,155,0
+unit,1907,Heavy Rocket Cart,0,135,155,0
+unit,1908,Iron Pagoda,80,0,55,0
+unit,1910,Elite Iron Pagoda,80,0,55,0
+unit,1911,Grenadier,55,0,50,0
+unit,1920,Liao Dao,40,0,40,0
+unit,1922,Elite Liao Dao,40,0,40,0
+unit,1923,Mounted Trebuchet,175,0,175,0
+unit,1942,Traction Trebuchet,0,175,210,0
+unit,1944,Hei Guang Cavalry,65,0,65,0
+unit,1946,Heavy Hei Guang Cavalry,65,0,65,0
+unit,1948,Lou Chuan,0,250,225,0
+unit,1949,Tiger Cavalry,60,0,80,0
+unit,1951,Elite Tiger Cavalry,60,0,80,0
+unit,1952,Xianbei Raider,0,65,35,0
+unit,1954,Cao Cao,500,0,500,0
+unit,1959,White Feather Guard,60,0,15,0
+unit,1961,Elite White Feather Guard,60,0,15,0
+unit,1962,War Chariot (Focus Fire),75,0,90,0
+unit,1966,Liu Bei,500,0,500,0
+unit,1968,Fire Archer,0,45,45,0
+unit,1970,Elite Fire Archer,0,45,45,0
+unit,1974,Jian Swordsman,45,0,50,0
+unit,1978,Sun Jian,500,0,500,0
+unit,1980,War Chariot (Barrage),75,0,90,0
+unit,2550,Champi Scout,50,0,25,0
+unit,2552,Champi Warrior,50,0,25,0
+unit,2554,Elite Champi Warrior,50,0,25,0
+unit,2562,Guecha Warrior,0,50,60,0
+unit,2564,Elite Guecha Warrior,0,50,60,0
+unit,2566,Kona,65,0,40,0
+unit,2568,Elite Kona,65,0,40,0
+unit,2569,Bolas Rider,0,50,55,0
+unit,2571,Elite Bolas Rider,0,50,55,0
+unit,2579,Blackwood Archer,0,40,45,0
+unit,2581,Elite Blackwood Archer,0,40,45,0
+unit,2582,Ibirapema Warrior,30,0,60,0
+unit,2584,Elite Ibirapema Warrior,30,0,60,0
+unit,2586,Temple Guard,70,0,45,0
+unit,2587,Elite Temple Guard,70,0,45,0
+unit,2588,Champi Runner,50,0,25,0
+unit,2626,Hulk,0,75,35,0
+unit,2627,War Hulk,0,75,35,0
+unit,2628,Carrack,0,75,35,0
+unit,2633,Catapult Galleon,0,225,100,0
+unit,2700,Mounted Crossbowman,0,40,65,0
+unit,2701,Heavy Mounted Crossbowman,0,40,65,0
+unit,2703,Varangian Guard,65,0,45,0
+unit,2704,Elite Varangian Guard,65,0,45,0
+unit,2705,Hearth Troop,0,80,35,0
+unit,2706,Elite Hearth Troop,0,80,35,0
+unit,2708,Jarl,75,0,55,0
+unit,2709,Elite Jarl,75,0,55,0
+unit,2711,Jomsviking,65,0,15,0
+unit,2712,Elite Jomsviking,65,0,15,0
+building,12,Barracks,0,175,0,0
+building,45,Dock,0,150,0,0
+building,49,Siege Workshop,0,200,0,0
+building,50,Farm,0,60,0,0
+building,68,Mill,0,100,0,0
+building,70,House,0,25,0,0
+building,71,Town Center,0,275,0,100
+building,72,Palisade Wall,0,3,0,0
+building,79,Watch Tower,0,35,0,125
+building,82,Castle,0,0,0,650
+building,84,Market,0,175,0,0
+building,87,Archery Range,0,175,0,0
+building,101,Stable,0,175,0,0
+building,103,Blacksmith,0,150,0,0
+building,104,Monastery,0,175,0,0
+building,109,Town Center,0,275,0,100
+building,117,Stone Wall,0,0,0,5
+building,155,Fortified Wall,0,0,0,5
+building,199,Fish Trap,0,100,0,0
+building,209,University,0,200,0,0
+building,234,Guard Tower,0,35,0,125
+building,235,Keep,0,35,0,125
+building,236,Bombard Tower,0,0,100,125
+building,276,Wonder,0,1000,1000,1000
+building,487,Gate,0,0,0,30
+building,562,Lumber Camp,0,100,0,0
+building,584,Mining Camp,0,100,0,0
+building,598,Outpost,0,25,0,5
+building,621,Town Center,0,275,0,100
+building,792,Palisade Gate,0,30,0,0
+building,1021,Feitoria,0,0,350,300
+building,1189,Harbor,0,150,0,0
+building,1251,Krepost,0,0,0,350
+building,1665,Donjon,0,50,0,175
+building,1734,Folwark,0,100,0,0
+building,1754,Caravanserai,0,175,0,50
+building,1806,Fortified Church,0,200,0,0
+building,1808,Mule Cart,20,80,0,0
+building,1889,Pasture,0,110,0,0
+building,2556,Settlement,0,125,0,0
+tech,2,Elite Tarkan,1000,0,500,0
+tech,3,Yeomen,0,750,450,0
+tech,4,Holcans,750,0,450,0
+tech,5,Furor Celtica,750,0,450,0
+tech,6,Drill,0,500,450,0
+tech,7,Citadels,0,600,300,0
+tech,8,Town Watch,75,0,0,0
+tech,10,Artillery,600,0,650,0
+tech,11,Crenellations,600,0,0,400
+tech,12,Crop Rotation,250,250,0,0
+tech,13,Heavy Plow,125,125,0,0
+tech,14,Horse Collar,75,75,0,0
+tech,15,Guilds,300,0,200,0
+tech,16,Anarchy,450,0,250,0
+tech,17,Banking,300,0,200,0
+tech,19,Cartography,0,0,0,0
+tech,21,Atheism,500,300,0,0
+tech,22,Loom,0,0,50,0
+tech,23,Coinage,200,0,100,0
+tech,24,Garland Wars,450,0,750,0
+tech,27,Elite Plumed Archer,700,1000,0,0
+tech,28,Bimaristan,0,300,200,0
+tech,34,Medium Warships,0,150,100,0
+tech,35,Heavy Warships,0,400,315,0
+tech,39,Husbandry,150,0,0,0
+tech,45,Faith,550,0,750,0
+tech,46,Devotion,100,0,200,0
+tech,47,Chemistry,300,0,200,0
+tech,48,Caravan,200,0,200,0
+tech,49,Bogsveigar,650,0,500,0
+tech,50,Masonry,150,175,0,0
+tech,51,Architecture,300,200,0,0
+tech,52,Rocketry,1100,0,900,0
+tech,54,Treadmill Crane,0,200,0,50
+tech,55,Gold Mining,100,75,0,0
+tech,59,Kataparuto,0,550,300,0
+tech,60,Elite Conquistador,900,0,600,0
+tech,61,Logistica,800,0,600,0
+tech,63,Keep,500,350,0,0
+tech,64,Bombard Tower,800,400,0,0
+tech,65,Gillnets,100,125,0,0
+tech,67,Forging,150,0,0,0
+tech,68,Iron Casting,220,0,120,0
+tech,74,Scale Mail Armor,100,0,0,0
+tech,75,Blast Furnace,275,0,225,0
+tech,76,Chain Mail Armor,200,0,100,0
+tech,77,Plate Mail Armor,300,0,150,0
+tech,80,Plate Barding Armor,350,0,200,0
+tech,81,Scale Barding Armor,150,0,0,0
+tech,82,Chain Barding Armor,250,0,150,0
+tech,90,Tracking,0,0,0,0
+tech,93,Ballistics,0,300,175,0
+tech,96,Capped Ram,300,0,0,0
+tech,98,Elite Skirmisher,0,230,130,0
+tech,100,Crossbowman,175,0,100,0
+tech,101,Feudal Age,500,0,0,0
+tech,102,Castle Age,800,0,200,0
+tech,103,Imperial Age,1000,0,800,0
+tech,140,Guard Tower,100,250,0,0
+tech,182,Gold Shaft Mining,175,75,0,0
+tech,194,Fortified Wall,200,100,0,0
+tech,197,Pikeman,160,0,90,0
+tech,199,Fletching,100,0,50,0
+tech,200,Bodkin Arrow,200,0,100,0
+tech,201,Bracer,300,0,200,0
+tech,202,Double-Bit Axe,100,50,0,0
+tech,203,Bow Saw,150,100,0,0
+tech,207,Long Swordsman,150,0,65,0
+tech,209,Cavalier,300,0,300,0
+tech,211,Padded Archer Armor,100,0,0,0
+tech,212,Leather Archer Armor,150,0,150,0
+tech,213,Wheelbarrow,175,50,0,0
+tech,215,Squires,100,0,0,0
+tech,217,Two-Handed Swordsman,200,0,100,0
+tech,218,Heavy Cavalry Archer,900,0,500,0
+tech,219,Ring Archer Armor,250,0,250,0
+tech,221,Two-Man Saw,300,200,0,0
+tech,222,Man-at-Arms,100,0,40,0
+tech,230,Block Printing,0,0,200,0
+tech,231,Sanctity,0,0,175,0
+tech,233,Illumination,0,0,120,0
+tech,236,Heavy Camel Rider,325,0,360,0
+tech,237,Arbalester,450,0,350,0
+tech,239,Heavy Scorpion,800,750,0,0
+tech,244,Heavy Demolition Ship,0,250,300,0
+tech,249,Hand Cart,300,200,0,0
+tech,252,Fervor,0,0,140,0
+tech,254,Light Cavalry,150,0,50,0
+tech,255,Siege Ram,1000,0,0,0
+tech,257,Onager,800,0,500,0
+tech,264,Champion,650,0,350,0
+tech,265,Paladin,1300,0,750,0
+tech,278,Stone Mining,100,75,0,0
+tech,279,Stone Shaft Mining,175,75,0,0
+tech,280,Town Patrol,300,0,100,0
+tech,315,Conscription,150,0,150,0
+tech,316,Redemption,0,0,475,0
+tech,319,Atonement,0,0,325,0
+tech,320,Siege Onager,1450,0,1000,0
+tech,321,Sappers,400,200,0,0
+tech,322,Murder Holes,200,0,0,100
+tech,360,Elite Longbowman,850,0,850,0
+tech,361,Elite Cataphract,1200,0,800,0
+tech,362,Elite Chu Ko Nu,1300,0,1300,0
+tech,363,Elite Throwing Axeman,850,0,550,0
+tech,364,Elite Teutonic Knight,950,0,500,0
+tech,365,Elite Huskarl,1200,0,550,0
+tech,366,Elite Samurai,750,0,650,0
+tech,367,Elite War Elephant,1350,0,800,0
+tech,368,Elite Mameluke,600,0,500,0
+tech,369,Elite Janissary,850,0,750,0
+tech,370,Elite Woad Raider,1000,0,800,0
+tech,371,Elite Mangudai,1100,0,675,0
+tech,372,Elite Longship,750,0,475,0
+tech,373,Shipwright,1000,0,300,0
+tech,374,Careening,100,0,200,0
+tech,375,Dry Dock,200,0,400,0
+tech,376,Elite Cannon Galleon,0,525,500,0
+tech,377,Siege Engineers,500,600,0,0
+tech,379,Hoardings,400,400,0,0
+tech,380,Heated Shot,350,0,100,0
+tech,384,Eagle Warrior,200,0,200,0
+tech,398,Elite Berserk,1075,0,475,0
+tech,408,Spies/Treason,0,0,200,0
+tech,428,Hussar,500,0,600,0
+tech,429,Halberdier,300,0,600,0
+tech,432,Elite Jaguar Warrior,1000,0,500,0
+tech,434,Elite Eagle Warrior,800,0,500,0
+tech,435,Bloodlines,150,0,100,0
+tech,436,Parthian Tactics,200,0,250,0
+tech,437,Thumb Ring,300,250,0,0
+tech,438,Theocracy,0,0,200,0
+tech,439,Heresy,0,0,1000,0
+tech,440,Supremacy,400,0,250,0
+tech,441,Herbal Medicine,0,0,200,0
+tech,445,Shinkichon,1100,0,800,0
+tech,448,Elite Turtle Ship,650,0,500,0
+tech,450,Elite War Wagon,0,1000,800,0
+tech,454,Counterweights,650,0,500,0
+tech,455,Detinets,0,400,200,0
+tech,457,Perfusion,0,400,600,0
+tech,460,Atlatl,400,0,350,0
+tech,461,Warwolf,0,800,400,0
+tech,462,Great Wall,0,400,0,200
+tech,463,Chieftains,600,0,450,0
+tech,464,Greek Fire,250,0,300,0
+tech,468,Elite Genoese Crossbowman,900,0,750,0
+tech,472,Elite Magyar Huszar,800,0,600,0
+tech,481,Elite Elephant Archer,900,0,500,0
+tech,482,Stronghold,250,0,200,0
+tech,483,Marauders,0,300,200,0
+tech,484,Yasama,300,300,0,0
+tech,485,Hul'che Javelineers,300,0,300,0
+tech,486,Eupseong,300,300,0,0
+tech,487,Nomads,0,300,150,0
+tech,488,Kamandaran,400,0,300,0
+tech,489,Ironclad,0,400,350,0
+tech,491,Sipahi,350,0,150,0
+tech,492,Inquisition,100,0,300,0
+tech,493,Chivalry,0,600,500,0
+tech,499,Silk Road,250,0,250,0
+tech,504,Elite Boyar,1000,0,600,0
+tech,506,Grand Trunk Road,250,200,0,0
+tech,507,Shatagni,500,0,650,0
+tech,509,Elite Kamayuk,900,0,500,0
+tech,513,Druzhina,900,0,500,0
+tech,514,Corvinian Army,200,0,300,0
+tech,515,Recurve Bow,0,600,400,0
+tech,516,Andean Sling,200,0,300,0
+tech,517,Fabric Shields,600,0,600,0
+tech,521,Imperial Camel Rider,1000,0,500,0
+tech,526,Savar,1200,0,600,0
+tech,563,Elite Organ Gun,1200,0,500,0
+tech,565,Elite Camel Archer,0,1000,500,0
+tech,567,Elite Gbeto,900,0,600,0
+tech,569,Elite Shotel Warrior,900,0,450,0
+tech,573,Arquebus,700,0,400,0
+tech,574,Royal Heirs,300,0,300,0
+tech,575,Torsion Engines,1000,0,600,0
+tech,576,Tigui,200,300,0,0
+tech,577,Farimba,650,0,400,0
+tech,578,Kasbah,250,0,250,0
+tech,579,Maghrebi Camels,700,0,300,0
+tech,597,Elite Caravel,700,0,525,0
+tech,599,Elite Genitour,500,450,0,0
+tech,602,Arson,75,0,25,0
+tech,608,Arrowslits,250,250,0,0
+tech,615,Elite Ballista Elephant,1000,0,500,0
+tech,617,Elite Karambit Warrior,900,0,600,0
+tech,619,Elite Arambai,1000,0,750,0
+tech,621,Elite Rattan Archer,800,0,750,0
+tech,622,Tusk Swords,0,300,450,0
+tech,623,Double Crossbow,700,0,400,0
+tech,624,Thalassocracy,300,0,300,0
+tech,625,Forced Levy,850,0,500,0
+tech,626,Howdah,400,300,0,0
+tech,627,Manipur Cavalry,300,0,300,0
+tech,628,Chatras,250,0,250,0
+tech,629,Paper Money,550,200,0,0
+tech,631,Elite Battle Elephant,1100,0,700,0
+tech,655,Imperial Skirmisher,0,300,300,0
+tech,678,Elite Konnik,1000,0,750,0
+tech,680,Elite Keshik,700,0,600,0
+tech,682,Elite Kipchak,1100,1000,0,0
+tech,684,Elite Leitis,750,0,750,0
+tech,685,Stirrups,400,0,200,0
+tech,686,Bagains,900,0,450,0
+tech,687,Silk Armor,0,400,300,0
+tech,688,Timurid Siegecraft,0,500,400,0
+tech,689,Steppe Husbandry,200,300,0,0
+tech,690,Cuman Mercenaries,650,0,400,0
+tech,691,Hill Forts,250,0,250,0
+tech,692,Tower Shields,500,0,200,0
+tech,715,Elite Steppe Lancer,600,0,550,0
+tech,751,Elite Coustillier,1000,0,800,0
+tech,753,Elite Serjeant,800,0,675,0
+tech,754,Burgundian Vineyards,400,0,300,0
+tech,755,Flemish Revolution,200,0,150,0
+tech,756,First Crusade,400,0,300,0
+tech,757,Hauberk,700,0,600,0
+tech,779,Elite Obuch,800,0,600,0
+tech,781,Elite Hussite Wagon,0,800,600,0
+tech,782,Szlachta Privileges,500,0,300,0
+tech,783,Lechitic Legacy,750,0,550,0
+tech,784,Wagenburg Tactics,300,0,300,0
+tech,785,Hussite Reforms,500,0,450,0
+tech,786,Winged Hussar,600,0,800,0
+tech,787,Houfnice,1100,0,800,0
+tech,826,Elite Urumi Swordsman,900,0,450,0
+tech,828,Elite Ratha,800,800,0,0
+tech,830,Elite Chakram Thrower,1000,0,650,0
+tech,831,Medical Corps,300,0,200,0
+tech,832,Wootz Steel,650,0,550,0
+tech,833,Paiks,0,375,275,0
+tech,834,Mahayana,0,800,650,0
+tech,835,Kshatriyas,500,0,450,0
+tech,836,Frontier Guards,800,0,700,0
+tech,838,Siege Elephant,850,0,0,0
+tech,840,Elite Ghulam,950,0,575,0
+tech,843,Elite Shrivamsha Rider,850,0,500,0
+tech,875,Gambesons,50,0,100,0
+tech,882,Elite Centurion,1100,0,900,0
+tech,883,Ballistas,0,400,300,0
+tech,884,Comitatenses,700,0,800,0
+tech,885,Legionary,800,0,400,0
+tech,902,Pirotechnia,650,0,500,0
+tech,905,Demolition Ship,0,25,75,0
+tech,906,Fishing Lines,50,100,0,0
+tech,907,Carvel Hull,350,200,0,0
+tech,908,Clinker Construction,150,100,0,0
+tech,909,Siphons,100,0,175,0
+tech,910,Incendiaries,200,0,325,0
+tech,918,Elite Composite Bowman,0,600,500,0
+tech,920,Elite Monaspa,1000,0,700,0
+tech,921,Fereters,550,0,400,0
+tech,922,Cilician Fleet,0,350,300,0
+tech,923,Svan Towers,300,0,200,0
+tech,924,Aznauri Cavalry,550,0,250,0
+tech,980,Heavy Rocket Cart,0,800,600,0
+tech,982,Elite Fire Lancer,750,0,400,0
+tech,991,Elite Iron Pagoda,950,0,550,0
+tech,996,Fortified Bastions,350,250,0,0
+tech,997,Thunderclap Bombs,900,0,600,0
+tech,1002,Elite Liao Dao,800,0,650,0
+tech,1006,Lamellar Armor,450,0,300,0
+tech,1007,Ordo Cavalry,600,0,300,0
+tech,1012,Transhumance,175,325,0,0
+tech,1013,Pastoralism,100,150,0,0
+tech,1014,Domestication,50,100,0,0
+tech,1033,Heavy Hei Guang Cavalry,350,0,250,0
+tech,1036,Elite Tiger Cavalry,1000,0,800,0
+tech,1061,Tuntian,250,300,0,0
+tech,1062,Ming Guang Armor,600,0,450,0
+tech,1064,Elite White Feather Guard,900,0,500,0
+tech,1069,Bolt Magazine,650,0,750,0
+tech,1070,Coiled Serpent Array,350,0,300,0
+tech,1074,Elite Fire Archer,800,0,800,0
+tech,1080,Red Cliffs Tactics,400,0,250,0
+tech,1081,Sitting Tiger,0,600,300,0
+tech,1351,Champi Warrior,150,0,175,0
+tech,1352,Elite Champi Warrior,650,0,450,0
+tech,1364,Elite Guecha Warrior,0,750,600,0
+tech,1365,Herbalism,300,0,350,0
+tech,1366,Huaracas,0,450,350,0
+tech,1376,Elite Kona,800,0,800,0
+tech,1378,Elite Bolas Rider,800,0,500,0
+tech,1379,Malon,300,0,350,0
+tech,1380,Butalmapu,500,0,450,0
+tech,1389,Elite Blackwood Archer,600,0,500,0
+tech,1391,Elite Ibirapema Warrior,1000,0,600,0
+tech,1392,Caciques,400,0,200,0
+tech,1393,Curare,650,0,600,0
+tech,1401,Elite Temple Guard,500,0,650,0
+tech,1402,Champi Runner,90,0,60,0
+tech,1404,Circumnavigation,250,150,0,0
+tech,1451,Heavy Mounted Crossbowman,1000,0,650,0
+tech,1452,Cranequins,300,0,200,0
+tech,1454,Elite Varangian Guard,750,0,475,0
+tech,1462,Elite Hearth Troop,0,750,700,0
+tech,1464,Shield Wall,525,0,475,0
+tech,1472,Elite Jarl,825,0,725,0
+tech,1473,Vendel Legacy,500,0,300,0
+tech,1474,Gothikon,475,0,400,0
+tech,1482,Elite Jomsviking,825,0,825,0
+tech,1483,Northmen's Fury,0,950,900,0
+tech,1484,Hamask,250,0,450,0
+tech,1491,Clerical Recruitment,350,0,200,0
+tech,1496,Ordonnance Companies,400,0,250,0

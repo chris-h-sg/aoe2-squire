@@ -374,11 +374,12 @@ mod tests {
     #[test]
     fn test_chart_marks_only_the_age_up_click_that_went_through() {
         let (_, _, floating, _) = sample_inputs();
-        let click = |ms: u64, tech: &str| {
+        let click = |ms: u64, age: crate::types::Age| {
             crate::types::Observation::Event(crate::replay::ReplayEvent::TechResearch {
                 timestamp_ms: ms as u32,
                 player_id: 1,
-                tech_type: tech.to_string(),
+                tech_id: age.tech_id().unwrap(),
+                tech_type: age.name().to_string(),
                 cost: crate::replay::ResourceCost {
                     food: 500,
                     wood: 0,
@@ -390,9 +391,9 @@ mod tests {
             })
         };
         let rows = vec![
-            click(400_000, "Feudal Age"), // cancelled
-            click(470_000, "Feudal Age"),
-            click(900_000, "Castle Age"),
+            click(400_000, crate::types::Age::Feudal), // cancelled
+            click(470_000, crate::types::Age::Feudal),
+            click(900_000, crate::types::Age::Castle),
         ];
         let chart = extract_chart_data(&rows, &floating);
         assert_eq!(
