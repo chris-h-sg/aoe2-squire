@@ -1,5 +1,5 @@
 use crate::game_data::{CASTLE_AGE_TECH, FEUDAL_AGE_TECH, IMPERIAL_AGE_TECH};
-use crate::replay::{ReplayEvent, ResourceCost};
+use crate::replay::{ReplayEvent, ResourceCost, FARM_QUEUE_DESC, MARKET_SELL_PREFIX};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -192,7 +192,15 @@ impl Observation {
                 };
                 let type_id: u32 = row.type_id.parse().unwrap_or(0);
                 let desc = row.event_desc.as_str();
-                let event = if let Some(tech) = desc.strip_prefix("Research ") {
+                let event = if desc == FARM_QUEUE_DESC || desc.starts_with(MARKET_SELL_PREFIX) {
+                    ReplayEvent::OtherSpend {
+                        timestamp_ms,
+                        player_id,
+                        description: desc.to_string(),
+                        cost,
+                        gives_resources: desc.starts_with(MARKET_SELL_PREFIX),
+                    }
+                } else if let Some(tech) = desc.strip_prefix("Research ") {
                     ReplayEvent::TechResearch {
                         timestamp_ms,
                         player_id,

@@ -11,6 +11,8 @@ pub const CASTLE_AGE_TECH: u32 = 102;
 pub const IMPERIAL_AGE_TECH: u32 = 103;
 /// Building ID of the Castle.
 pub const CASTLE_BUILDING: u32 = 82;
+/// Building ID of the Farm.
+pub const FARM_BUILDING: u32 = 50;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Kind {

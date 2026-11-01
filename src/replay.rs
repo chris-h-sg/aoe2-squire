@@ -1,4 +1,4 @@
-use crate::game_data::{GameData, Kind};
+use crate::game_data::{GameData, Kind, FARM_BUILDING};
 use crate::types::Age;
 use aoe2rec::Savegame;
 use binrw::BinReaderExt;
@@ -59,7 +59,22 @@ pub enum ReplayEvent {
         object_id: u32,
         object_name: String,
     },
+    /// A spend without a unit, building or technology: a farm queued at a mill
+    /// (`FARM_QUEUE_DESC`) or a market sale (`MARKET_SELL_PREFIX` + resource).
+    OtherSpend {
+        timestamp_ms: u32,
+        player_id: u8,
+        description: String,
+        cost: ResourceCost,
+        /// Whether the player also receives resources (the gold of a market sale).
+        gives_resources: bool,
+    },
 }
+
+/// Description of a farm queued at a mill (paid when queued, built later automatically).
+pub const FARM_QUEUE_DESC: &str = "Mill Queue Farm";
+/// Description prefix of a market sale, followed by the resource sold.
+pub const MARKET_SELL_PREFIX: &str = "Market Sell ";
 
 impl ReplayEvent {
     pub fn timestamp_ms(&self) -> u32 {
@@ -68,7 +83,8 @@ impl ReplayEvent {
             | ReplayEvent::UnitQueued { timestamp_ms, .. }
             | ReplayEvent::QueueCancellation { timestamp_ms, .. }
             | ReplayEvent::BuildingConstruction { timestamp_ms, .. }
-            | ReplayEvent::Deletion { timestamp_ms, .. } => *timestamp_ms,
+            | ReplayEvent::Deletion { timestamp_ms, .. }
+            | ReplayEvent::OtherSpend { timestamp_ms, .. } => *timestamp_ms,
         }
     }
 
@@ -78,7 +94,8 @@ impl ReplayEvent {
             | ReplayEvent::UnitQueued { player_id, .. }
             | ReplayEvent::QueueCancellation { player_id, .. }
             | ReplayEvent::BuildingConstruction { player_id, .. }
-            | ReplayEvent::Deletion { player_id, .. } => *player_id,
+            | ReplayEvent::Deletion { player_id, .. }
+            | ReplayEvent::OtherSpend { player_id, .. } => *player_id,
         }
     }
 
@@ -87,7 +104,8 @@ impl ReplayEvent {
         match self {
             ReplayEvent::TechResearch { cost, .. }
             | ReplayEvent::UnitQueued { cost, .. }
-            | ReplayEvent::BuildingConstruction { cost, .. } => Some(cost),
+            | ReplayEvent::BuildingConstruction { cost, .. }
+            | ReplayEvent::OtherSpend { cost, .. } => Some(cost),
             ReplayEvent::QueueCancellation { .. } | ReplayEvent::Deletion { .. } => None,
         }
     }
@@ -102,6 +120,7 @@ impl ReplayEvent {
                 format!("Build {}", building_type)
             }
             ReplayEvent::Deletion { object_name, .. } => format!("Delete {}", object_name),
+            ReplayEvent::OtherSpend { description, .. } => description.clone(),
         }
     }
 
@@ -112,7 +131,7 @@ impl ReplayEvent {
             | ReplayEvent::BuildingConstruction { building_type, .. } => building_type.clone(),
             ReplayEvent::UnitQueued { building_types, .. }
             | ReplayEvent::QueueCancellation { building_types, .. } => building_types.join(","),
-            ReplayEvent::Deletion { .. } => String::new(),
+            ReplayEvent::Deletion { .. } | ReplayEvent::OtherSpend { .. } => String::new(),
         }
     }
 
@@ -122,7 +141,9 @@ impl ReplayEvent {
             ReplayEvent::TechResearch { building_id, .. } => vec![*building_id],
             ReplayEvent::UnitQueued { building_ids, .. }
             | ReplayEvent::QueueCancellation { building_ids, .. } => building_ids.clone(),
-            ReplayEvent::BuildingConstruction { .. } | ReplayEvent::Deletion { .. } => vec![],
+            ReplayEvent::BuildingConstruction { .. }
+            | ReplayEvent::Deletion { .. }
+            | ReplayEvent::OtherSpend { .. } => vec![],
         }
     }
 
@@ -134,7 +155,9 @@ impl ReplayEvent {
             ReplayEvent::BuildingConstruction {
                 building_type_id, ..
             } => Some(*building_type_id),
-            ReplayEvent::QueueCancellation { .. } | ReplayEvent::Deletion { .. } => None,
+            ReplayEvent::QueueCancellation { .. }
+            | ReplayEvent::Deletion { .. }
+            | ReplayEvent::OtherSpend { .. } => None,
         }
     }
 
@@ -146,11 +169,16 @@ impl ReplayEvent {
         }
     }
 
-    /// Commands that give resources back: queue cancellations and deletions.
+    /// Commands that give resources back: queue cancellations, deletions and market sales.
     pub fn is_refund(&self) -> bool {
         matches!(
             self,
-            ReplayEvent::QueueCancellation { .. } | ReplayEvent::Deletion { .. }
+            ReplayEvent::QueueCancellation { .. }
+                | ReplayEvent::Deletion { .. }
+                | ReplayEvent::OtherSpend {
+                    gives_resources: true,
+                    ..
+                }
         )
     }
 }
@@ -523,6 +551,86 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         object_name: name,
                     });
                 }
+                aoe2rec::actions::ActionData::Game {
+                    player_id,
+                    game_command: aoe2rec::actions::Game::FarmQueue {},
+                    ..
+                } => {
+                    let (_, cost) = lookup.name_and_cost(Kind::Building, FARM_BUILDING);
+                    events.push(ReplayEvent::OtherSpend {
+                        timestamp_ms: current_ms,
+                        player_id,
+                        description: FARM_QUEUE_DESC.to_string(),
+                        cost,
+                        gives_resources: false,
+                    });
+                }
+                aoe2rec::actions::ActionData::Sell {
+                    player_id, data, ..
+                } => {
+                    // data: resource (0 food, 1 wood, 2 stone), unknown, amount in hundreds,
+                    // unknown, market object id (u32).
+                    if let (Some(&resource), Some(&hundreds)) = (data.first(), data.get(2)) {
+                        let amount = 100 * hundreds as u32;
+                        let mut cost = ResourceCost {
+                            food: 0,
+                            wood: 0,
+                            gold: 0,
+                            stone: 0,
+                        };
+                        let name = match resource {
+                            0 => {
+                                cost.food = amount;
+                                "Food"
+                            }
+                            1 => {
+                                cost.wood = amount;
+                                "Wood"
+                            }
+                            2 => {
+                                cost.stone = amount;
+                                "Stone"
+                            }
+                            _ => "Unknown",
+                        };
+                        events.push(ReplayEvent::OtherSpend {
+                            timestamp_ms: current_ms,
+                            player_id,
+                            description: format!("{}{}", MARKET_SELL_PREFIX, name),
+                            cost,
+                            gives_resources: true,
+                        });
+                    }
+                }
+                aoe2rec::actions::ActionData::Wall {
+                    player_id, data, ..
+                } => {
+                    // data: selected count (u32), start x, y and end x, y (u16 each), wall
+                    // building id (u32), ...
+                    if data.len() >= 16 {
+                        let u16_at = |i: usize| u16::from_le_bytes([data[i], data[i + 1]]) as i32;
+                        let (x1, y1, x2, y2) = (u16_at(4), u16_at(6), u16_at(8), u16_at(10));
+                        let wall_id = u32::from_le_bytes([data[12], data[13], data[14], data[15]]);
+                        // Walls follow the line tile by tile, diagonally where needed. Blocked
+                        // tiles are skipped and not paid for, so this is an upper bound.
+                        let tiles = (x2 - x1).abs().max((y2 - y1).abs()) as u32 + 1;
+                        let (name, per_tile) = lookup.name_and_cost(Kind::Building, wall_id);
+                        events.push(ReplayEvent::BuildingConstruction {
+                            timestamp_ms: current_ms,
+                            player_id,
+                            building_type: name,
+                            building_type_id: wall_id,
+                            x: x1 as f32,
+                            y: y1 as f32,
+                            cost: ResourceCost {
+                                food: per_tile.food * tiles,
+                                wood: per_tile.wood * tiles,
+                                gold: per_tile.gold * tiles,
+                                stone: per_tile.stone * tiles,
+                            },
+                        });
+                    }
+                }
                 aoe2rec::actions::ActionData::Resign { player_id, .. } => {
                     loser_id = Some(player_id);
                 }
@@ -619,13 +727,7 @@ pub fn print_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>
     println!("{:-<12}-+-{:-<20}-+-{:-<10}-+-{:-<28}-+-{:-<28}-+-{:-<22}-+-{:-<5}-+-{:-<5}-+-{:-<5}-+-{:-<5}", "", "", "", "", "", "", "", "", "", "");
 
     for event in &events {
-        let p_id = match event {
-            ReplayEvent::TechResearch { player_id, .. } => *player_id,
-            ReplayEvent::UnitQueued { player_id, .. } => *player_id,
-            ReplayEvent::QueueCancellation { player_id, .. } => *player_id,
-            ReplayEvent::BuildingConstruction { player_id, .. } => *player_id,
-            ReplayEvent::Deletion { player_id, .. } => *player_id,
-        };
+        let p_id = event.player_id();
         let p_name = player_names
             .get(&p_id)
             .map(|s| s.as_str())
@@ -676,6 +778,14 @@ pub fn print_events(replay_path: &Path) -> Result<(), Box<dyn std::error::Error>
                 ..
             } => {
                 println!("{:<12} | {:<20} | {:<10} | {:<28} | {:<28} | {:<22} | {:>5} | {:>5} | {:>5} | {:>5}", format_time(*timestamp_ms), p_name, "Delete", format!("{} ({})", object_name, object_id), "-", "-", 0, 0, 0, 0);
+            }
+            ReplayEvent::OtherSpend {
+                timestamp_ms,
+                description,
+                cost,
+                ..
+            } => {
+                println!("{:<12} | {:<20} | {:<10} | {:<28} | {:<28} | {:<22} | {:>5} | {:>5} | {:>5} | {:>5}", format_time(*timestamp_ms), p_name, "Spend", description, "-", "-", cost.food, cost.wood, cost.gold, cost.stone);
             }
         }
     }

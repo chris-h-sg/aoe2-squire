@@ -1,7 +1,7 @@
 {
   "spend_alignment": {
-    "matched": 139,
-    "total": 141,
+    "matched": 140,
+    "total": 142,
     "farm_reseeds": 10
   },
   "findings": [
@@ -18,13 +18,6 @@
       "field": "wood",
       "detail": "Build Farm: wood: only 44 available for 60 (command probably had no effect)",
       "explanation": "Same as 11:48.783: 44 of 60 wood, the placement had no effect."
-    },
-    {
-      "section": "unexplained_drops",
-      "time": "23:16.300",
-      "field": "wood",
-      "detail": "-24 not explained by a replay event",
-      "explanation": "Palisade wall, 12 segments x 2 wood (confirmed by the player). Walls are not parsed from the replay."
     },
     {
       "section": "invariant_violations",

@@ -190,7 +190,13 @@ impl Calibration {
         } else {
             let lengths: Vec<String> = pauses
                 .iter()
-                .map(|p| format!("{:.1} s", p.duration_ms / 1000.0))
+                .map(|p| {
+                    format!(
+                        "{:.1} s at {}",
+                        p.duration_ms / 1000.0,
+                        crate::replay::format_time(p.ig_ms as u32)
+                    )
+                })
                 .collect();
             format!("{} pause(s) ({})", pauses.len(), lengths.join(", "))
         };
