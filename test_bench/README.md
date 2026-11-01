@@ -7,7 +7,8 @@ Reference data for the automated tests (`cargo test`, no game needed):
 | Screenshots + `expected_values.json` | `tests/vision_fixtures.rs` |
 | `video_frames/` (masked frames from the `.mp4` clips, see `tools/extract_video_fixtures.py`) | `tests/vision_fixtures.rs`, `tests/capture_loop.rs` |
 | `1v1-RM-sample.csv` + `.aoe2record` | `tests/analysis_snapshot.rs`, `tests/sync_stress.rs`, `tests/sanity_report.rs` |
-| `game1-castle-vs-ai.csv` + `.aoe2record` (recorded sample game 1, see below) | `tests/analysis_snapshot.rs`, `tests/sanity_report.rs` |
+| `game1-castle-vs-ai.csv` + `.aoe2record`, `game2-fast-pauses.csv` + `.aoe2record` (recorded sample games, see below) | `tests/analysis_snapshot.rs`, `tests/sanity_report.rs` |
+| `deletions-sample.aoe2record` (a short game against the AI at Fast speed with deletions; it is also the aoe2rec fork's test replay for the Fast-speed header fix) | `tests/replay_events.rs` |
 | `game_frames/<game>/` (selected frames of a recorded game) | `tests/vision_fixtures.rs` |
 | `interpolation/` | housing interpolation unit tests |
 | `snapshots/` | regression baselines (`UPDATE_SNAPSHOTS=1` regenerates them), and each game's sanity report findings with explanations (`<game>.sanity.json`) |
@@ -24,7 +25,8 @@ gh release download sample-games-2026-11 -R chris-h-sg/aoe2-squire-data
 
 | Game | Files | Data release | Notes |
 |---|---|---|---|
-| Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 139/141 spends matched (the other two are farms placed without enough wood). |
+| Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 140/142 spends matched (the other two are farms placed without enough wood). |
+| Game 2 (2026-11-01) | `game2-fast-pauses.*`, `game_frames/game2-fast-pauses/`, `snapshots/game2-fast-pauses.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_131446.mkv`, `.video.json`, frames zip | Live vs AI (Mingyi Nyo, Burmese), Thrar (Vikings, wooden panel style), QS Arabia, Fast speed, 1920x1080, 100% UI, default font. Squire started at 1:37 in-game; capture ended at an alt-tab at about 26:00 while the game went on to 29:37. Sync speed 1.992 in 4 segments with 3 pauses, 114/116 spends matched. |
 
 Game 1 against the checklist below: Castle clicked and cancelled, Imperial
 clicked and cancelled at the end (counted as an age-up, a known limitation); multi-range
@@ -38,11 +40,22 @@ pre-queued reseeds. The frame-level timestamps of the 15-frame `pop_vils` 111 mi
 (05:44.8): food first reached 500 at 05:38, so earlier clicks were refused and left no
 trace in the replay or on screen.
 
+Game 2 against the checklist: Fast speed; three pauses, found by the sync at the right
+places (11.8 s at 05:21.7 right after the 20th villager, 19.1 s at 08:23.5 just after
+reaching Feudal, 4.0 s at 18:05.6 right after the Castle click); late capture start (the 7
+spends before the first frame are left out of the sanity report); alt-tab in the last
+minute (the replay goes on, its 27 later events are ignored); a farm queued at the mill
+(13:49.3), two market sales of 100 wood (19:56-19:57), a 6-tile stone wall (25:42) and a
+small Castle repair (-1 and -2 stone, no replay command), which the replay parse now reads
+except for the repair. It needed an aoe2rec fix: every game against the AI at Fast speed
+failed to parse ("failed to fill whole buffer"). Not covered: repeated Age-up clicks at
+this speed, the long Castle Age pause, Imperial Age.
+
 ## Sample games to record
 
 The first full game (`1v1-RM-sample`) was captured from a replay playing back, at
 normal speed, with no pauses and one click per Age-up. These 2–3 games cover what the
-tests can only simulate today (game 1 is recorded, see above).
+tests can only simulate today (games 1 and 2 are recorded, see above).
 
 **Every game:** record with `--record-frames` and `--record-video` (see below; a Steam
 recording works too), keep the `.aoe2record`, and turn the in-game
@@ -61,8 +74,10 @@ makes the sanity report's findings quick to explain.
   finish while housed.
 - Idle villagers: leave a few idle for 20+ s, at least twice.
 - Floating: bank 500+ food or wood in Feudal for 30+ s; build a Castle (stone save-up).
-- Spends the replay parser does not read: palisade and stone walls, market buy and sell,
-  repairing a building, farm reseeds both pre-queued at the mill and manual.
+- Spends without a unit, building or technology: palisade and stone walls, market buy and
+  sell, repairing a building, farm reseeds both pre-queued at the mill and manual. (Walls,
+  market sales and farms queued at the mill are now read from the replay; market buys,
+  repairs, tributes and automatic reseeds are not.)
 - Several hunters on a boar or sheep at the TC (simultaneous drop-offs).
 - Play into late Castle or Imperial Age so numbers get large: 5-digit resources, 100+
   villagers, population 150+.

@@ -80,6 +80,11 @@ fn analysis_snapshot_game1_castle_vs_ai() {
     assert_snapshot("game1-castle-vs-ai");
 }
 
+#[test]
+fn analysis_snapshot_game2_fast_pauses() {
+    assert_snapshot("game2-fast-pauses");
+}
+
 /// Compares the analysis of `test_bench/<game>.csv` + `.aoe2record` with
 /// `test_bench/snapshots/<game>.analysis.json`.
 fn assert_snapshot(game: &str) {

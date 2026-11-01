@@ -4,8 +4,9 @@
 //! telemetry with the undistorted game's mapping, which is what the old constant-speed sync
 //! did; the same telemetry synced properly must score as well as the sample game.
 //!
-//! Every finding on the sample game and on game 1 (a live game against the AI) has been
-//! reviewed and explained in REVIEWED_FINDINGS / GAME1_REVIEWED_FINDINGS;
+//! Every finding on the sample game and on games 1 and 2 (live games against the AI) has been
+//! reviewed and explained in REVIEWED_FINDINGS / GAME1_REVIEWED_FINDINGS /
+//! GAME2_REVIEWED_FINDINGS;
 //! the test fails on any new, vanished or changed finding, so after a change only the
 //! difference needs a look. After reviewing, `UPDATE_SNAPSHOTS=1 cargo test --test
 //! sanity_report` rewrites the file, keeping existing explanations; new findings get an
@@ -24,6 +25,7 @@ use std::collections::BTreeMap;
 
 const REVIEWED_FINDINGS: &str = "test_bench/snapshots/1v1-RM-sample.sanity.json";
 const GAME1_REVIEWED_FINDINGS: &str = "test_bench/snapshots/game1-castle-vs-ai.sanity.json";
+const GAME2_REVIEWED_FINDINGS: &str = "test_bench/snapshots/game2-fast-pauses.sanity.json";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Summary {
@@ -130,14 +132,30 @@ fn sample_game_findings_are_all_reviewed() {
 
 #[test]
 fn game1_findings_are_all_reviewed() {
+    assert_all_reviewed(
+        &recorded_game_report("game1-castle-vs-ai"),
+        GAME1_REVIEWED_FINDINGS,
+    );
+}
+
+#[test]
+fn game2_findings_are_all_reviewed() {
+    assert_all_reviewed(
+        &recorded_game_report("game2-fast-pauses"),
+        GAME2_REVIEWED_FINDINGS,
+    );
+}
+
+/// The sanity report of `test_bench/<game>.csv` with its replay.
+fn recorded_game_report(game: &str) -> SanityReport {
     let analysis = common::analyze(
-        &common::test_bench("game1-castle-vs-ai.csv"),
-        Some(&common::test_bench("game1-castle-vs-ai.aoe2record")),
+        &common::test_bench(&format!("{}.csv", game)),
+        Some(&common::test_bench(&format!("{}.aoe2record", game))),
     )
-    .expect("game 1 analysis failed");
+    .unwrap_or_else(|e| panic!("{} analysis failed: {}", game, e));
     let report = validation::check(&analysis.merged);
-    println!("game 1:\n{}", report.to_text());
-    assert_all_reviewed(&report, GAME1_REVIEWED_FINDINGS);
+    println!("{}:\n{}", game, report.to_text());
+    report
 }
 
 /// Fails on any finding of `report` that is new, gone or changed against the reviewed
