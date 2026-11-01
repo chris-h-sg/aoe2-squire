@@ -1,0 +1,183 @@
+{
+  "calibration": {
+    "game_start_rw_offset_ms": -4926.317138671875,
+    "knots": [
+      {
+        "ig_ms": 9965.0,
+        "rw_offset_ms": 1059.1474609375
+      },
+      {
+        "ig_ms": 977779.0,
+        "rw_offset_ms": 582375.4047851562
+      },
+      {
+        "ig_ms": 1032234.0,
+        "rw_offset_ms": 615570.4174804688
+      },
+      {
+        "ig_ms": 1447952.0,
+        "rw_offset_ms": 864819.2216796875
+      },
+      {
+        "ig_ms": 1552724.0,
+        "rw_offset_ms": 928095.0510253906
+      },
+      {
+        "ig_ms": 1755100.0,
+        "rw_offset_ms": 1049443.4260253906
+      }
+    ],
+    "pauses": 0,
+    "quality": {
+      "matched": 138,
+      "matched_share": 0.9787234042553191,
+      "residual_median_ms": 57.645751953125,
+      "residual_p90_ms": 135.1689453125,
+      "spends": 141
+    },
+    "segments": 5,
+    "source": "SpendAlignment",
+    "speed_at_start": 1.66486656427904
+  },
+  "floating": {
+    "segments": [
+      {
+        "age": "Dark Age",
+        "end_ms": 344798,
+        "resource": "Wood",
+        "start_ms": 255821
+      },
+      {
+        "age": "Feudal Age",
+        "end_ms": 690544,
+        "resource": "Food",
+        "start_ms": 603170
+      },
+      {
+        "age": "Feudal Age",
+        "end_ms": 885416,
+        "resource": "Food",
+        "start_ms": 697178
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1695100,
+        "resource": "Gold",
+        "start_ms": 1249388
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1695100,
+        "resource": "Food",
+        "start_ms": 1393362
+      }
+    ],
+    "summary": {
+      "Castle Age": {
+        "food": 301.738,
+        "gold": 445.712,
+        "stone": 0.0,
+        "wood": 0.0
+      },
+      "Dark Age": {
+        "food": 0.0,
+        "gold": 0.0,
+        "stone": 0.0,
+        "wood": 88.977
+      },
+      "Feudal Age": {
+        "food": 275.61199999999997,
+        "gold": 0.0,
+        "stone": 0.0,
+        "wood": 0.0
+      },
+      "Imperial Age": {
+        "food": 0.0,
+        "gold": 0.0,
+        "stone": 0.0,
+        "wood": 0.0
+      }
+    },
+    "total": {
+      "food": 577.3499999999999,
+      "gold": 445.712,
+      "stone": 0.0,
+      "wood": 88.977
+    }
+  },
+  "grades": {
+    "has_replay": true,
+    "housed_grade": "★★",
+    "housed_pct": 3.4,
+    "housed_stars": 2,
+    "housed_tier": "silver",
+    "idle_grade": "★★",
+    "idle_pct": 3.2,
+    "idle_stars": 2,
+    "idle_tier": "silver",
+    "overall_grade": "★★",
+    "overall_tier": "silver"
+  },
+  "housing": {
+    "metrics": {
+      "Castle Age": {
+        "housed": 60.404,
+        "normal": 716.917
+      },
+      "Dark Age": {
+        "normal": 155.586,
+        "queued": 181.01
+      },
+      "Feudal Age": {
+        "normal": 383.815,
+        "queued": 249.166
+      },
+      "Imperial Age": {
+        "normal": 24.668
+      }
+    },
+    "recorded_duration_sec": 1771.566,
+    "segments": 16,
+    "total_housed_sec": 60.404,
+    "total_queued_sec": 430.176
+  },
+  "idle": {
+    "age_vs_lost": {
+      "Castle Age": 745.0339999999999,
+      "Dark Age": 115.07199999999999,
+      "Feudal Age": 794.154,
+      "Imperial Age": 0.0
+    },
+    "segments": 87,
+    "total_idle_duration_sec": 846.7490000000003,
+    "total_vs_lost": 1654.2599999999998,
+    "total_vs_overall": 52064.24899999999
+  },
+  "merged": {
+    "first_in_game_ms": 8202,
+    "last_in_game_ms": 1779768,
+    "rec_events": 156,
+    "rows": 4375,
+    "screen_grabs": 4219
+  },
+  "metadata": {
+    "duration_formatted": "29:39.874",
+    "duration_sec": 1779.874,
+    "has_replay": true,
+    "map_name": "QS Arabia",
+    "players": [
+      {
+        "civ": "Britons",
+        "is_winner": true,
+        "name": "Thrar"
+      },
+      {
+        "civ": "Byzantines",
+        "is_winner": false,
+        "name": "Emperor Leo VI"
+      }
+    ],
+    "rec_player_civ": "Britons",
+    "rec_player_name": "Thrar"
+  }
+}

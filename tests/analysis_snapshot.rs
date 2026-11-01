@@ -5,8 +5,6 @@ mod common;
 use aoe2_squire::analysis::run::MatchAnalysis;
 use serde_json::{json, Value};
 
-const SNAPSHOT: &str = "test_bench/snapshots/1v1-RM-sample.analysis.json";
-
 fn summarize(a: &MatchAnalysis, first_csv_ts: u64) -> Value {
     let cal = a.calibration.as_ref().map(|c| {
         // Real-world timestamps are stored relative to the first CSV row to stay readable.
@@ -74,8 +72,20 @@ fn summarize(a: &MatchAnalysis, first_csv_ts: u64) -> Value {
 
 #[test]
 fn analysis_snapshot_1v1_rm_sample() {
-    let csv = common::test_bench("1v1-RM-sample.csv");
-    let replay = common::test_bench("1v1-RM-sample.aoe2record");
+    assert_snapshot("1v1-RM-sample");
+}
+
+#[test]
+fn analysis_snapshot_game1_castle_vs_ai() {
+    assert_snapshot("game1-castle-vs-ai");
+}
+
+/// Compares the analysis of `test_bench/<game>.csv` + `.aoe2record` with
+/// `test_bench/snapshots/<game>.analysis.json`.
+fn assert_snapshot(game: &str) {
+    let csv = common::test_bench(&format!("{}.csv", game));
+    let replay = common::test_bench(&format!("{}.aoe2record", game));
+    let snapshot = format!("test_bench/snapshots/{}.analysis.json", game);
     let analysis = common::analyze(&csv, Some(&replay)).expect("analysis failed");
 
     let first_csv_ts: u64 = std::fs::read_to_string(&csv)
@@ -87,7 +97,7 @@ fn analysis_snapshot_1v1_rm_sample() {
         .expect("first CSV timestamp");
     let actual = summarize(&analysis, first_csv_ts);
 
-    let path = common::root().join(SNAPSHOT);
+    let path = common::root().join(&snapshot);
     if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, serde_json::to_string_pretty(&actual).unwrap() + "\n").unwrap();
@@ -97,14 +107,14 @@ fn analysis_snapshot_1v1_rm_sample() {
 
     let expected: Value = serde_json::from_str(
         &std::fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("{}: {} (run with UPDATE_SNAPSHOTS=1)", SNAPSHOT, e)),
+            .unwrap_or_else(|e| panic!("{}: {} (run with UPDATE_SNAPSHOTS=1)", snapshot, e)),
     )
     .unwrap();
     let diffs = common::json_diff(&expected, &actual, 1e-6, 1e-9);
     assert!(
         diffs.is_empty(),
         "Analysis summary differs from {} (if intended, regenerate with UPDATE_SNAPSHOTS=1):\n{}",
-        SNAPSHOT,
+        snapshot,
         diffs.join("\n")
     );
 }

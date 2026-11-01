@@ -1,0 +1,248 @@
+{
+  "_comment": "Frames from game 1 (test_bench/game1-castle-vs-ai.csv), saved by --record-frames: masked except for the resource panel and the anchor search band. File names are the CSV row timestamps. Values read by eye from the enlarged panel.",
+  "images": {
+    "1793527398523.png": {
+      "source": "game 1 frame 1793527398523: frame before the pop_vils misread, read correctly",
+      "values": {
+        "wood": {
+          "total": "70",
+          "vils": "0"
+        },
+        "food": {
+          "total": "70",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "10",
+          "housing": "15",
+          "vils": "9",
+          "color": "white"
+        }
+      }
+    },
+    "1793527398767.png": {
+      "source": "game 1 frame 1793527398767: first frame of the pop_vils 111 misread",
+      "values": {
+        "wood": {
+          "total": "70",
+          "vils": "1"
+        },
+        "food": {
+          "total": "70",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "11",
+          "housing": "15",
+          "vils": "10",
+          "color": "white"
+        }
+      },
+      "known_failures": {
+        "population.vils": "known bug: the villager count 10, drawn over the edge of the population icon, is read as 111 (reproducible with --replay-frames; 15 frames from 00:35.387 in game 1)"
+      }
+    },
+    "1793527399270.png": {
+      "source": "game 1 frame 1793527399270: pop_vils 111 misread, population queued (yellow)",
+      "values": {
+        "wood": {
+          "total": "70",
+          "vils": "1"
+        },
+        "food": {
+          "total": "70",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "11",
+          "housing": "15",
+          "vils": "10",
+          "color": "yellow"
+        }
+      },
+      "known_failures": {
+        "population.vils": "known bug: the villager count 10, drawn over the edge of the population icon, is read as 111 (reproducible with --replay-frames; 15 frames from 00:35.387 in game 1)"
+      }
+    },
+    "1793527402554.png": {
+      "source": "game 1 frame 1793527402554: first frame after the pop_vils misread, read correctly",
+      "values": {
+        "wood": {
+          "total": "70",
+          "vils": "4"
+        },
+        "food": {
+          "total": "101",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "11",
+          "housing": "15",
+          "vils": "10",
+          "color": "white"
+        }
+      }
+    },
+    "1793527433458.png": {
+      "source": "game 1 frame 1793527433458: population queued (yellow)",
+      "values": {
+        "wood": {
+          "total": "110",
+          "vils": "5"
+        },
+        "food": {
+          "total": "43",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "12",
+          "housing": "15",
+          "vils": "11",
+          "color": "yellow"
+        }
+      }
+    },
+    "1793527569885.png": {
+      "source": "game 1 frame 1793527569885: 11 idle villagers (boar hunters), population queued",
+      "values": {
+        "wood": {
+          "total": "260",
+          "vils": "5"
+        },
+        "food": {
+          "total": "465",
+          "vils": "3"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "11"
+        },
+        "population": {
+          "total": "21",
+          "housing": "25",
+          "vils": "20",
+          "color": "yellow"
+        }
+      }
+    },
+    "1793528037699.png": {
+      "source": "game 1 frame 1793528037699: housed at 45/45, highlight overlay on the population",
+      "values": {
+        "wood": {
+          "total": "630",
+          "vils": "11"
+        },
+        "food": {
+          "total": "438",
+          "vils": "12"
+        },
+        "gold": {
+          "total": "266",
+          "vils": "8"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "color": "overlay"
+        }
+      }
+    },
+    "1793528444673.png": {
+      "source": "game 1 frame 1793528444673: 4-digit food and gold",
+      "values": {
+        "wood": {
+          "total": "621",
+          "vils": "15"
+        },
+        "food": {
+          "total": "2781",
+          "vils": "15"
+        },
+        "gold": {
+          "total": "1416",
+          "vils": "7"
+        },
+        "stone": {
+          "total": "440",
+          "vils": "5"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "61",
+          "housing": "115",
+          "vils": "42",
+          "color": "white"
+        }
+      }
+    }
+  }
+}
