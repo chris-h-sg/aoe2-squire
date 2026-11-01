@@ -8,6 +8,7 @@ Reference data for the automated tests (`cargo test`, no game needed):
 | `video_frames/` (masked frames from the `.mp4` clips, see `tools/extract_video_fixtures.py`) | `tests/vision_fixtures.rs`, `tests/capture_loop.rs` |
 | `1v1-RM-sample.csv` + `.aoe2record` | `tests/analysis_snapshot.rs`, `tests/sync_stress.rs`, `tests/sanity_report.rs` |
 | `game1-castle-vs-ai.csv` + `.aoe2record`, `game2-fast-pauses.csv` + `.aoe2record` (recorded sample games, see below) | `tests/analysis_snapshot.rs`, `tests/sanity_report.rs` |
+| `game3-playback-75ui.csv` (game 2's replay played back at regular, 4x and 8x speed at 75% UI scale; replay `game2-fast-pauses.aoe2record`) | `tests/sanity_report.rs` (refused: fast playback is not supported) |
 | `deletions-sample.aoe2record` (a short game against the AI at Fast speed with deletions; it is also the aoe2rec fork's test replay for the Fast-speed header fix) | `tests/replay_events.rs` |
 | `game_frames/<game>/` (selected frames of a recorded game) | `tests/vision_fixtures.rs` |
 | `interpolation/` | housing interpolation unit tests |
@@ -27,6 +28,7 @@ gh release download sample-games-2026-11 -R chris-h-sg/aoe2-squire-data
 |---|---|---|---|
 | Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 140/142 spends matched (the other two are farms placed without enough wood). |
 | Game 2 (2026-11-01) | `game2-fast-pauses.*`, `game_frames/game2-fast-pauses/`, `snapshots/game2-fast-pauses.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_131446.mkv`, `.video.json`, frames zip | Live vs AI (Mingyi Nyo, Burmese), Thrar (Vikings, wooden panel style), QS Arabia, Fast speed, 1920x1080, 100% UI, default font. Squire started at 1:37 in-game; capture ended at an alt-tab at about 26:00 while the game went on to 29:37. Sync speed 1.992 in 4 segments with 3 pauses, 114/116 spends matched. |
+| Game 3 (2026-11-01) | `game3-playback-75ui.csv` (replay: `game2-fast-pauses.aoe2record`), `game_frames/game3-playback-75ui/` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_170101.mkv`, `.video.json`, frames zip | Game 2's replay played back to 14:03, 75% UI scale. Playback speeds measured from the in-game clock: 2.0 (regular) to 3:00, 8.0 (4x) to 7:03 with an 11 s pause at 5:28, 16.0 (8x) to 11:00, 2.0 to the end. Not synced: the sync searches up to 4.0. |
 
 Game 1 against the checklist below: Castle clicked and cancelled, Imperial
 clicked and cancelled at the end (counted as an age-up, a known limitation); multi-range
@@ -50,6 +52,13 @@ small Castle repair (-1 and -2 stone, no replay command), which the replay parse
 except for the repair. It needed an aoe2rec fix: every game against the AI at Fast speed
 failed to parse ("failed to fill whole buffer"). Not covered: repeated Age-up clicks at
 this speed, the long Castle Age pause, Imperial Age.
+
+Game 3 is kept for two later jobs. Analysing a replay by playing it back fast: at 8x
+playback the 4 captures per second are 4 s of game time apart, so this needs a higher
+capture rate as well as a higher `MAX_SPEED` in the sync. And the 75% UI scale: villager
+counts and some totals are misread, mostly a 0 read as two digits (70 as 711, 590 as
+5941, 50 as 511); the frames in `game_frames/game3-playback-75ui/` list them as known
+failures. Today the analysis refuses the game with a hint to play back at regular speed.
 
 ## Sample games to record
 

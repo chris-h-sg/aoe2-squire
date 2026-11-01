@@ -146,6 +146,20 @@ fn game2_findings_are_all_reviewed() {
     );
 }
 
+/// Game 3 is game 2's replay played back at 2.0, 8.0 (4x playback) and 16.0 (8x): beyond
+/// `MAX_SPEED`, so the sync refuses it and says that only regular playback is supported.
+/// Supporting fast playback (with a higher capture rate) would change this test.
+#[test]
+fn game3_fast_playback_is_refused() {
+    let err = common::analyze(
+        &common::test_bench("game3-playback-75ui.csv"),
+        Some(&common::test_bench("game2-fast-pauses.aoe2record")),
+    )
+    .err()
+    .expect("game 3 synced, but fast playback is not supported");
+    assert!(err.contains("regular speed"), "{}", err);
+}
+
 /// The sanity report of `test_bench/<game>.csv` with its replay.
 fn recorded_game_report(game: &str) -> SanityReport {
     let analysis = common::analyze(

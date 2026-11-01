@@ -79,22 +79,28 @@ impl fmt::Display for SyncError {
             SyncError::NoDrops => write!(f, "sync: no resource drop readable on screen"),
             SyncError::NoAlignment { spends, drops } => write!(
                 f,
-                "sync: {} replay spends and {} drops on screen never line up (wrong replay?)",
-                spends, drops
+                "sync: {} replay spends and {} drops on screen never line up (wrong replay?).{}",
+                spends, drops, PLAYBACK_HINT
             ),
             SyncError::TooFewMatches { matched, spends } => write!(
                 f,
-                "sync: only {} of {} replay spends match a drop on screen (need {} and {:.0}%)",
+                "sync: only {} of {} replay spends match a drop on screen (need {} and {:.0}%).{}",
                 matched,
                 spends,
                 MIN_MATCHED,
-                MIN_MATCHED_SHARE * 100.0
+                MIN_MATCHED_SHARE * 100.0,
+                PLAYBACK_HINT
             ),
         }
     }
 }
 
 impl std::error::Error for SyncError {}
+
+/// Replay playback faster than regular speed (4x, 8x) runs beyond `MAX_SPEED`, and 4 frames
+/// per second would be too coarse for it anyway; the most likely cause of a failed sync.
+const PLAYBACK_HINT: &str = " If this was captured from replay playback, play it back at \
+    regular speed: faster playback (4x, 8x) is not supported.";
 
 /// Builds the time mapping from telemetry rows (sorted by time) and the recorded player's
 /// replay events.
