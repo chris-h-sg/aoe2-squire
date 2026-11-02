@@ -1,0 +1,152 @@
+{
+  "_comment": "Frames from game 3 (test_bench/game3-playback-75ui.csv): game 2's replay played back at 75% UI scale, saved by --record-frames. File names are the CSV row timestamps. Values read by eye from the enlarged panel. 75% is not supported yet; the fields read wrong today are listed as known failures.",
+  "images": {
+    "1793548869087.png": {
+      "source": "game 3 frame 1793548869087: 0:13 in-game, Dark Age",
+      "values": {
+        "wood": {
+          "total": "70",
+          "vils": "0"
+        },
+        "food": {
+          "total": "110",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "10",
+          "housing": "15",
+          "vils": "9",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "0"
+        }
+      },
+      "known_failures": {
+        "food.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "gold.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "population.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "stone.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "wood.total": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "wood.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)"
+      }
+    },
+    "1793548954991.png": {
+      "source": "game 3 frame 1793548954991: 2:3x in-game, Dark Age",
+      "values": {
+        "wood": {
+          "total": "60",
+          "vils": "2"
+        },
+        "food": {
+          "total": "17",
+          "vils": "12"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "16",
+          "housing": "20",
+          "vils": "15",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "0"
+        }
+      },
+      "known_failures": {
+        "gold.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "stone.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "wood.total": "known limitation: 75% UI scale is not supported yet (small digits misread)"
+      }
+    },
+    "1793549045437.png": {
+      "source": "game 3 frame 1793549045437: 11:1x in-game, Feudal Age, 4 idle villagers",
+      "values": {
+        "wood": {
+          "total": "590",
+          "vils": "17"
+        },
+        "food": {
+          "total": "132",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "10",
+          "vils": "4"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "34",
+          "housing": "50",
+          "vils": "31",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "4"
+        }
+      },
+      "known_failures": {
+        "food.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "gold.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "idle.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "population.housing": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "stone.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "wood.total": "known limitation: 75% UI scale is not supported yet (small digits misread)"
+      }
+    },
+    "1793549089603.png": {
+      "source": "game 3 frame 1793549089603: 12:3x in-game, Feudal Age",
+      "values": {
+        "wood": {
+          "total": "640",
+          "vils": "14"
+        },
+        "food": {
+          "total": "216",
+          "vils": "10"
+        },
+        "gold": {
+          "total": "102",
+          "vils": "7"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "population": {
+          "total": "37",
+          "housing": "60",
+          "vils": "34",
+          "color": "white"
+        },
+        "idle": {
+          "vils": "1"
+        }
+      },
+      "known_failures": {
+        "food.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "population.housing": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "stone.vils": "known limitation: 75% UI scale is not supported yet (small digits misread)",
+        "wood.total": "known limitation: 75% UI scale is not supported yet (small digits misread)"
+      }
+    }
+  }
+}

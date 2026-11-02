@@ -164,11 +164,21 @@ mod tests {
     use super::*;
     use crate::types::MergedRow;
 
+    /// The type ID `mesher` writes for the event descriptions used in these tests.
+    fn type_id(desc: &str) -> String {
+        match desc {
+            "Research Feudal Age" => crate::game_data::FEUDAL_AGE_TECH.to_string(),
+            "Build Castle" => crate::game_data::CASTLE_BUILDING.to_string(),
+            _ => String::new(),
+        }
+    }
+
     fn mock_row(ms: u64, obs: &str, val: &str, age_desc: &str) -> Observation {
         Observation::from_merged_row(&MergedRow {
             in_game_ms: ms,
             observation_type: obs.to_string(),
             event_desc: age_desc.to_string(),
+            type_id: type_id(age_desc),
             idle_vils: val.to_string(),
             housing: val.to_string(),
             ..Default::default()

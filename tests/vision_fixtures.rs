@@ -19,9 +19,12 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-const MANIFESTS: [&str; 2] = [
+const MANIFESTS: [&str; 5] = [
     "test_bench/expected_values.json",
     "test_bench/video_frames/expected_values.json",
+    "test_bench/game_frames/game1-castle-vs-ai/expected_values.json",
+    "test_bench/game_frames/game2-fast-pauses/expected_values.json",
+    "test_bench/game_frames/game3-playback-75ui/expected_values.json",
 ];
 const ACCURACY_BASELINE: &str = "test_bench/snapshots/vision_accuracy.json";
 const GAME_DETECTED: &str = "game_detected";

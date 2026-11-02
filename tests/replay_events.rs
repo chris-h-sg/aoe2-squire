@@ -1,4 +1,4 @@
-//! Replay event extraction on the sample game.
+//! Replay event extraction on the sample game and other test replays.
 mod common;
 
 use aoe2_squire::replay::{extract_events, ReplayEvent};
@@ -51,4 +51,21 @@ fn queued_units_cost_one_unit_each_regardless_of_selected_buildings() {
         })
         .collect();
     assert_eq!(cav_archer, vec![(40, 60, 2)]);
+}
+
+/// A short game against the AI at Fast speed with deleted buildings. Games against the AI at
+/// Fast speed failed to parse until the aoe2rec fix of the AI header skip.
+#[test]
+fn deletions_sample_parses_with_its_deletions() {
+    let data = extract_events(&common::test_bench("deletions-sample.aoe2record")).unwrap();
+    assert!(data.unknown_ids.is_empty(), "{:?}", data.unknown_ids);
+    let deletions: Vec<&str> = data
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            ReplayEvent::Deletion { object_name, .. } => Some(object_name.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(!deletions.is_empty(), "no deletions extracted");
 }

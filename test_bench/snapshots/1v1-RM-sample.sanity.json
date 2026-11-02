@@ -9,7 +9,7 @@
       "section": "unmatched_spends",
       "time": "25:16.663",
       "field": "wood",
-      "detail": "Build House (Dark Age): wood: no drop of ~25 on screen",
+      "detail": "Build House: wood: no drop of ~25 on screen",
       "explanation": "One villager shift-placed 6 houses at 25:13.7-25:16.7; only 5 drops of 25 wood follow (also on video), so one foundation never went down. By timing it is the 3rd placement (25:14.712, map 67/65, next to the 4th at 65/66); the matcher pins the missing drop on the last one because all six cost the same. The replay records commands even when the game rejects them."
     },
     {

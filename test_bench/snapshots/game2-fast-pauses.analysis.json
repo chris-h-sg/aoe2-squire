@@ -1,0 +1,187 @@
+{
+  "calibration": {
+    "game_start_rw_offset_ms": -64753.5625,
+    "knots": [
+      {
+        "ig_ms": 194846.0,
+        "rw_offset_ms": 33072.17919921875
+      },
+      {
+        "ig_ms": 321747.0391006182,
+        "rw_offset_ms": 96785.0
+      },
+      {
+        "ig_ms": 321747.0391006182,
+        "rw_offset_ms": 108554.55908203125
+      },
+      {
+        "ig_ms": 503480.8240130686,
+        "rw_offset_ms": 199579.0
+      },
+      {
+        "ig_ms": 503480.8240130686,
+        "rw_offset_ms": 218670.40576171875
+      },
+      {
+        "ig_ms": 1085649.5527440982,
+        "rw_offset_ms": 509800.0
+      },
+      {
+        "ig_ms": 1085649.5527440982,
+        "rw_offset_ms": 513813.9462890625
+      },
+      {
+        "ig_ms": 1542016.0,
+        "rw_offset_ms": 742099.892578125
+      }
+    ],
+    "pauses": 3,
+    "quality": {
+      "matched": 114,
+      "matched_share": 0.9827586206896551,
+      "residual_median_ms": 57.572021484375,
+      "residual_p90_ms": 116.261962890625,
+      "spends": 116
+    },
+    "segments": 4,
+    "source": "SpendAlignment",
+    "speed_at_start": 1.9917661400547513
+  },
+  "floating": {
+    "segments": [
+      {
+        "age": "Feudal Age",
+        "end_ms": 1025292,
+        "resource": "Food",
+        "start_ms": 935447
+      },
+      {
+        "age": "Feudal Age",
+        "end_ms": 1085292,
+        "resource": "Wood",
+        "start_ms": 797406
+      },
+      {
+        "age": "Feudal Age",
+        "end_ms": 1025292,
+        "resource": "Gold",
+        "start_ms": 981138
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1562683,
+        "resource": "Food",
+        "start_ms": 1508603
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1562683,
+        "resource": "Wood",
+        "start_ms": 1085650
+      },
+      {
+        "age": "Castle Age",
+        "end_ms": 1562683,
+        "resource": "Gold",
+        "start_ms": 1126309
+      }
+    ],
+    "summary": {
+      "Castle Age": {
+        "food": 54.08,
+        "gold": 436.374,
+        "stone": 0.0,
+        "wood": 477.033
+      },
+      "Dark Age": {
+        "food": 0.0,
+        "gold": 0.0,
+        "stone": 0.0,
+        "wood": 0.0
+      },
+      "Feudal Age": {
+        "food": 89.845,
+        "gold": 44.154,
+        "stone": 0.0,
+        "wood": 287.886
+      }
+    },
+    "total": {
+      "food": 143.925,
+      "gold": 480.528,
+      "stone": 0.0,
+      "wood": 764.9190000000001
+    }
+  },
+  "grades": {
+    "has_replay": true,
+    "housed_grade": "★★★",
+    "housed_pct": 1.6,
+    "housed_stars": 3,
+    "housed_tier": "gold",
+    "idle_grade": "★★",
+    "idle_pct": 3.1,
+    "idle_stars": 2,
+    "idle_tier": "silver",
+    "overall_grade": "★★",
+    "overall_tier": "silver"
+  },
+  "housing": {
+    "metrics": {
+      "Castle Age": {
+        "normal": 477.391
+      },
+      "Dark Age": {
+        "housed": 23.022,
+        "normal": 110.16699999999999,
+        "queued": 105.08099999999999
+      },
+      "Feudal Age": {
+        "normal": 507.073,
+        "queued": 210.97500000000002
+      }
+    },
+    "recorded_duration_sec": 1433.709,
+    "segments": 15,
+    "total_housed_sec": 23.022,
+    "total_queued_sec": 316.05600000000004
+  },
+  "idle": {
+    "age_vs_lost": {
+      "Castle Age": 536.706,
+      "Dark Age": 83.129,
+      "Feudal Age": 853.1519999999999
+    },
+    "segments": 74,
+    "total_idle_duration_sec": 983.4869999999999,
+    "total_vs_lost": 1472.987,
+    "total_vs_overall": 47460.12600000001
+  },
+  "merged": {
+    "first_in_game_ms": 15486,
+    "last_in_game_ms": 1562683,
+    "rec_events": 124,
+    "rows": 3094,
+    "screen_grabs": 2970
+  },
+  "metadata": {
+    "duration_formatted": "29:36.774",
+    "duration_sec": 1776.774,
+    "has_replay": true,
+    "map_name": "QS Arabia",
+    "players": [
+      {
+        "civ": "Vikings",
+        "is_winner": true,
+        "name": "Thrar"
+      },
+      {
+        "civ": "Burmese",
+        "is_winner": false,
+        "name": "Mingyi Nyo"
+      }
+    ],
+    "rec_player_civ": "Vikings",
+    "rec_player_name": "Thrar"
+  }
+}

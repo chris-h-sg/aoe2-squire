@@ -4,6 +4,7 @@ pub static RUNNING: AtomicBool = AtomicBool::new(true);
 pub mod analysis;
 pub mod capture;
 pub mod constants;
+pub mod game_data;
 pub mod pipeline;
 pub mod replay;
 pub mod replay_discovery;

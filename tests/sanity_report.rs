@@ -4,7 +4,9 @@
 //! telemetry with the undistorted game's mapping, which is what the old constant-speed sync
 //! did; the same telemetry synced properly must score as well as the sample game.
 //!
-//! Every finding on the sample game has been reviewed and explained in REVIEWED_FINDINGS;
+//! Every finding on the sample game and on games 1 and 2 (live games against the AI) has been
+//! reviewed and explained in REVIEWED_FINDINGS / GAME1_REVIEWED_FINDINGS /
+//! GAME2_REVIEWED_FINDINGS;
 //! the test fails on any new, vanished or changed finding, so after a change only the
 //! difference needs a look. After reviewing, `UPDATE_SNAPSHOTS=1 cargo test --test
 //! sanity_report` rewrites the file, keeping existing explanations; new findings get an
@@ -22,6 +24,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 const REVIEWED_FINDINGS: &str = "test_bench/snapshots/1v1-RM-sample.sanity.json";
+const GAME1_REVIEWED_FINDINGS: &str = "test_bench/snapshots/game1-castle-vs-ai.sanity.json";
+const GAME2_REVIEWED_FINDINGS: &str = "test_bench/snapshots/game2-fast-pauses.sanity.json";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Summary {
@@ -120,8 +124,59 @@ fn sample_game_is_consistent() {
 
 #[test]
 fn sample_game_findings_are_all_reviewed() {
-    let mut actual = reviewable(&report(&Csv::load(), "sanity_sample_reviewed"));
-    let path = common::root().join(REVIEWED_FINDINGS);
+    assert_all_reviewed(
+        &report(&Csv::load(), "sanity_sample_reviewed"),
+        REVIEWED_FINDINGS,
+    );
+}
+
+#[test]
+fn game1_findings_are_all_reviewed() {
+    assert_all_reviewed(
+        &recorded_game_report("game1-castle-vs-ai"),
+        GAME1_REVIEWED_FINDINGS,
+    );
+}
+
+#[test]
+fn game2_findings_are_all_reviewed() {
+    assert_all_reviewed(
+        &recorded_game_report("game2-fast-pauses"),
+        GAME2_REVIEWED_FINDINGS,
+    );
+}
+
+/// Game 3 is game 2's replay played back at 2.0, 8.0 (4x playback) and 16.0 (8x): beyond
+/// `MAX_SPEED`, so the sync refuses it and says that only regular playback is supported.
+/// Supporting fast playback (with a higher capture rate) would change this test.
+#[test]
+fn game3_fast_playback_is_refused() {
+    let err = common::analyze(
+        &common::test_bench("game3-playback-75ui.csv"),
+        Some(&common::test_bench("game2-fast-pauses.aoe2record")),
+    )
+    .err()
+    .expect("game 3 synced, but fast playback is not supported");
+    assert!(err.contains("regular speed"), "{}", err);
+}
+
+/// The sanity report of `test_bench/<game>.csv` with its replay.
+fn recorded_game_report(game: &str) -> SanityReport {
+    let analysis = common::analyze(
+        &common::test_bench(&format!("{}.csv", game)),
+        Some(&common::test_bench(&format!("{}.aoe2record", game))),
+    )
+    .unwrap_or_else(|e| panic!("{} analysis failed: {}", game, e));
+    let report = validation::check(&analysis.merged);
+    println!("{}:\n{}", game, report.to_text());
+    report
+}
+
+/// Fails on any finding of `report` that is new, gone or changed against the reviewed
+/// findings file, or not explained there yet.
+fn assert_all_reviewed(report: &SanityReport, reviewed_findings: &str) {
+    let mut actual = reviewable(report);
+    let path = common::root().join(reviewed_findings);
     let saved: Option<ReviewedReport> = std::fs::read_to_string(&path)
         .ok()
         .map(|s| serde_json::from_str(&s).expect("invalid reviewed findings file"));
@@ -139,7 +194,7 @@ fn sample_game_findings_are_all_reviewed() {
         eprintln!("Reviewed findings written to {}", path.display());
     }
     let saved =
-        saved.unwrap_or_else(|| panic!("{} missing (UPDATE_SNAPSHOTS=1)", REVIEWED_FINDINGS));
+        saved.unwrap_or_else(|| panic!("{} missing (UPDATE_SNAPSHOTS=1)", reviewed_findings));
 
     let mut problems = vec![];
     if actual.spend_alignment != saved.spend_alignment {
@@ -183,9 +238,9 @@ fn sample_game_findings_are_all_reviewed() {
     }
     assert!(
         problems.is_empty(),
-        "Sanity findings on the sample game differ from {} — review them, then update the \
-         file (UPDATE_SNAPSHOTS=1 keeps existing explanations):\n  {}",
-        REVIEWED_FINDINGS,
+        "Sanity findings differ from {} — review them, then update the file \
+         (UPDATE_SNAPSHOTS=1 keeps existing explanations):\n  {}",
+        reviewed_findings,
         problems.join("\n  ")
     );
 }

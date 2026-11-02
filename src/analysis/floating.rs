@@ -2,6 +2,7 @@ use crate::analysis::{effective_age_up, format_time, last_age_up_clicks};
 use crate::constants::{
     FLOATING_MIN_DURATION_MS, FLOATING_THRESHOLDS, GAME_AGES, SAVE_UP_WINDOW_MS,
 };
+use crate::game_data::CASTLE_BUILDING;
 use crate::replay::ReplayEvent;
 use crate::types::{Age, Observation};
 use serde::Serialize;
@@ -60,7 +61,7 @@ pub fn index_save_up_events(rows: &[Observation]) -> Suppressions {
                 gold.push((window_start, window_end));
             }
             _ => {
-                if matches!(event, ReplayEvent::BuildingConstruction { building_type, .. } if building_type == "Castle")
+                if matches!(event, ReplayEvent::BuildingConstruction { building_type_id, .. } if *building_type_id == CASTLE_BUILDING)
                 {
                     stone.push((window_start, window_end));
                 }
@@ -350,11 +351,21 @@ mod tests {
         .unwrap()
     }
 
+    /// The type ID `mesher` writes for the event descriptions used in these tests.
+    fn type_id(desc: &str) -> String {
+        match desc {
+            "Research Feudal Age" => crate::game_data::FEUDAL_AGE_TECH.to_string(),
+            "Build Castle" => crate::game_data::CASTLE_BUILDING.to_string(),
+            _ => String::new(),
+        }
+    }
+
     fn age_event(ms: u64, desc: &str) -> Observation {
         Observation::from_merged_row(&MergedRow {
             in_game_ms: ms,
             observation_type: "RecEvent".to_string(),
             event_desc: desc.to_string(),
+            type_id: type_id(desc),
             ..Default::default()
         })
         .unwrap()

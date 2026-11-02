@@ -1,0 +1,30 @@
+{
+  "spend_alignment": {
+    "matched": 114,
+    "total": 116,
+    "farm_reseeds": 11
+  },
+  "findings": [
+    {
+      "section": "unmatched_spends",
+      "time": "08:49.022",
+      "field": "wood",
+      "detail": "Build Archery Range: wood: only 61 available for 175 (command probably had no effect)",
+      "explanation": "Second Archery Range placement 1.7 s after the first (08:47.328), which took the wood; with 61 of 175 wood left the game rejected it. The replay records commands even when the game rejects them."
+    },
+    {
+      "section": "unmatched_spends",
+      "time": "14:14.924",
+      "field": "wood",
+      "detail": "Queue Archer: wood: no drop of ~25 on screen",
+      "explanation": "Matcher artifact: 4 archers queued across two ranges within 1.5 s (14:13.430-14:14.924). On screen wood/gold go 730/180 -> 705/135 -> 680/103 -> 653/13: the last frame holds two archers (-50 wood, -90 gold) plus a lumberjack drop-off (+23 wood, so wood only -27). The greedy matcher pairs one archer with each drop, leaving this archer's wood and 45 gold over (ROADMAP: bursts of identical spends)."
+    },
+    {
+      "section": "unexplained_drops",
+      "time": "14:15.145",
+      "field": "gold",
+      "detail": "-45 not explained by a replay event",
+      "explanation": "The gold of the fourth archer in the same frame; see the unmatched Queue Archer at 14:14.924."
+    }
+  ]
+}

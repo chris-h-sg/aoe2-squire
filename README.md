@@ -161,10 +161,12 @@ Further reading: [`DECISION_LOG.md`](DECISION_LOG.md) · [`TECHNICAL_SPEC.md`](T
 ---
 
 ## Data Acknowledgements
-This project uses community data from:
-*   **Unit Statistics**: [unitstatistics.com](https://unitstatistics.com/age-of-empires2/)
-*   **Object & Tech Tables**: [airef.github.io](https://airef.github.io/tables/objects.html)
-*   **Halfon Data**: [halfon.aoe2.se](https://halfon.aoe2.se/) · [SiegeEngineers/halfon](https://github.com/SiegeEngineers/halfon)
+This project uses community data from [SiegeEngineers](https://github.com/SiegeEngineers) (MIT):
+*   **aoe2techtree**: unit, building and technology IDs and costs ([SiegeEngineers/aoe2techtree](https://github.com/SiegeEngineers/aoe2techtree))
+*   **Halfon**: English names ([halfon.aoe2.se](https://halfon.aoe2.se/) · [SiegeEngineers/halfon](https://github.com/SiegeEngineers/halfon))
+*   **aoc-reference-data**: civilization and map names ([SiegeEngineers/aoc-reference-data](https://github.com/SiegeEngineers/aoc-reference-data))
+
+How the data is generated and updated after a game patch: [`data/SOURCES.md`](data/SOURCES.md).
 
 ## License
 

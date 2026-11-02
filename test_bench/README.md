@@ -7,14 +7,64 @@ Reference data for the automated tests (`cargo test`, no game needed):
 | Screenshots + `expected_values.json` | `tests/vision_fixtures.rs` |
 | `video_frames/` (masked frames from the `.mp4` clips, see `tools/extract_video_fixtures.py`) | `tests/vision_fixtures.rs`, `tests/capture_loop.rs` |
 | `1v1-RM-sample.csv` + `.aoe2record` | `tests/analysis_snapshot.rs`, `tests/sync_stress.rs`, `tests/sanity_report.rs` |
+| `game1-castle-vs-ai.csv` + `.aoe2record`, `game2-fast-pauses.csv` + `.aoe2record` (recorded sample games, see below) | `tests/analysis_snapshot.rs`, `tests/sanity_report.rs` |
+| `game3-playback-75ui.csv` (game 2's replay played back at regular, 4x and 8x speed at 75% UI scale; replay `game2-fast-pauses.aoe2record`) | `tests/sanity_report.rs` (refused: fast playback is not supported) |
+| `deletions-sample.aoe2record` (a short game against the AI at Fast speed with deletions; it is also the aoe2rec fork's test replay for the Fast-speed header fix) | `tests/replay_events.rs` |
+| `game_frames/<game>/` (selected frames of a recorded game) | `tests/vision_fixtures.rs` |
 | `interpolation/` | housing interpolation unit tests |
-| `snapshots/` | regression baselines (`UPDATE_SNAPSHOTS=1` regenerates them), and the sample game's sanity report findings with explanations (`1v1-RM-sample.sanity.json`) |
+| `snapshots/` | regression baselines (`UPDATE_SNAPSHOTS=1` regenerates them), and each game's sanity report findings with explanations (`<game>.sanity.json`) |
+
+Videos and full frame sets are too large for this repository. They are release assets of
+[chris-h-sg/aoe2-squire-data](https://github.com/chris-h-sg/aoe2-squire-data), one release
+per recording batch:
+
+```bash
+gh release download sample-games-2026-11 -R chris-h-sg/aoe2-squire-data
+```
+
+## Recorded sample games
+
+| Game | Files | Data release | Notes |
+|---|---|---|---|
+| Game 1 (2026-11-01) | `game1-castle-vs-ai.*`, `game_frames/game1-castle-vs-ai/`, `snapshots/game1-castle-vs-ai.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_110257.mkv`, `.video.json`, frames zip | Live vs AI (Emperor Leo VI), Thrar (Britons), QS Arabia, Normal speed, 1920x1080, 100% UI, default font; AI resigned at 29:40. Sync speed 1.665 in 5 segments, 140/142 spends matched (the other two are farms placed without enough wood). |
+| Game 2 (2026-11-01) | `game2-fast-pauses.*`, `game_frames/game2-fast-pauses/`, `snapshots/game2-fast-pauses.*` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_131446.mkv`, `.video.json`, frames zip | Live vs AI (Mingyi Nyo, Burmese), Thrar (Vikings, wooden panel style), QS Arabia, Fast speed, 1920x1080, 100% UI, default font. Squire started at 1:37 in-game; capture ended at an alt-tab at about 26:00 while the game went on to 29:37. Sync speed 1.992 in 4 segments with 3 pauses, 114/116 spends matched. |
+| Game 3 (2026-11-01) | `game3-playback-75ui.csv` (replay: `game2-fast-pauses.aoe2record`), `game_frames/game3-playback-75ui/` | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11): `telemetry_20261101_170101.mkv`, `.video.json`, frames zip | Game 2's replay played back to 14:03, 75% UI scale. Playback speeds measured from the in-game clock: 2.0 (regular) to 3:00, 8.0 (4x) to 7:03 with an 11 s pause at 5:28, 16.0 (8x) to 11:00, 2.0 to the end. Not synced: the sync searches up to 4.0. |
+
+Game 1 against the checklist below: Castle clicked and cancelled, Imperial
+clicked and cancelled at the end (counted as an age-up, a known limitation); multi-range
+archer queues (single clicks and a shift batch); militia queued and cancelled; two Market
+foundations placed and deleted; housed for about 36 s right after the Castle click, and
+queue-blocked often; boar hunters dropping off together; a palisade wall; 10 farm reseeds,
+none pre-queued at the mill. Not covered: 5-digit resources, 100+ villagers and population
+150+ (the game ended at 61 population), stone walls, market buy and sell, repairs,
+pre-queued reseeds. The frame-level timestamps of the 15-frame `pop_vils` 111 misread at
+00:35 are in `snapshots/game1-castle-vs-ai.sanity.json`. Only one Feudal click registered
+(05:44.8): food first reached 500 at 05:38, so earlier clicks were refused and left no
+trace in the replay or on screen.
+
+Game 2 against the checklist: Fast speed; three pauses, found by the sync at the right
+places (11.8 s at 05:21.7 right after the 20th villager, 19.1 s at 08:23.5 just after
+reaching Feudal, 4.0 s at 18:05.6 right after the Castle click); late capture start (the 7
+spends before the first frame are left out of the sanity report); alt-tab in the last
+minute (the replay goes on, its 27 later events are ignored); a farm queued at the mill
+(13:49.3), two market sales of 100 wood (19:56-19:57), a 6-tile stone wall (25:42) and a
+small Castle repair (-1 and -2 stone, no replay command), which the replay parse now reads
+except for the repair. It needed an aoe2rec fix: every game against the AI at Fast speed
+failed to parse ("failed to fill whole buffer"). Not covered: repeated Age-up clicks at
+this speed, the long Castle Age pause, Imperial Age.
+
+Game 3 is kept for two later jobs. Analysing a replay by playing it back fast: at 8x
+playback the 4 captures per second are 4 s of game time apart, so this needs a higher
+capture rate as well as a higher `MAX_SPEED` in the sync. And the 75% UI scale: villager
+counts and some totals are misread, mostly a 0 read as two digits (70 as 711, 590 as
+5941, 50 as 511); the frames in `game_frames/game3-playback-75ui/` list them as known
+failures. Today the analysis refuses the game with a hint to play back at regular speed.
 
 ## Sample games to record
 
-The only full game so far (`1v1-RM-sample`) was captured from a replay playing back, at
+The first full game (`1v1-RM-sample`) was captured from a replay playing back, at
 normal speed, with no pauses and one click per Age-up. These 2–3 games cover what the
-tests can only simulate today.
+tests can only simulate today (games 1 and 2 are recorded, see above).
 
 **Every game:** record with `--record-frames` and `--record-video` (see below; a Steam
 recording works too), keep the `.aoe2record`, and turn the in-game
@@ -33,8 +83,10 @@ makes the sanity report's findings quick to explain.
   finish while housed.
 - Idle villagers: leave a few idle for 20+ s, at least twice.
 - Floating: bank 500+ food or wood in Feudal for 30+ s; build a Castle (stone save-up).
-- Spends the replay parser does not read: palisade and stone walls, market buy and sell,
-  repairing a building, farm reseeds both pre-queued at the mill and manual.
+- Spends without a unit, building or technology: palisade and stone walls, market buy and
+  sell, repairing a building, farm reseeds both pre-queued at the mill and manual. (Walls,
+  market sales and farms queued at the mill are now read from the replay; market buys,
+  repairs, tributes and automatic reseeds are not.)
 - Several hunters on a boar or sheep at the TC (simultaneous drop-offs).
 - Play into late Castle or Imperial Age so numbers get large: 5-digit resources, 100+
   villagers, population 150+.
@@ -121,7 +173,8 @@ cargo run --release --features dev-tools -- --record-frames recordings --record-
   such as the GTX 1050 Ti stay on the 580 driver series, which is too old for it.
 - Measured on a laptop (i7, GTX 1050 Ti, built-in 1080p screen on the Intel HD 630,
   QuickSync): ffmpeg used about 13% of one core, the video ran at 29.9 fps (a few
-  single-frame gaps, plus about 0.3 s at the start), and took 30-35 MB per minute.
+  single-frame gaps, plus about 0.3 s at the start), and took 30-35 MB per minute in a short
+  test, but about 56 MB per minute over game 1 (995 MB for 18 minutes real time).
 
 ### 2. Check the recording
 
@@ -177,10 +230,12 @@ Keep only selected frames in the repository (a whole recording is several MB per
   speed, age-up times) before committing: it is a regression baseline, not ground truth.
 - **Sanity report findings**: explain every finding of the new game (farm reseed, failed
   placement, misread, ... checked in the saved frames or on video) in a
-  `test_bench/snapshots/<game>.sanity.json` like `1v1-RM-sample.sanity.json`.
-  `tests/sanity_report.rs` reads only the sample game's file today (`REVIEWED_FINDINGS`),
-  so extend it to a list of games. `UPDATE_SNAPSHOTS=1 cargo test
-  --test sanity_report` writes the findings and keeps existing explanations; the test fails
-  until every finding has one.
+  `test_bench/snapshots/<game>.sanity.json` like `1v1-RM-sample.sanity.json`, and add a
+  test like `game1_findings_are_all_reviewed` in `tests/sanity_report.rs`.
+  `UPDATE_SNAPSHOTS=1 cargo test --test sanity_report` writes the findings and keeps
+  existing explanations; the test fails until every finding has one.
+- **Data release**: upload the video, its `.video.json` and a zip of the frame folder
+  (without `replayed/`) as assets of a release in `chris-h-sg/aoe2-squire-data`, and add
+  the game to "Recorded sample games" above.
 - **Capture loop**: a recorded frames folder can be fed to the capture loop in a test with
   `ImageSequenceSource::from_dir` (see `tests/capture_loop.rs`).

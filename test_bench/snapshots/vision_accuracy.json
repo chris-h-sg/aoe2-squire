@@ -1,20 +1,20 @@
 {
-  "correct": 907,
+  "correct": 1118,
   "fields": {
-    "food.total": "61/63",
-    "food.vils": "63/63",
-    "game_detected": "82/85",
-    "gold.total": "62/63",
-    "gold.vils": "63/63",
-    "idle.vils": "63/63",
-    "population.color": "81/82",
-    "population.housing": "62/63",
-    "population.total": "61/63",
-    "population.vils": "61/63",
-    "stone.total": "62/63",
-    "stone.vils": "62/63",
-    "wood.total": "63/63",
-    "wood.vils": "61/63"
+    "food.total": "78/80",
+    "food.vils": "77/80",
+    "game_detected": "99/102",
+    "gold.total": "79/80",
+    "gold.vils": "77/80",
+    "idle.vils": "79/80",
+    "population.color": "98/99",
+    "population.housing": "75/78",
+    "population.total": "76/78",
+    "population.vils": "73/78",
+    "stone.total": "79/80",
+    "stone.vils": "75/80",
+    "wood.total": "76/80",
+    "wood.vils": "77/80"
   },
-  "total": 923
+  "total": 1155
 }

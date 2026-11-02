@@ -141,6 +141,11 @@ pub fn check(merged: &[Observation]) -> SanityReport {
         }
     }
 
+    // Spends before the first frame happened before capture started (a late start): their
+    // drops cannot be on screen.
+    let first_frame_ms = frames.first().map_or(u64::MAX, |f| f.ig_ms);
+    spends.retain(|s| s.ig_ms >= first_frame_ms);
+
     let series: BTreeMap<&'static str, Series> = all_fields
         .iter()
         .map(|&f| {

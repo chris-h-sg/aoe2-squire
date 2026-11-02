@@ -1,0 +1,51 @@
+{
+  "spend_alignment": {
+    "matched": 140,
+    "total": 142,
+    "farm_reseeds": 10
+  },
+  "findings": [
+    {
+      "section": "unmatched_spends",
+      "time": "11:48.783",
+      "field": "wood",
+      "detail": "Build Farm: wood: only 14 available for 60 (command probably had no effect)",
+      "explanation": "Not enough wood (14 of 60), so the placement had no effect. The replay records commands even when the game rejects them. Thrar's Deletes at 11:54/11:55 (objects 4142, 4143) are probably related."
+    },
+    {
+      "section": "unmatched_spends",
+      "time": "11:51.208",
+      "field": "wood",
+      "detail": "Build Farm: wood: only 44 available for 60 (command probably had no effect)",
+      "explanation": "Same as 11:48.783: 44 of 60 wood, the placement had no effect."
+    },
+    {
+      "section": "invariant_violations",
+      "time": "00:35.387",
+      "field": "pop_vils",
+      "detail": "villagers > population: pop_vils 111 > pop_curr 11 for 15 frame(s)",
+      "explanation": "Vision misread: the screen shows 10 villagers (pop 11/15), read as 111. Reproducible with --replay-frames; kept as known failures in test_bench/game_frames/game1-castle-vs-ai (1793527398767, 1793527399270) for the digit-recognition review."
+    },
+    {
+      "section": "large_increases",
+      "time": "04:44.729",
+      "field": "food",
+      "detail": "216 -> 307 (+91)",
+      "explanation": "Boar hunters dropping off food together (manual simultaneous drop-offs)."
+    },
+    {
+      "section": "large_increases",
+      "time": "05:19.870",
+      "field": "food",
+      "detail": "337 -> 465 (+128)",
+      "explanation": "Boar hunters dropping off food together (manual simultaneous drop-offs)."
+    },
+    {
+      "section": "large_increases",
+      "time": "06:17.161",
+      "field": "food",
+      "detail": "46 -> 209 (+163)",
+      "explanation": "Boar hunters dropping off food together (manual simultaneous drop-offs)."
+    }
+  ]
+}
