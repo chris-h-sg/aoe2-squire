@@ -44,7 +44,7 @@ fn main() {
     if csv {
         println!("file,WxH,anchor_ms,split_ms,learned_ms,shape_set");
     }
-    let (mut n, mut sums) = (0usize, [0f64; 3]);
+    let (mut n, mut sums, mut stage_sums) = (0usize, [0f64; 3], [0f64; 5]);
     for path in &files {
         let img = DynamicImage::ImageRgb8(image::open(path).unwrap().into_rgb8());
         let t = Instant::now();
@@ -65,11 +65,13 @@ fn main() {
         while reader.set_id().is_none() {
             reader.process_frame(&img, &ui_map);
         }
+        reader.stage_ms = [0.0; 5];
         let t = Instant::now();
         for _ in 0..REPS {
             std::hint::black_box(reader.process_frame(&img, &ui_map));
         }
         let learned_ms = ms(t);
+        let stages = reader.stage_ms.map(|v| v / REPS as f64);
         if csv {
             println!(
                 "{},{}x{},{:.2},{:.2},{:.2},{}",
@@ -87,6 +89,9 @@ fn main() {
             for (s, v) in sums.iter_mut().zip([anchor_ms, split_ms, learned_ms]) {
                 *s += v;
             }
+            for (s, v) in stage_sums.iter_mut().zip(stages) {
+                *s += v;
+            }
         }
     }
     let m = |i: usize| sums[i] / n.max(1) as f64;
@@ -96,5 +101,15 @@ fn main() {
         m(1),
         m(2),
         m(0)
+    );
+    let st = stage_sums.map(|v| v / n.max(1) as f64);
+    println!(
+        "Learned matcher per frame by stage: observation {:.2} ms, pen height {:.2}, chains {:.2}, re-scoring {:.2}, confidence {:.2} (rest: anchor, strip copy, results {:.2})",
+        st[0],
+        st[1],
+        st[2],
+        st[3],
+        st[4],
+        m(2) - st.iter().sum::<f64>()
     );
 }

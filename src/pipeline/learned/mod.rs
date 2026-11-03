@@ -17,7 +17,7 @@ use crate::types::{Results, UiMap};
 use image::{DynamicImage, RgbImage};
 use layout::{px_per_unit, Field, Kind};
 use observe::TextColour;
-use read::{Grammar, Reading, Templates};
+use read::{Grammar, PenY, Reading, Templates};
 use shapes::ShapeSet;
 use std::collections::HashMap;
 
@@ -58,7 +58,15 @@ pub struct LearnedReader {
     frames_seen: usize,
     /// Templates per (set, kind, font px * 1000, rounded).
     templates: HashMap<(usize, Kind, i64), Templates>,
+    /// Time per stage summed over all fields read, ms: observation, then `Reading::stage_ms`.
+    pub stage_ms: [f64; 5],
+    /// Pen heights (phases) of confident readings per (set, field, font size); the layout fixes
+    /// them for a match, so after `PEN_VOTES` the median is used instead of a search.
+    pen_votes: HashMap<(usize, Field, i64), Vec<i32>>,
 }
+
+/// Confident readings of a field before its pen height is fixed for the match.
+const PEN_VOTES: usize = 3;
 
 impl Default for LearnedReader {
     fn default() -> Self {
@@ -79,6 +87,8 @@ impl LearnedReader {
             votes: vec![(0, 0.0); n],
             frames_seen: 0,
             templates: HashMap::new(),
+            stage_ms: [0.0; 5],
+            pen_votes: HashMap::new(),
         }
     }
 
@@ -122,7 +132,10 @@ impl LearnedReader {
             } else {
                 fl.colour
             };
-            let Some(obs) = observe::observe(strip, (0, 0), fl, u, rgb, None) else {
+            let clock = std::time::Instant::now();
+            let obs = observe::observe(strip, (0, 0), fl, u, rgb, None);
+            self.stage_ms[0] += clock.elapsed().as_secs_f64() * 1e3;
+            let Some(obs) = obs else {
                 out.push(FieldReading {
                     field,
                     reading: None,
@@ -137,8 +150,27 @@ impl LearnedReader {
                 Grammar::Number
             };
             let k = obs.k;
+            let key = (si, field, (k * 1e5).round() as i64);
+            let pen = match self.pen_votes.get(&key) {
+                Some(v) if v.len() >= PEN_VOTES => {
+                    let mut v = v.clone();
+                    v.sort();
+                    PenY::Fixed(v[v.len() / 2])
+                }
+                _ => PenY::Search(obs.top + pen_y * k),
+            };
             let t = self.templates(si, field.kind(), k);
-            let reading = read::read(&obs, t, grammar, field.max_len(), obs.top + pen_y * k);
+            let reading = read::read(&obs, t, grammar, field.max_len(), pen);
+            if let (Some(r), PenY::Search(_)) = (&reading, pen) {
+                if r.confidence() >= MIN_MARGIN {
+                    self.pen_votes.entry(key).or_default().push(r.pen_yq);
+                }
+            }
+            if let Some(r) = &reading {
+                for (sum, v) in self.stage_ms[1..].iter_mut().zip(r.stage_ms) {
+                    *sum += v;
+                }
+            }
             out.push(FieldReading {
                 field,
                 reading,

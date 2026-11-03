@@ -155,6 +155,10 @@ pub struct Reading {
     pub char_margin: Vec<f64>,
     /// Glyph pens in region pixels.
     pub pens: Vec<(f32, f32)>,
+    /// Time spent per stage, ms: pen height search, chain search, re-scoring, confidence.
+    pub stage_ms: [f64; 4],
+    /// Pen height in phases (the same for all glyphs before refinement).
+    pub pen_yq: i32,
 }
 
 impl Reading {
@@ -217,14 +221,21 @@ fn refine(o: &Obs, t: &Templates, gs: &mut [Placed], dx: i32, dy: i32) -> f64 {
     cur
 }
 
-/// Reads the field. `pen_y` is the calibrated pen height (region pixels). None if nothing
-/// valid is found.
+/// The pen height of a field: searched around the calibrated one (region pixels), or already
+/// known for this match (phases).
+#[derive(Debug, Clone, Copy)]
+pub enum PenY {
+    Search(f32),
+    Fixed(i32),
+}
+
+/// Reads the field. None if it shows no ink or nothing valid is found.
 pub fn read(
     o: &Obs,
     t: &Templates,
     grammar: Grammar,
     max_len: usize,
-    pen_y: f32,
+    pen: PenY,
 ) -> Option<Reading> {
     const P: i32 = 24; // padding of the score image so templates never need bounds checks
     let ph = PHASES as i32;
@@ -287,6 +298,27 @@ pub fn read(
     };
     let xlo = -4 * ph;
     let nx = (o.w as i32 * ph - xlo) as usize;
+    // Only pens whose glyph would overlap ink can be part of the best chain (a glyph over no
+    // ink only adds error, and numbers have no gaps), so the search is limited to those.
+    let ink_cols: Vec<usize> = (0..o.w)
+        .filter(|&x| (0..o.h).any(|y| o.mask[y * o.w + x] && o.img[y * o.w + x] >= 60.0 / 255.0))
+        .collect();
+    let (Some(&ink0), Some(&ink1)) = (ink_cols.first(), ink_cols.last()) else {
+        return None;
+    };
+    let reach_left = t
+        .tpl
+        .iter()
+        .flatten()
+        .map(|tp| tp.x0 + tp.w as i32)
+        .max()
+        .unwrap_or(0);
+    let reach_right = t.tpl.iter().flatten().map(|tp| tp.x0).min().unwrap_or(0);
+    let xi_of = |px: i32| ((px * ph - xlo).clamp(0, nx as i32)) as usize;
+    let (xi0, xi1) = (
+        xi_of(ink0 as i32 - reach_left),
+        xi_of(ink1 as i32 - reach_right + 2),
+    );
     // advance window (phases) after each character
     let win: Vec<(i32, i32)> = cis
         .iter()
@@ -299,7 +331,7 @@ pub fn read(
         .collect();
     let gains_at = |yq: i32| -> Vec<f32> {
         let mut g = vec![0f32; nx * nd];
-        for xi in 0..nx {
+        for xi in xi0..xi1 {
             let xq = xlo + xi as i32;
             for (di, &ci) in cis.iter().enumerate() {
                 let (tp, x, y) = t.get(ci, xq, yq);
@@ -308,16 +340,26 @@ pub fn read(
         }
         g
     };
+    let clock = std::time::Instant::now();
+    let mut stage_ms = [0f64; 4];
+    let mut lap = |s: usize| stage_ms[s] = clock.elapsed().as_secs_f64() * 1e3;
     let maxl = max_len.max(1);
     // 1) pen height: best chain of any length for each candidate height (max-plus DP)
-    let yq0 = (pen_y * phf).round() as i32;
+    let (yq0, y_range) = match pen {
+        PenY::Search(y) => ((y * phf).round() as i32, Y_RANGE),
+        PenY::Fixed(yq) => (yq, 0),
+    };
     let mut ybest = (f32::MIN, yq0, vec![]);
-    for yq in yq0 - Y_RANGE..=yq0 + Y_RANGE {
+    for yq in yq0 - y_range..=yq0 + y_range {
+        if y_range == 0 {
+            ybest = (0.0, yq, gains_at(yq));
+            break;
+        }
         let g = gains_at(yq);
         // f[x][l][d]: best chain ending with character d at x, length l+1
         let mut f = vec![f32::MIN; nx * maxl * nd];
         let mut top = f32::MIN;
-        for x in 0..nx {
+        for x in xi0..xi1 {
             for l in 0..maxl {
                 // the best predecessor does not depend on this character
                 let prev = if l == 0 {
@@ -349,6 +391,7 @@ pub fn read(
         }
     }
     let (_, yq, g) = ybest;
+    lap(0);
     // 2) K-best chains at that height, per grammar state (a ratio: before or after its slash, so
     // that chains with a slash survive the pruning). best[(x, l, state)]: entries
     // (score, char, prev x, prev rank, prev state)
@@ -356,7 +399,7 @@ pub fn read(
     let ns = if grammar == Grammar::Ratio { 2 } else { 1 };
     let idx = |x: usize, l: usize, s: usize| (x * maxl + l) * ns + s;
     let mut best: Vec<Vec<Entry>> = vec![vec![]; nx * maxl * ns];
-    for x in 0..nx {
+    for x in xi0..xi1 {
         for l in 0..maxl {
             for s in 0..ns {
                 let mut c: Vec<Entry> = Vec::with_capacity(K + 1);
@@ -448,6 +491,7 @@ pub fn read(
         gs.reverse();
         gs
     };
+    lap(1);
     // 3) joint re-scoring of the best distinct valid strings
     let text_of = |gs: &[Placed]| -> String { gs.iter().map(|g| t.chars[g.0]).collect() };
     let n_ink = (0..o.w * o.h)
@@ -481,6 +525,7 @@ pub fn read(
         .unwrap_or(f64::INFINITY)
         .min(empty_cost);
     let margin = to_rmse(runner_up) - rmse;
+    lap(2);
     // 4) per-character margins: every other character at each position (x +-2 phases)
     let alphabet: Vec<usize> = cis.clone();
     let mut char_margin = vec![];
@@ -512,6 +557,10 @@ pub fn read(
         }
         char_margin.push(m);
     }
+    lap(3);
+    for s in (1..4).rev() {
+        stage_ms[s] -= stage_ms[s - 1];
+    }
     let pens = gs
         .iter()
         .map(|g| (g.1 as f32 / phf, g.2 as f32 / phf))
@@ -522,6 +571,8 @@ pub fn read(
         margin,
         char_margin,
         pens,
+        stage_ms,
+        pen_yq: yq,
     })
 }
 
