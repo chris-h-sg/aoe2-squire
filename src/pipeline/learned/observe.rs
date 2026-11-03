@@ -198,6 +198,7 @@ fn panel(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bo
     let bg = inpaint(rgb, &dil, w, h);
     let mut cov = vec![0f32; w * h];
     let mut wt = vec![0f32; w * h];
+    let mut mask = vec![true; w * h];
     for i in 0..w * h {
         let (mut num, mut den) = (0f32, 0f32);
         for ch in 0..3 {
@@ -208,18 +209,18 @@ fn panel(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bo
         cov[i] = if dil[i] { num / den.max(1.0) } else { 0.0 };
         wt[i] = den / (3.0 * 255.0 * 255.0);
         // A pixel whose colour, in the text colour's own channels, is not the background blended
-        // towards the text colour (an icon's yellow highlight next to white text, say) is neither
-        // text nor background: ignored.
+        // towards the text colour (an icon's yellow highlight next to white text, say) is not
+        // text: unscored, so that any ink drawn there counts as wrong.
         if dil[i] {
             let v = cov[i].clamp(0.0, 1.0);
             if chans.iter().any(|&ch| {
                 (rgb[i][ch] - (bg[i][ch] + v * (c[ch] - bg[i][ch]))).abs() > PANEL_COLOUR_TOL
             }) {
-                wt[i] = 0.0;
+                mask[i] = false;
             }
         }
     }
-    (cov, vec![true; w * h], wt)
+    (cov, mask, wt)
 }
 
 /// Fills the `hole` pixels with a harmonic interpolation of the others (per channel): first
