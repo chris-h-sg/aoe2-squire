@@ -256,6 +256,8 @@ pub struct CaptureOptions {
     /// Save masked frames of the match to `<dir>/telemetry_<match start>/` (see `record`).
     pub record_frames: Option<PathBuf>,
     pub record: RecordOptions,
+    /// Digit matcher reading the panel.
+    pub matcher: pipeline::Matcher,
     /// Record the screen with ffmpeg for the length of each match (dev builds only).
     #[cfg(feature = "dev-tools")]
     pub record_video: Option<video::VideoOptions>,
@@ -267,6 +269,7 @@ impl Default for CaptureOptions {
             log_dir: PathBuf::from("logs"),
             record_frames: None,
             record: RecordOptions::default(),
+            matcher: pipeline::Matcher::default(),
             #[cfg(feature = "dev-tools")]
             record_video: None,
         }
@@ -357,6 +360,7 @@ pub fn capture_match<S: FrameSource>(
     let mut telemetry_path: Option<PathBuf> = None;
     let mut recorder: Option<FrameRecorder> = None;
     let mut frames_dir: Option<PathBuf> = None;
+    let mut reader = pipeline::PanelReader::new(opts.matcher, ui_map, templates);
     #[cfg(feature = "dev-tools")]
     let _stop_video = opts.record_video.as_ref().map(|_| video::StopOnDrop);
 
@@ -378,7 +382,7 @@ pub fn capture_match<S: FrameSource>(
         }) = frame
         {
             let start = Instant::now();
-            let process_result = pipeline::process_frame(&image, ui_map, templates);
+            let process_result = reader.process_frame(&image);
 
             match state {
                 CaptureState::WaitingForGame => {

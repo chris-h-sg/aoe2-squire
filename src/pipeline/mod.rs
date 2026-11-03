@@ -2,6 +2,7 @@ pub mod anchor;
 pub mod canvas;
 pub mod filter;
 pub mod interpolation;
+pub mod learned;
 pub mod matcher;
 pub mod segment;
 
@@ -274,6 +275,58 @@ impl<'a> ExtractorPipeline<'a> {
             .insert("color".to_string(), pop_color.to_string());
 
         Some(results)
+    }
+}
+
+/// Which digit matcher reads the panel numbers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Matcher {
+    /// Splits each number into characters and matches each against scaled templates.
+    #[default]
+    Split,
+    /// Learned glyph shapes, whole numbers at once (`learned`).
+    Learned,
+}
+
+impl Matcher {
+    pub fn parse(s: &str) -> Option<Matcher> {
+        match s {
+            "split" => Some(Matcher::Split),
+            "learned" => Some(Matcher::Learned),
+            _ => None,
+        }
+    }
+}
+
+/// Reads the frames of one match with either matcher (the learned one keeps the shape set it
+/// detected on the first frames).
+pub enum PanelReader<'a> {
+    Split {
+        ui_map: &'a UiMap,
+        templates: &'a Templates,
+    },
+    Learned {
+        ui_map: &'a UiMap,
+        reader: Box<learned::LearnedReader>,
+    },
+}
+
+impl<'a> PanelReader<'a> {
+    pub fn new(matcher: Matcher, ui_map: &'a UiMap, templates: &'a Templates) -> Self {
+        match matcher {
+            Matcher::Split => PanelReader::Split { ui_map, templates },
+            Matcher::Learned => PanelReader::Learned {
+                ui_map,
+                reader: Box::new(learned::LearnedReader::new()),
+            },
+        }
+    }
+
+    pub fn process_frame(&mut self, img: &DynamicImage) -> Option<Results> {
+        match self {
+            PanelReader::Split { ui_map, templates } => process_frame(img, ui_map, templates),
+            PanelReader::Learned { ui_map, reader } => reader.process_frame(img, ui_map),
+        }
     }
 }
 

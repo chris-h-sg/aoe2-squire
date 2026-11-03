@@ -1,0 +1,76 @@
+{
+    "_comment": "Screenshots the shape sets are learned from (cargo run --release --bin learn_shapes; see data/digit_shapes/README.md). Paths are relative to the repository root; recordings/ is not in git (data release). value_sets name the numbers a group of screenshots shows, by field.",
+    "value_sets": {
+        "sweep": {
+            "wood_vils": "25", "food_vils": "17", "gold_vils": "8", "stone_vils": "9", "population_vils": "64", "idle_vils": "3",
+            "wood_total": "18249", "food_total": "16800", "gold_total": "10000", "stone_total": "3400", "population_total": "64/75"
+        },
+        "all_digits": {
+            "wood_vils": "25", "food_vils": "17", "gold_vils": "8", "stone_vils": "9", "population_vils": "104", "idle_vils": "36",
+            "wood_total": "18139", "food_total": "14800", "gold_total": "10000", "stone_total": "2750", "population_total": "104/160"
+        }
+    },
+    "sets": [
+        {
+            "id": "base_default",
+            "layout": "base",
+            "font": "combined",
+            "description": "Base game panel, default font (the 'smooth' font option draws the same pixels). Anti-Alias Text on and off.",
+            "shots": [
+                ["recordings/screenshots/75-125_interval_5/default_75.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_80.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_85.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_90.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_95.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_100.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_105.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_110.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_115.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_120.png", "sweep"],
+                ["recordings/screenshots/75-125_interval_5/default_125.png", "sweep"],
+                ["recordings/screenshots/100_only/default_100_aa.png", "all_digits"],
+                ["recordings/screenshots/100_only/default_100_no_aa.png", "all_digits"]
+            ]
+        },
+        {
+            "id": "base_sans",
+            "layout": "base",
+            "font": "combined_sansserif",
+            "description": "Base game panel, sans-serif font. Anti-Alias Text on and off.",
+            "shots": [
+                ["recordings/screenshots/100_only/sans_100_aa.png", "all_digits"],
+                ["recordings/screenshots/100_only/sans_100_no_aa.png", "all_digits"]
+            ]
+        },
+        {
+            "id": "anne_hk_default",
+            "layout": "anne_hk",
+            "font": "combined",
+            "description": "Anne_HK resource panel mod, default font. Anti-Alias Text on and off.",
+            "shots": [
+                ["recordings/screenshots/100_only/anne_HK_default_100_aa.png", "all_digits"],
+                ["recordings/screenshots/100_only/anne_HK_default_100_no_aa.png", "all_digits"]
+            ]
+        },
+        {
+            "id": "anne_hk_smooth",
+            "layout": "anne_hk",
+            "font": "combined",
+            "description": "Anne_HK resource panel mod, smooth font. Anti-Alias Text on and off.",
+            "shots": [
+                ["recordings/screenshots/100_only/anne_HK_smooth_100_aa.png", "all_digits"],
+                ["recordings/screenshots/100_only/anne_HK_smooth_100_no_aa.png", "all_digits"]
+            ]
+        },
+        {
+            "id": "anne_hk_sans",
+            "layout": "anne_hk",
+            "font": "combined_sansserif",
+            "description": "Anne_HK resource panel mod, sans-serif font. Anti-Alias Text on and off.",
+            "shots": [
+                ["recordings/screenshots/100_only/anne_HK_sans_100_aa.png", "all_digits"],
+                ["recordings/screenshots/100_only/anne_HK_sans_100_no_aa.png", "all_digits"]
+            ]
+        }
+    ]
+}

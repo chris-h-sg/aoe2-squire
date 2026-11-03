@@ -9,12 +9,24 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
     let x_min_scan = (width as f64 * ANCHOR_MIN_X) as u32;
     let x_max_scan = ((width as f64 * ANCHOR_MAX_X) as u32).min(width - 1);
 
-    let rgb = img.to_rgb8();
+    if x_max_scan < x_min_scan || y_max_scan < y_min_scan {
+        return None;
+    }
+    // Only the scan region is read: convert just that (not the whole frame).
+    let region = img
+        .crop_imm(
+            x_min_scan,
+            y_min_scan,
+            x_max_scan + 1 - x_min_scan,
+            y_max_scan + 1 - y_min_scan,
+        )
+        .to_rgb8();
+    let pixel = |x: u32, y: u32| region.get_pixel(x - x_min_scan, y - y_min_scan);
     let mut best_rightmost_x: Option<u32> = None;
 
     for y in y_min_scan..=y_max_scan {
         for x in x_min_scan..=x_max_scan {
-            let [r, g, b] = rgb.get_pixel(x, y).0;
+            let [r, g, b] = pixel(x, y).0;
             let (r_i, g_i, b_i) = (r as i16, g as i16, b as i16);
 
             // Red must be at least RED_DIFF_THRESHOLD higher than both Green and Blue
@@ -27,7 +39,7 @@ pub fn detect_ui_scale(img: &DynamicImage, baseline_margin: f64) -> Option<f64> 
 
                 for bx in x_min..=x {
                     for by in y_min..=y_max {
-                        let [br, bg, bb] = rgb.get_pixel(bx, by).0;
+                        let [br, bg, bb] = pixel(bx, by).0;
                         let (br_i, bg_i, bb_i) = (br as i16, bg as i16, bb as i16);
                         if br_i - bg_i >= RED_DIFF_THRESHOLD && br_i - bb_i >= RED_DIFF_THRESHOLD {
                             count += 1;

@@ -6,7 +6,25 @@ This roadmap outlines the development path for the AoE2 Squire, prioritizing cor
 
 In this order; each step is its own piece of work (and session), tracked against this list:
 
-1. **Digit matcher replacement** (see "Digit Recognition Review" below): the measurements show matching is both the main CPU cost and, through splitting, the main cause of misreads, so one change addresses both. It includes cropping the panel strip once (see "Vision CPU Cost").
+1. **Digit matcher replacement** (see "Digit Recognition Review" below): the measurements show matching is both the main CPU cost and, through splitting, the main cause of misreads, so one change addresses both. It includes cropping the panel strip once (see "Vision CPU Cost"). **In progress:** the learned-shape matcher runs end to end behind `--matcher learned` (DECISION_LOG.md, "Learned Glyph Shapes"); the split matcher stays the default. First run (2026-11-03):
+
+    | Fixture group | Split matcher | Learned matcher |
+    |---|---|---|
+    | Screenshots | 282/297 | 252/297 |
+    | Video stills | 625/626 | 580/626 |
+    | Game 1 | 107/109 | 108/109 |
+    | Game 2 | 67/67 | 66/67 |
+    | Game 3 (75% UI) | 37/56 | 52/56 |
+    | Total | 1118/1155 | 1058/1155 |
+    | Time per 1080p frame | 23.5 ms | 167 ms |
+
+    Weak spots before it can become the default:
+    *   **Idle count**: unread on 60 of 300 recorded game-1 frames (26/217 game 2, 85/148 game 3). It sits over its icon, so the background estimate is poor (training fit 36 grey levels against ~20 elsewhere), and margins fall under the threshold. In the frames checked, the reading itself was right.
+    *   **Video stills**: compression lowers the fits; the gold villager count 23 in `extract-housed` is unread throughout.
+    *   **Screenshots at 2560x1440, 3440x1440, 5120x1440 and 1920x1200**: the digits are heavier than in the training screenshots (fit 75-100), so most totals are unread. No training screenshots exist at those resolutions.
+    *   **Housed population over the yellow overlay** (`housed_overlay`, `extract-housed`): the glyphs are about 30% wider apart than the layout rule predicts at that frame's UI scale; not understood yet.
+    *   **Sans-serif fixtures**: mostly unread (the split matcher doesn't support them either); the `base_sans` shapes come from two screenshots.
+    *   **CPU**: 167 ms per frame, 7x the split matcher; about 80% of it is the 5 totals (21-36 ms each; villager counts 7-10 ms), spread over the pen-height search (9 heights), the joint re-scoring of 30 candidate strings and the per-character confidence. Nothing is cached between frames yet.
 2. **Quick replay fixes**: the cancelled final Age-up click and in-order matching of bursts of identical spends (both under "Technical Debt" below). Independent of 1.
 3. **Survive a short loss of the panel** (below). Touches the capture loop; independent of 1.
 4. **Sync phase 2 remainder**: explain game 1's 5 segments, then record a regular-speed replay playback at 1x/2x/1x (game 3 has no speed change within the supported 0.5-4.0).

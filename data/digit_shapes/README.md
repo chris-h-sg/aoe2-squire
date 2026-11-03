@@ -1,0 +1,61 @@
+# Learned glyph shapes
+
+The learned-shape matcher (`src/pipeline/learned/`, `--matcher learned`) reads the resource panel
+by rendering candidate numbers from these shapes and keeping the one that fits the pixels best.
+Each shape is the coverage of one character as the game actually draws it on screen, learned
+from screenshots with known values. The shapes differ from the font atlas (`DECISION_LOG.md`,
+"Learned Glyph Shapes").
+
+## Sets
+
+One set per font and panel layout. Anti-Alias Text on and off use the same shapes.
+
+| Set | Layout | Font | Learned from |
+|---|---|---|---|
+| `base_default` | base | default (`combined`); the "smooth" option draws the same pixels | UI sizes 75-125% in steps of 5, and both AA settings at 100% |
+| `base_sans` | base | sans-serif (`combined_sansserif`) | 100%, both AA settings |
+| `anne_hk_default` | Anne_HK mod | default | 100%, both AA settings |
+| `anne_hk_smooth` | Anne_HK mod | smooth | 100%, both AA settings |
+| `anne_hk_sans` | Anne_HK mod | sans-serif | 100%, both AA settings |
+
+Each set has two label types: `count` (villager counts and idle villagers) and `total`
+(resource totals and population). Text size follows the layout rule (`PointSize * 0.625 *
+ui_scale` pixels), so shapes learned at one UI size read the others. Tested on the base font:
+shapes learned from 100% alone read every other size from 75% to 125% correctly.
+
+## Format
+
+- `<set>.png`: 8-bit grey, the coverage images (0-255 for 0-1). One row of characters per label
+  type. Each pixel is one font-atlas unit (the font's em is 64 units).
+- `<set>.json`:
+  - `layout`: the panel layout (`base` or `anne_hk`, see `src/pipeline/learned/layout.rs`);
+  - `pen_y`: per field, the pen height below the top of its label box, in atlas units;
+  - `kinds.count` and `kinds.total`: per character, its rectangle in the PNG (`x`, `y`, `w`, `h`),
+    the image origin relative to the pen (`ox`, `oy`, atlas units), and the pen advance to the
+    next character (`adv`, atlas units). The advance is measured on the screenshots, because on
+    screen it differs from the font's metrics: the slash advances about as far as a digit.
+
+A character a label type never shows in the training screenshots takes the other type's shape.
+'/' only occurs in the population total, so counts always borrow it.
+
+## Regenerating
+
+```
+cargo run --release --bin learn_shapes -- --game-dir "<Steam>/steamapps/common/AoE2DE"
+```
+
+- `--only <set>` learns one set.
+- `--out <dir>` writes the files somewhere else.
+
+The screenshots and their values are listed in `training.json`; they live in `recordings/` (not
+in git, part of the data release). The game directory provides the starting point: the font
+metrics and atlas in `resources/_common/fonts/`. `base_default` takes about 4 minutes, the others
+under a minute. After regenerating, run `cargo test --test vision_fixtures` and compare the
+learned matcher's accuracy with `test_bench/snapshots/vision_accuracy_learned.json`.
+
+To add a font or UI mod:
+1. Take screenshots that show every digit in both label types (for example the values in
+   `training.json`'s `all_digits`), with Anti-Alias Text on and off.
+2. Add the mod's layout to `layout.rs` (from its `widgetui/resourcepanel.json`) if it moves or
+   resizes the labels.
+3. Add a set to `training.json` and to `embedded_sets` in `shapes.rs`.

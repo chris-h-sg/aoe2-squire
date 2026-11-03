@@ -10,6 +10,11 @@
 //!
 //! The total number of correct fields must not drop below `ACCURACY_BASELINE`; regenerate it
 //! after an improvement with `UPDATE_SNAPSHOTS=1 cargo test --test vision_fixtures`.
+//!
+//! `vision_fixtures_learned` runs the same fixtures through the learned-shape matcher
+//! (`pipeline::learned`), one fresh reader per image (so each image also tests shape-set
+//! detection). Known failures belong to the split matcher, so it only checks its own accuracy
+//! baseline (`LEARNED_BASELINE`) and lists every wrong field.
 mod common;
 
 use aoe2_squire::{pipeline, types};
@@ -27,6 +32,9 @@ const MANIFESTS: [&str; 5] = [
     "test_bench/game_frames/game3-playback-75ui/expected_values.json",
 ];
 const ACCURACY_BASELINE: &str = "test_bench/snapshots/vision_accuracy.json";
+const LEARNED_BASELINE: &str = "test_bench/snapshots/vision_accuracy_learned.json";
+/// Fixture group names for the per-group summary, by manifest.
+const GROUPS: [&str; 5] = ["screenshots", "video stills", "game 1", "game 2", "game 3"];
 const GAME_DETECTED: &str = "game_detected";
 
 type Values = HashMap<String, HashMap<String, String>>;
@@ -50,6 +58,7 @@ struct ImageEntry {
 
 struct Fixture {
     path: PathBuf,
+    group: &'static str,
     name: String,
     /// "category.sub_key" -> expected value; None for a no-game frame.
     expected: Option<BTreeMap<String, String>>,
@@ -66,7 +75,7 @@ impl Fixture {
 
 fn load_fixtures() -> Vec<Fixture> {
     let mut fixtures = vec![];
-    for manifest_path in MANIFESTS {
+    for (manifest_path, group) in MANIFESTS.into_iter().zip(GROUPS) {
         let path = common::root().join(manifest_path);
         let manifest: Manifest = serde_json::from_str(
             &std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {}", manifest_path, e)),
@@ -100,6 +109,7 @@ fn load_fixtures() -> Vec<Fixture> {
             });
             fixtures.push(Fixture {
                 path: dir.join(&name),
+                group,
                 name: path
                     .parent()
                     .unwrap()
@@ -126,9 +136,10 @@ fn check_fixture(
     f: &Fixture,
     ui_map: &types::UiMap,
     templates: &types::Templates,
+    matcher: pipeline::Matcher,
 ) -> Vec<FieldResult> {
     let img = image::open(&f.path).unwrap_or_else(|e| panic!("{}: {}", f.name, e));
-    let results = pipeline::process_frame(&img, ui_map, templates);
+    let results = pipeline::PanelReader::new(matcher, ui_map, templates).process_frame(&img);
 
     let mut out = vec![FieldResult {
         field: GAME_DETECTED.to_string(),
@@ -162,9 +173,8 @@ struct Tally {
     total: usize,
 }
 
-#[test]
-fn vision_fixtures() {
-    let fixtures = load_fixtures();
+/// Runs every fixture through `matcher` (in parallel), in fixture order.
+fn run_all(fixtures: &[Fixture], matcher: pipeline::Matcher) -> Vec<(usize, Vec<FieldResult>)> {
     let ui_map: types::UiMap =
         serde_json::from_str(&std::fs::read_to_string(common::root().join("ui_map.json")).unwrap())
             .unwrap();
@@ -179,13 +189,41 @@ fn vision_fixtures() {
             s.spawn(|| loop {
                 let i = next.fetch_add(1, Ordering::SeqCst);
                 let Some(f) = fixtures.get(i) else { break };
-                let r = check_fixture(f, &ui_map, &templates);
+                let r = check_fixture(f, &ui_map, &templates, matcher);
                 results.lock().unwrap().push((i, r));
             });
         }
     });
     let mut results = results.into_inner().unwrap();
     results.sort_by_key(|(i, _)| *i);
+    results
+}
+
+/// Prints correct/total fields (game_detected included) per fixture group.
+fn print_groups(fixtures: &[Fixture], results: &[(usize, Vec<FieldResult>)]) {
+    println!("By fixture group:");
+    for group in GROUPS {
+        let mut t = Tally::default();
+        for (i, fields) in results {
+            if fixtures[*i].group == group {
+                t.total += fields.len();
+                t.correct += fields.iter().filter(|r| r.correct).count();
+            }
+        }
+        println!(
+            "  {:<14} {:>4}/{:<4} {:>6.1}%",
+            group,
+            t.correct,
+            t.total,
+            100.0 * t.correct as f64 / t.total.max(1) as f64
+        );
+    }
+}
+
+#[test]
+fn vision_fixtures() {
+    let fixtures = load_fixtures();
+    let results = run_all(&fixtures, pipeline::Matcher::Split);
 
     let mut tally: BTreeMap<String, Tally> = BTreeMap::new();
     let mut regressions = vec![];
@@ -233,6 +271,7 @@ fn vision_fixtures() {
         100.0 * overall.correct as f64 / overall.total as f64
     );
     println!("Known failures ({}):\n{}", known.len(), known.join("\n"));
+    print_groups(&fixtures, &results);
 
     let baseline_path = common::root().join(ACCURACY_BASELINE);
     let summary = serde_json::json!({
@@ -282,5 +321,88 @@ fn vision_fixtures() {
         overall.total, base_total,
         "Fixture set changed; regenerate {} with UPDATE_SNAPSHOTS=1",
         ACCURACY_BASELINE
+    );
+}
+
+#[test]
+fn vision_fixtures_learned() {
+    let fixtures = load_fixtures();
+    let results = run_all(&fixtures, pipeline::Matcher::Learned);
+
+    let mut tally: BTreeMap<String, Tally> = BTreeMap::new();
+    let mut wrong = vec![];
+    for (i, fields) in &results {
+        let f = &fixtures[*i];
+        for r in fields {
+            let t = tally.entry(r.field.clone()).or_default();
+            t.total += 1;
+            t.correct += r.correct as usize;
+            if !r.correct {
+                let split = if f.known_failure(&r.field).is_some() {
+                    " (split matcher wrong too)"
+                } else {
+                    ""
+                };
+                wrong.push(format!("  {} {}: {}{}", f.name, r.field, r.detail, split));
+            }
+        }
+    }
+    let overall = tally.values().fold(Tally::default(), |a, t| Tally {
+        correct: a.correct + t.correct,
+        total: a.total + t.total,
+    });
+    println!("Learned matcher accuracy over {} fixtures:", fixtures.len());
+    for (field, t) in &tally {
+        println!(
+            "  {:<20} {:>4}/{:<4} {:>6.1}%",
+            field,
+            t.correct,
+            t.total,
+            100.0 * t.correct as f64 / t.total as f64
+        );
+    }
+    println!(
+        "  {:<20} {:>4}/{:<4} {:>6.1}%",
+        "TOTAL",
+        overall.correct,
+        overall.total,
+        100.0 * overall.correct as f64 / overall.total as f64
+    );
+    println!("Wrong fields ({}):\n{}", wrong.len(), wrong.join("\n"));
+    print_groups(&fixtures, &results);
+
+    let baseline_path = common::root().join(LEARNED_BASELINE);
+    let summary = serde_json::json!({
+        "correct": overall.correct,
+        "total": overall.total,
+        "fields": tally.iter().map(|(k, t)| (k.clone(), serde_json::json!(format!("{}/{}", t.correct, t.total))))
+            .collect::<serde_json::Map<_, _>>(),
+    });
+    if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
+        std::fs::write(
+            &baseline_path,
+            serde_json::to_string_pretty(&summary).unwrap() + "\n",
+        )
+        .unwrap();
+        eprintln!("Accuracy baseline written to {}", baseline_path.display());
+    }
+    let baseline: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&baseline_path).unwrap_or_else(|e| {
+            panic!("{}: {} (run with UPDATE_SNAPSHOTS=1)", LEARNED_BASELINE, e)
+        }),
+    )
+    .unwrap();
+    assert!(
+        overall.correct >= baseline["correct"].as_u64().unwrap() as usize,
+        "Learned matcher accuracy dropped: {}/{} correct fields, baseline {}",
+        overall.correct,
+        overall.total,
+        baseline["correct"]
+    );
+    assert_eq!(
+        overall.total,
+        baseline["total"].as_u64().unwrap() as usize,
+        "Fixture set changed; regenerate {} with UPDATE_SNAPSHOTS=1",
+        LEARNED_BASELINE
     );
 }

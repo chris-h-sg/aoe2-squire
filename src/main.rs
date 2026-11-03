@@ -231,6 +231,18 @@ fn run_app() -> Result<(), Box<dyn Error>> {
 
     let templates = pipeline::matcher::load_embedded_templates();
 
+    // Digit matcher: --matcher split (default) or learned
+    let matcher = match args.iter().position(|arg| arg == "--matcher") {
+        Some(pos) => match args.get(pos + 1).and_then(|m| pipeline::Matcher::parse(m)) {
+            Some(m) => m,
+            None => {
+                eprintln!("--matcher needs split or learned");
+                std::process::exit(2);
+            }
+        },
+        None => pipeline::Matcher::default(),
+    };
+
     if args.len() > 1 && args[1] == "--parse-replay" {
         if args.len() < 3 {
             eprintln!("Usage: aoe2-squire --parse-replay <path/to/replay.aoe2record>");
@@ -253,6 +265,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
         let mut source = capture::source::ImageSequenceSource::from_dir(dir)?;
         let opts = capture::CaptureOptions {
             log_dir: dir.join("replayed"),
+            matcher,
             ..Default::default()
         };
         match capture::capture_match(&mut source, &ui_map, &templates, &opts)? {
@@ -270,6 +283,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
     };
     let capture_opts = capture::CaptureOptions {
         record_frames: flag_value("--record-frames").map(std::path::PathBuf::from),
+        matcher,
         #[cfg(feature = "dev-tools")]
         record_video: video_options(&args).unwrap_or_else(|e| {
             eprintln!("{}", e);
@@ -302,7 +316,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
                 .map_err(|e| format!("failed to load image {}: {}", image_path, e))?;
             println!("Image: {}x{}", img.width(), img.height());
 
-            match pipeline::process_frame(&img, &ui_map, &templates) {
+            match pipeline::PanelReader::new(matcher, &ui_map, &templates).process_frame(&img) {
                 Some(results) => {
                     let mut keys: Vec<_> = results.keys().collect();
                     keys.sort();

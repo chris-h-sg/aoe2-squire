@@ -97,6 +97,17 @@ This log captures the high-level architectural and design decisions of the AoE2 
 *   **Decision**: Provide a Windows file chooser fallback when automated replay discovery fails, defaulting to the most recently modified savegame directory.
 *   **Reasoning**: Handles edge cases for advanced users (casters, analysts) where the replay file might be manipulated before the capture starts, without breaking the automated flow.
 
+## Digit Recognition
+
+### 1. Learned Glyph Shapes (instead of rendering the game's font, alongside the split matcher)
+*   **Decision**: A second matcher (`src/pipeline/learned/`, `--matcher learned`) reads each panel number as a whole. It renders candidate strings from per-character coverage images learned from screenshots (`data/digit_shapes/`, `learn_shapes`), with every glyph at its own sub-pixel position, and keeps the best fit. A dynamic programme over x replaces splitting. The size comes from the game's layout rule (`PointSize * 0.625 * ui_scale`, per layout in `layout.rs`). Every character gets a confidence (the margin to its best substitute), and a doubtful field is unread. Font, layout and shape set are detected on the first frames of a match. The split matcher stays the default until the learned one beats it on every fixture group and costs less CPU.
+*   **Reasoning**:
+    *   Splitting is the main cause of misreads (measured in `ROADMAP.md`, "Digit Recognition Review"): at 75% UI a 0 falls apart into two pieces. Reading whole numbers removes splitting.
+    *   Rendering the digits exactly from the game's own files was tried first (shader port, 2026-11-03), without disassembling the game, using shader and font files only. The shaders port exactly: the Rust port equals the game's shader run on the GPU. But the glyph outlines on screen differ from the font atlas, so no fit of the runtime unknowns reproduces the pixels (best ~40-55 grey levels RMSE). Anti-Alias Text changes the digits in a way that isn't a blur of the AA-off image, and RenderDoc can't attach (anti-tamper). Learned shapes fit the screen at ~15-25 instead.
+    *   Learned shapes generalise across sizes and settings. Shapes learned from the 100% UI alone read every other size from 75% to 125%. Shapes learned with AA on read AA off (all fields, margins within ~2). Villager counts and totals need their own shapes (the outline changes the glyph edges), but they share size rule and positions.
+    *   Positions and sizes come from the layout file (`widgetui/resourcepanel.json`), so a UI mod needs only its layout and a few screenshots, not new code.
+*   **Limits** (2026-11-03, first end-to-end run): 1058/1155 fixture fields against the split matcher's 1118. It is better on game 3 (75% UI, 52/56 against 37/56) and fixes game 1's 10 read as 111. It is worse on video stills (580/626 against 625/626, compression) and on the older 1440p/1200p screenshots (heavier glyphs than the training screenshots). The idle count over its icon is often unread. 167 ms per 1080p frame against 23.5 ms. Details in `ROADMAP.md`.
+
 ## UI Mod Support
 
 ### 1. Dynamic Mod Detection (Anne_HK)
