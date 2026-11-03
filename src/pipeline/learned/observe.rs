@@ -52,6 +52,9 @@ const OUTLINED_COLOUR_TOL: f32 = 12.0;
 /// Panel text: a pixel is ink if its text-colour channels are this much brighter than the 30th
 /// percentile of its 9x9 neighbourhood.
 const INK_RISE: f32 = 20.0;
+/// Panel text: largest per-channel distance (0-255) of an ink pixel from the background blended
+/// towards the text colour; farther, the pixel is something else and is ignored.
+const PANEL_COLOUR_TOL: f32 = 20.0;
 
 /// Crops the field's search region from `frame` (whole frame or the panel strip; `origin` is
 /// `frame`'s origin in screen pixels) and measures the text coverage. `colour` overrides the
@@ -204,6 +207,17 @@ fn panel(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bo
         }
         cov[i] = if dil[i] { num / den.max(1.0) } else { 0.0 };
         wt[i] = den / (3.0 * 255.0 * 255.0);
+        // A pixel whose colour, in the text colour's own channels, is not the background blended
+        // towards the text colour (an icon's yellow highlight next to white text, say) is neither
+        // text nor background: ignored.
+        if dil[i] {
+            let v = cov[i].clamp(0.0, 1.0);
+            if chans.iter().any(|&ch| {
+                (rgb[i][ch] - (bg[i][ch] + v * (c[ch] - bg[i][ch]))).abs() > PANEL_COLOUR_TOL
+            }) {
+                wt[i] = 0.0;
+            }
+        }
     }
     (cov, vec![true; w * h], wt)
 }

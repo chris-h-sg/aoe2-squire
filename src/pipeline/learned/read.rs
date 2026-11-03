@@ -21,6 +21,8 @@ const K: usize = 2;
 /// Distinct strings re-scored jointly, and how many of the best of those get refined.
 const TOP_STRINGS: usize = 30;
 const REFINED: usize = 5;
+/// Refinement passes over all glyphs at most.
+const MAX_REFINE_PASSES: usize = 4;
 /// Pen heights searched around the calibrated one, in phases (1 px either way).
 const Y_RANGE: i32 = 4;
 /// Pen advance between neighbours: the learned one +- this many pixels.
@@ -320,8 +322,19 @@ impl<'a> Canvas<'a> {
         self.gs[i] = new;
     }
 
-    /// Moves each glyph in turn by up to `dx`/`dy` phases, keeping any improvement.
+    /// Moves each glyph in turn by up to `dx`/`dy` phases, keeping any improvement, until a pass
+    /// changes nothing (at most `MAX_REFINE_PASSES`), so that readings compared with each other
+    /// are all refined as far.
     fn refine(&mut self, dx: i32, dy: i32) {
+        for _ in 0..MAX_REFINE_PASSES {
+            if !self.refine_pass(dx, dy) {
+                break;
+            }
+        }
+    }
+
+    fn refine_pass(&mut self, dx: i32, dy: i32) -> bool {
+        let mut moved = false;
         for i in 0..self.gs.len() {
             let b = self.gs[i];
             let mut best = (self.cost, b);
@@ -339,8 +352,10 @@ impl<'a> Canvas<'a> {
             }
             if best.1 != b {
                 self.set(i, best.1);
+                moved = true;
             }
         }
+        moved
     }
 }
 

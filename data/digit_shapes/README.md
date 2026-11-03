@@ -18,8 +18,8 @@ One set per font and panel layout. Anti-Alias Text on and off use the same shape
 | `anne_hk_smooth` | Anne_HK mod | smooth | 100%, both AA settings |
 | `anne_hk_sans` | Anne_HK mod | sans-serif | 100%, both AA settings |
 
-Each set has two label types: `count` (villager counts and idle villagers) and `total`
-(resource totals and population). Text size follows the layout rule (`PointSize * 0.625 *
+Each set has two label types, by outline: `count` (villager counts, black outline) and `total`
+(resource totals, population and the idle count, no or a very thin outline). Text size follows the layout rule (`PointSize * 0.625 *
 ui_scale` pixels), so shapes learned at one UI size read the others. Tested on the base font:
 shapes learned from 100% alone read every other size from 75% to 125% correctly.
 

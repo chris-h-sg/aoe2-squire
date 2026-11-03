@@ -58,14 +58,16 @@ impl Field {
         Field::ALL.into_iter().find(|f| f.name() == name)
     }
 
-    /// The label type, which decides the glyph shapes used to read it.
+    /// The label type, which decides the glyph shapes used to read it. The idle count has (almost)
+    /// no outline, like the totals, so it shares their shapes (drawn at its own size).
     pub fn kind(self) -> Kind {
         match self {
             Field::WoodTotal
             | Field::FoodTotal
             | Field::GoldTotal
             | Field::StoneTotal
-            | Field::PopTotal => Kind::Total,
+            | Field::PopTotal
+            | Field::IdleVils => Kind::Total,
             _ => Kind::Count,
         }
     }
@@ -80,7 +82,9 @@ impl Field {
     }
 }
 
-/// Label type: villager counts (small, outlined) or resource totals (larger, over the panel).
+/// Label type, by outline: villager counts (black outline 0.05) or text without one (resource
+/// totals and population; idle count, outline 0.01). The outline changes the glyph edges on
+/// screen, so each type has its own shapes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Kind {
     Count,
