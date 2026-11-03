@@ -47,8 +47,16 @@ cargo run --release --bin learn_shapes -- --game-dir "<Steam>/steamapps/common/A
 - `--only <set>` learns one set.
 - `--out <dir>` writes the files somewhere else.
 
-The screenshots and their values are listed in `training.json`; they live in `recordings/` (not
-in git, part of the data release). The game directory provides the starting point: the font
+The screenshots and their values are listed in `training.json`; they live in
+`recordings/screenshots/` (not in git). They are the release `font-screenshots-2026-11` of
+[chris-h-sg/aoe2-squire-data](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/font-screenshots-2026-11):
+
+```bash
+gh release download font-screenshots-2026-11 -R chris-h-sg/aoe2-squire-data
+unzip font_screenshots.zip -d recordings/
+```
+
+The game directory provides the starting point: the font
 metrics and atlas in `resources/_common/fonts/`. `base_default` takes about 4 minutes, the others
 under a minute. After regenerating, run `cargo test --test vision_fixtures` and compare the
 learned matcher's accuracy with `test_bench/snapshots/vision_accuracy_learned.json`.
