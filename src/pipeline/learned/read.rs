@@ -153,7 +153,7 @@ impl Grammar {
 #[derive(Debug, Clone)]
 pub struct Reading {
     pub text: String,
-    /// RMSE (grey levels) over the ink region.
+    /// Weighted RMSE (grey levels, in units of the text's contrast) over the ink region.
     pub rmse: f64,
     /// Runner-up string's RMSE minus this one's (infinite if there is none).
     pub margin: f64,
@@ -620,10 +620,14 @@ pub fn read(
     lap(1);
     // 3) joint re-scoring of the best distinct valid strings
     let text_of = |gs: &[Placed]| -> String { gs.iter().map(|g| t.chars[g.0]).collect() };
+    // weighted RMS: the costs weigh each pixel by its text/background contrast, so they are
+    // divided by the summed weights of the ink region (not its pixel count); otherwise faint
+    // text would get small margins however clearly it reads
     let n_ink = (0..o.w * o.h)
         .filter(|&i| o.mask[i] && near_ink(o, i))
-        .count()
-        .max(1) as f64;
+        .map(|i| o.wt[i] as f64)
+        .sum::<f64>()
+        .max(1e-3);
     let to_rmse = |c: f64| (c / n_ink).sqrt() * 255.0;
     // unrefined cost of each candidate first; only the best REFINED get the per-glyph refinement
     // (it moves costs by a little, so a string far behind before it stays behind)
