@@ -10,20 +10,22 @@ In this order; each step is its own piece of work (and session), tracked against
 
     | Fixture group | Split matcher | Learned, before the accuracy fixes | Learned matcher now |
     |---|---|---|---|
-    | Screenshots 1080p | 212 / 15 / 0 | 204 / 5 / 18 | 220 / 4 / 3 |
+    | Screenshots 1080p | 212 / 12 / 0 | 204 / 5 / 18 | 220 / 1 / 3 |
     | Screenshots 1366x768 | 14 / 0 / 0 | 14 / 0 / 0 | 14 / 0 / 0 |
-    | Video stills | 625 / 1 / 0 | 580 / 6 / 40 | 621 / 1 / 4 |
+    | Video stills | 625 / 1 / 0 | 580 / 6 / 40 | 622 / 0 / 4 |
     | Game 1 | 107 / 2 / 0 | 108 / 0 / 1 | 109 / 0 / 0 |
     | Game 2 | 67 / 0 / 0 | 66 / 0 / 1 | 67 / 0 / 0 |
     | Game 3 (75% UI) | 37 / 19 / 0 | 54 / 0 / 2 | 56 / 0 / 0 |
-    | Total (incl. out of scope) | 1118 / 37 / 0 | 1060 / 15 / 80 | 1131 / 5 / 19 |
+    | Total (incl. out of scope) | 1118 / 34 / 0 | 1060 / 15 / 80 | 1132 / 1 / 19 |
     | Out of scope: 1200p/1440p screenshots (old, from the web) | 56 / 0 / 0 | 34 / 4 / 18 | 44 / 0 / 12 |
     | Time per 1080p frame (`vision_bench`) | 23.5 ms | 52 ms (167 ms on the first run) | 63 ms |
+
+    Since this table was first made, the three enormous-font screenshots are reference-only (no player sees that layout in a game, so they are no longer tested; they were 3 misreads for both matchers), and `extract_f0302`'s population colour accepts white or yellow (the frame is caught mid-fade, ink about 242,239,217). The middle column predates both changes.
 
     On the recorded frames of games 1 and 2 (`--replay-frames`) both matchers now give identical CSVs. On game 3 every disagreement checked by eye is a split-matcher misread (70 read as 711, 0 as 11, 6 as 48, 9 as 41, 30 as 311), and the learned matcher leaves nothing unread there. The sanity report without the replay finds 0 glitches and 0 invariant violations on game 3, against 2 and 7 for the split matcher.
 
     Weak spots before it can become the default:
-    *   **Video stills**: the population villager count over its icon art (36, 60) is unread in 2 frames. Compression lifts the black outline above the outlined-text mask's threshold. `extract_f0302` expects a yellow population, but the frame shows white text (the split matcher reads yellow); not understood.
+    *   **Video stills**: the population villager count over its icon art (36, 60) is unread in 2 frames. Compression lifts the black outline above the outlined-text mask's threshold.
     *   **Anne_HK**: food villagers 42 read as 12 in `7_vil_Anne_HK-2` (the only in-scope wrong value), and the idle count 103 is unread. The Anne_HK shapes come from two screenshots.
     *   **Sans-serif fixtures**: the population total of `aoe2_16x9_min_sans` is unread (the split matcher misreads it).
     *   **CPU**: 63 ms per frame, 2.7x the split matcher. It went down from 167 to 52 ms with a fixed pen height per match, a search only near ink, incremental costs and fewer refined candidates. It went back up to 63 ms with the accuracy fixes (refinement until it converges, contrast-weighted chain search).

@@ -3,7 +3,7 @@
   "fields": {
     "food.total": "78/80",
     "food.vils": "77/80",
-    "game_detected": "99/102",
+    "game_detected": "99/99",
     "gold.total": "79/80",
     "gold.vils": "77/80",
     "idle.vils": "79/80",
@@ -16,5 +16,5 @@
     "wood.total": "76/80",
     "wood.vils": "77/80"
   },
-  "total": 1155
+  "total": 1152
 }

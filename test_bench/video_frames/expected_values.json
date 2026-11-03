@@ -1388,6 +1388,7 @@
     },
     "extract_f0302.png": {
       "source": "extract.mp4 frame 302",
+      "note": "population colour caught mid-fade from white to yellow (ink about 242,239,217), so either reading is correct",
       "values": {
         "wood": {
           "total": "71",
@@ -1409,7 +1410,7 @@
           "total": "52",
           "housing": "55",
           "vils": "36",
-          "color": "yellow"
+          "color": "white|yellow"
         },
         "idle": {
           "vils": "0"

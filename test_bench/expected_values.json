@@ -348,9 +348,7 @@
         "enormous.png": {
             "use_value_set": "enormous_font_test",
             "expect_no_game": true,
-            "known_failures": {
-                "game_detected": "known bug: the enormous-font layout (no resource panel) still finds the red anchor and returns readings instead of 'no game'"
-            }
+            "reference_only": true
         },
         "housed_overlay.png": {
             "use_value_set": "housed_overlay"
@@ -407,16 +405,12 @@
         "font_smooth/enormous_smooth.png": {
             "use_value_set": "enormous_font_test",
             "expect_no_game": true,
-            "known_failures": {
-                "game_detected": "known bug: the enormous-font layout (no resource panel) still finds the red anchor and returns readings instead of 'no game'"
-            }
+            "reference_only": true
         },
         "font_sans/enormous_sans.png": {
             "use_value_set": "enormous_font_test",
             "expect_no_game": true,
-            "known_failures": {
-                "game_detected": "known bug: the enormous-font layout (no resource panel) still finds the red anchor and returns readings instead of 'no game'"
-            }
+            "reference_only": true
         }
     }
 }

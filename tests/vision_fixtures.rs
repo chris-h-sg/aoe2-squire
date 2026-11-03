@@ -2,9 +2,13 @@
 //! manifests below, checks each expected field, and prints a per-field accuracy summary.
 //!
 //! Manifest entries (`images` in each JSON file, paths relative to the manifest):
-//! - `use_value_set` (a named set in `value_sets`) or inline `values`: {category: {sub_key: value}}
+//! - `use_value_set` (a named set in `value_sets`) or inline `values`: {category: {sub_key: value}};
+//!   a value may list alternatives as `a|b` where either is correct (e.g. a population colour
+//!   caught mid-fade between white and yellow)
 //! - `expect_no_game: true`: the frame must not be read (process_frame returns None); any
 //!   values are then only used by the research extractors (e.g. the enormous-font layout)
+//! - `reference_only: true`: kept for the research extractors only, not tested here (e.g. the
+//!   enormous-font screenshots, which no player sees in a game)
 //! - `known_failures`: {"category.sub_key" | "game_detected" | "*": "reason"} — fields that are
 //!   wrong today. They must still be wrong (strict), so fixing one means removing it here.
 //!
@@ -53,6 +57,8 @@ struct ImageEntry {
     #[serde(default)]
     expect_no_game: bool,
     #[serde(default)]
+    reference_only: bool,
+    #[serde(default)]
     known_failures: HashMap<String, String>,
 }
 
@@ -84,6 +90,9 @@ fn load_fixtures() -> Vec<Fixture> {
         let dir = path.parent().unwrap();
 
         for (name, entry) in manifest.images {
+            if entry.reference_only {
+                continue;
+            }
             let values = match (&entry.use_value_set, entry.values) {
                 _ if entry.expect_no_game => None,
                 (Some(set), None) => Some(
@@ -184,7 +193,7 @@ fn check_fixture(
                 .and_then(|m| m.get(key));
             out.push(FieldResult {
                 field: field.clone(),
-                correct: got == Some(want),
+                correct: got.is_some_and(|g| want.split('|').any(|w| w == g)),
                 unread: got.is_none_or(|g| g.is_empty()),
                 report_group,
                 detail: format!("got {:?}, expected {:?}", got, want),

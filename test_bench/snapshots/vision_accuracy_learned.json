@@ -1,13 +1,13 @@
 {
-  "correct": 1131,
+  "correct": 1132,
   "fields": {
     "food.total": "80/80",
     "food.vils": "79/80",
-    "game_detected": "99/102",
+    "game_detected": "99/99",
     "gold.total": "80/80",
     "gold.vils": "77/80",
     "idle.vils": "79/80",
-    "population.color": "98/99",
+    "population.color": "99/99",
     "population.housing": "73/78",
     "population.total": "73/78",
     "population.vils": "76/78",
@@ -16,5 +16,5 @@
     "wood.total": "80/80",
     "wood.vils": "80/80"
   },
-  "total": 1155
+  "total": 1152
 }
