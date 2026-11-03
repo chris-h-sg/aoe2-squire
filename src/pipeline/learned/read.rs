@@ -35,7 +35,8 @@ pub struct Tpl {
     w: usize,
     h: usize,
     v: Vec<f32>,
-    /// sum of v^2
+    /// v^2 per pixel, and its sum
+    v2: Vec<f32>,
     e: f32,
 }
 
@@ -85,13 +86,15 @@ impl Templates {
                     let vv: Vec<f32> = (0..w * h)
                         .map(|i| r[(y0 + i / w) * cw + x0 + i % w].min(1.0))
                         .collect();
-                    let e = vv.iter().map(|x| x * x).sum();
+                    let v2: Vec<f32> = vv.iter().map(|x| x * x).collect();
+                    let e = v2.iter().sum();
                     v.push(Tpl {
                         x0: x0 as i32 - cx as i32,
                         y0: y0 as i32 - cy as i32,
                         w,
                         h,
                         v: vv,
+                        v2,
                         e,
                     });
                 }
@@ -387,24 +390,20 @@ pub fn read(
     if nd == 0 || o.w == 0 || o.h == 0 {
         return None;
     }
-    // A = 2 w I on scored pixels, 0 elsewhere: a glyph's gain is <T, A> - sum T^2
+    // A glyph's gain (how much it lowers the error) is <T, A> - <T^2, W>, with A = 2 w I and
+    // W = w on scored pixels, A = 0 and W = 1 elsewhere (ink there is all error), so that faint
+    // text over a low-contrast background (small w) is weighed the same way as in the exact cost.
     let (aw, ah) = (o.w + 2 * P as usize, o.h + 2 * P as usize);
     let mut a = vec![0f32; aw * ah];
+    let mut wq = vec![1f32; aw * ah];
     for y in 0..o.h {
         for x in 0..o.w {
             let i = y * o.w + x;
             if o.mask[i] {
-                a[(y + P as usize) * aw + x + P as usize] = 2.0 * o.wt[i] * o.img[i];
+                let p = (y + P as usize) * aw + x + P as usize;
+                a[p] = 2.0 * o.wt[i] * o.img[i];
+                wq[p] = o.wt[i];
             }
-        }
-    }
-    // integral image of A: a window without ink has gain exactly -sum T^2
-    let mut ii = vec![0f32; (aw + 1) * (ah + 1)];
-    for y in 0..ah {
-        let mut rs = 0.0;
-        for x in 0..aw {
-            rs += a[y * aw + x];
-            ii[(y + 1) * (aw + 1) + x + 1] = ii[y * (aw + 1) + x + 1] + rs;
         }
     }
     let gain = |tp: &Tpl, x: i32, y: i32| -> f32 {
@@ -412,27 +411,16 @@ pub fn read(
         if bx < 0 || by < 0 || bx as usize + tp.w > aw || by as usize + tp.h > ah {
             return -tp.e;
         }
-        let (x0, y0, x1, y1) = (
-            bx as usize,
-            by as usize,
-            bx as usize + tp.w,
-            by as usize + tp.h,
-        );
-        if ii[y1 * (aw + 1) + x1] - ii[y0 * (aw + 1) + x1] - ii[y1 * (aw + 1) + x0]
-            + ii[y0 * (aw + 1) + x0]
-            < 1e-3
-        {
-            return -tp.e;
-        }
         let mut g = 0.0;
         for j in 0..tp.h {
-            let row = &a[(by as usize + j) * aw + bx as usize..][..tp.w];
-            let tr = &tp.v[j * tp.w..][..tp.w];
+            let o = (by as usize + j) * aw + bx as usize;
+            let (ra, rw) = (&a[o..][..tp.w], &wq[o..][..tp.w]);
+            let (tv, t2) = (&tp.v[j * tp.w..][..tp.w], &tp.v2[j * tp.w..][..tp.w]);
             for i in 0..tp.w {
-                g += row[i] * tr[i];
+                g += ra[i] * tv[i] - rw[i] * t2[i];
             }
         }
-        g - tp.e
+        g
     };
     let xlo = -4 * ph;
     let nx = (o.w as i32 * ph - xlo) as usize;
