@@ -33,7 +33,7 @@ const MANIFESTS: [&str; 5] = [
 ];
 const ACCURACY_BASELINE: &str = "test_bench/snapshots/vision_accuracy.json";
 const LEARNED_BASELINE: &str = "test_bench/snapshots/vision_accuracy_learned.json";
-/// Fixture group names for the per-group summary, by manifest.
+/// Fixture group names, by manifest.
 const GROUPS: [&str; 5] = ["screenshots", "video stills", "game 1", "game 2", "game 3"];
 const GAME_DETECTED: &str = "game_detected";
 
@@ -129,8 +129,25 @@ fn load_fixtures() -> Vec<Fixture> {
 struct FieldResult {
     field: String,
     correct: bool,
+    /// Not read at all (None or empty); a wrong value is a misread.
+    unread: bool,
+    /// Group for the reliability summary: the manifest's group, with the screenshots split by
+    /// resolution.
+    report_group: &'static str,
     detail: String,
 }
+
+/// Report groups, in order. The high-resolution screenshots are old ones from the web that may
+/// not match the current game.
+const REPORT_GROUPS: [&str; 7] = [
+    "screenshots 1080p",
+    "screenshots 1366x768",
+    "video stills",
+    "game 1",
+    "game 2",
+    "game 3",
+    "high-res screenshots (out of scope: old online screenshots)",
+];
 
 fn check_fixture(
     f: &Fixture,
@@ -140,10 +157,18 @@ fn check_fixture(
 ) -> Vec<FieldResult> {
     let img = image::open(&f.path).unwrap_or_else(|e| panic!("{}: {}", f.name, e));
     let results = pipeline::PanelReader::new(matcher, ui_map, templates).process_frame(&img);
+    let report_group = match (f.group, img.width(), img.height()) {
+        ("screenshots", 1920, 1080) => REPORT_GROUPS[0],
+        ("screenshots", w, h) if w * h > 1920 * 1080 => REPORT_GROUPS[6],
+        ("screenshots", _, _) => REPORT_GROUPS[1],
+        (g, _, _) => REPORT_GROUPS.into_iter().find(|r| *r == g).unwrap(),
+    };
 
     let mut out = vec![FieldResult {
         field: GAME_DETECTED.to_string(),
         correct: results.is_some() == f.expected.is_some(),
+        unread: false,
+        report_group,
         detail: format!(
             "got {}, expected {}",
             results.is_some(),
@@ -160,6 +185,8 @@ fn check_fixture(
             out.push(FieldResult {
                 field: field.clone(),
                 correct: got == Some(want),
+                unread: got.is_none_or(|g| g.is_empty()),
+                report_group,
                 detail: format!("got {:?}, expected {:?}", got, want),
             });
         }
@@ -199,23 +226,45 @@ fn run_all(fixtures: &[Fixture], matcher: pipeline::Matcher) -> Vec<(usize, Vec<
     results
 }
 
-/// Prints correct/total fields (game_detected included) per fixture group.
-fn print_groups(fixtures: &[Fixture], results: &[(usize, Vec<FieldResult>)]) {
-    println!("By fixture group:");
-    for group in GROUPS {
-        let mut t = Tally::default();
-        for (i, fields) in results {
-            if fixtures[*i].group == group {
-                t.total += fields.len();
-                t.correct += fields.iter().filter(|r| r.correct).count();
-            }
+/// Prints correct / misread / unread fields per report group, and per group and field type
+/// (machine-readable `REL group|field|correct|misread|unread` lines).
+fn print_groups(results: &[(usize, Vec<FieldResult>)]) {
+    println!("By fixture group (correct / misread / unread):");
+    let mut cells: BTreeMap<(usize, String), [usize; 3]> = BTreeMap::new();
+    for (_, fields) in results {
+        for r in fields {
+            let g = REPORT_GROUPS
+                .iter()
+                .position(|x| *x == r.report_group)
+                .unwrap();
+            let c = cells.entry((g, r.field.clone())).or_default();
+            c[if r.correct {
+                0
+            } else if r.unread {
+                2
+            } else {
+                1
+            }] += 1;
         }
+    }
+    for (g, name) in REPORT_GROUPS.iter().enumerate() {
+        let t = cells
+            .iter()
+            .filter(|((gg, _), _)| *gg == g)
+            .fold([0; 3], |a, (_, c)| [a[0] + c[0], a[1] + c[1], a[2] + c[2]]);
         println!(
-            "  {:<14} {:>4}/{:<4} {:>6.1}%",
-            group,
-            t.correct,
-            t.total,
-            100.0 * t.correct as f64 / t.total.max(1) as f64
+            "  {:<60} {:>4} / {:>3} / {:>3} of {}",
+            name,
+            t[0],
+            t[1],
+            t[2],
+            t.iter().sum::<usize>()
+        );
+    }
+    for ((g, field), c) in &cells {
+        println!(
+            "REL {}|{}|{}|{}|{}",
+            REPORT_GROUPS[*g], field, c[0], c[1], c[2]
         );
     }
 }
@@ -271,7 +320,7 @@ fn vision_fixtures() {
         100.0 * overall.correct as f64 / overall.total as f64
     );
     println!("Known failures ({}):\n{}", known.len(), known.join("\n"));
-    print_groups(&fixtures, &results);
+    print_groups(&results);
 
     let baseline_path = common::root().join(ACCURACY_BASELINE);
     let summary = serde_json::json!({
@@ -369,7 +418,7 @@ fn vision_fixtures_learned() {
         100.0 * overall.correct as f64 / overall.total as f64
     );
     println!("Wrong fields ({}):\n{}", wrong.len(), wrong.join("\n"));
-    print_groups(&fixtures, &results);
+    print_groups(&results);
 
     let baseline_path = common::root().join(LEARNED_BASELINE);
     let summary = serde_json::json!({
