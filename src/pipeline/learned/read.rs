@@ -18,8 +18,9 @@ use super::shapes::{stamp, Glyph, GlyphSet};
 pub const PHASES: usize = 4;
 /// Best chains kept per position and length.
 const K: usize = 2;
-/// Distinct strings re-scored jointly.
+/// Distinct strings re-scored jointly, and how many of the best of those get refined.
 const TOP_STRINGS: usize = 30;
+const REFINED: usize = 5;
 /// Pen heights searched around the calibrated one, in phases (1 px either way).
 const Y_RANGE: i32 = 4;
 /// Pen advance between neighbours: the learned one +- this many pixels.
@@ -197,28 +198,150 @@ fn joint_cost(o: &Obs, t: &Templates, glyphs: &[Placed]) -> f64 {
     lost + render_error(o, &r)
 }
 
-/// Moves each glyph in turn by up to `dx`/`dy` phases, keeping any improvement.
-fn refine(o: &Obs, t: &Templates, gs: &mut [Placed], dx: i32, dy: i32) -> f64 {
-    let mut cur = joint_cost(o, t, gs);
-    for i in 0..gs.len() {
-        let b = gs[i];
-        let mut best = b;
-        for ddy in -dy..=dy {
-            for ddx in -dx..=dx {
-                if ddx == 0 && ddy == 0 {
-                    continue;
-                }
-                gs[i] = (b.0, b.1 + ddx, b.2 + ddy);
-                let c = joint_cost(o, t, gs);
-                if c < cur {
-                    cur = c;
-                    best = gs[i];
+/// One pixel's error at summed coverage `v` (capped at 1).
+fn pixel_error(o: &Obs, i: usize, v: f32) -> f64 {
+    let v = v.min(1.0);
+    if o.mask[i] {
+        o.wt[i] as f64 * ((v - o.img[i]) as f64).powi(2)
+    } else {
+        (v as f64).powi(2)
+    }
+}
+
+/// A reading's rendering kept up to date, so that changing one glyph costs only the pixels it
+/// covers. Its cost equals `joint_cost` of its glyphs.
+#[derive(Clone)]
+struct Canvas<'a> {
+    o: &'a Obs,
+    t: &'a Templates,
+    /// Summed (uncapped) glyph coverage per pixel.
+    sum: Vec<f32>,
+    gs: Vec<Placed>,
+    cost: f64,
+}
+
+impl<'a> Canvas<'a> {
+    fn new(o: &'a Obs, t: &'a Templates, gs: &[Placed]) -> Self {
+        let mut sum = vec![0f32; o.w * o.h];
+        let mut lost = 0f64;
+        for &g in gs {
+            lost += Self::stamp(o, t, g, &mut sum, 1.0);
+        }
+        let cost = lost
+            + (0..sum.len())
+                .map(|i| pixel_error(o, i, sum[i]))
+                .sum::<f64>();
+        Canvas {
+            o,
+            t,
+            sum,
+            gs: gs.to_vec(),
+            cost,
+        }
+    }
+
+    /// Adds `sign` times glyph `g` to `sum`; returns its ink outside the region.
+    fn stamp(o: &Obs, t: &Templates, g: Placed, sum: &mut [f32], sign: f32) -> f64 {
+        let (tp, xi, yi) = t.get(g.0, g.1, g.2);
+        let mut lost = 0f64;
+        for j in 0..tp.h {
+            for i in 0..tp.w {
+                let (px, py) = (xi + tp.x0 + i as i32, yi + tp.y0 + j as i32);
+                let tv = tp.v[j * tp.w + i];
+                if px >= 0 && py >= 0 && (px as usize) < o.w && (py as usize) < o.h {
+                    sum[py as usize * o.w + px as usize] += sign * tv;
+                } else {
+                    lost += (tv * tv) as f64;
                 }
             }
         }
-        gs[i] = best;
+        lost
     }
-    cur
+
+    /// Pixel box of glyph `g`, clipped to the region: x0, y0, x1, y1.
+    fn bbox(&self, g: Placed) -> (usize, usize, usize, usize) {
+        let (tp, xi, yi) = self.t.get(g.0, g.1, g.2);
+        let clip = |v: i32, n: usize| v.clamp(0, n as i32) as usize;
+        (
+            clip(xi + tp.x0, self.o.w),
+            clip(yi + tp.y0, self.o.h),
+            clip(xi + tp.x0 + tp.w as i32, self.o.w),
+            clip(yi + tp.y0 + tp.h as i32, self.o.h),
+        )
+    }
+
+    /// Cost if glyph `i` were `new` instead.
+    fn cost_if(&self, i: usize, new: Placed) -> f64 {
+        let old = self.gs[i];
+        let (a, b) = (self.bbox(old), self.bbox(new));
+        let (x0, y0, x1, y1) = (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3));
+        let (ta, ax, ay) = self.t.get(old.0, old.1, old.2);
+        let (tb, bx, by) = self.t.get(new.0, new.1, new.2);
+        let val = |tp: &Tpl, gx: i32, gy: i32, x: usize, y: usize| -> f32 {
+            let (i, j) = (x as i32 - gx - tp.x0, y as i32 - gy - tp.y0);
+            if i >= 0 && j >= 0 && (i as usize) < tp.w && (j as usize) < tp.h {
+                tp.v[j as usize * tp.w + i as usize]
+            } else {
+                0.0
+            }
+        };
+        let mut d = 0f64;
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let p = y * self.o.w + x;
+                let before = self.sum[p];
+                let after = before - val(ta, ax, ay, x, y) + val(tb, bx, by, x, y);
+                if after != before {
+                    d += pixel_error(self.o, p, after) - pixel_error(self.o, p, before);
+                }
+            }
+        }
+        let lost = |tp: &Tpl, gx: i32, gy: i32| -> f64 {
+            let mut l = 0f64;
+            for j in 0..tp.h {
+                for i in 0..tp.w {
+                    let (px, py) = (gx + tp.x0 + i as i32, gy + tp.y0 + j as i32);
+                    if px < 0 || py < 0 || px as usize >= self.o.w || py as usize >= self.o.h {
+                        l += (tp.v[j * tp.w + i] as f64).powi(2);
+                    }
+                }
+            }
+            l
+        };
+        self.cost + d + lost(tb, bx, by) - lost(ta, ax, ay)
+    }
+
+    /// Replaces glyph `i` with `new`.
+    fn set(&mut self, i: usize, new: Placed) {
+        self.cost = self.cost_if(i, new);
+        let old = self.gs[i];
+        Self::stamp(self.o, self.t, old, &mut self.sum, -1.0);
+        Self::stamp(self.o, self.t, new, &mut self.sum, 1.0);
+        self.gs[i] = new;
+    }
+
+    /// Moves each glyph in turn by up to `dx`/`dy` phases, keeping any improvement.
+    fn refine(&mut self, dx: i32, dy: i32) {
+        for i in 0..self.gs.len() {
+            let b = self.gs[i];
+            let mut best = (self.cost, b);
+            for ddy in -dy..=dy {
+                for ddx in -dx..=dx {
+                    if ddx == 0 && ddy == 0 {
+                        continue;
+                    }
+                    let g = (b.0, b.1 + ddx, b.2 + ddy);
+                    let c = self.cost_if(i, g);
+                    if c < best.0 {
+                        best = (c, g);
+                    }
+                }
+            }
+            if best.1 != b {
+                self.set(i, best.1);
+            }
+        }
+    }
 }
 
 /// The pen height of a field: searched around the calibrated one (region pixels), or already
@@ -499,20 +622,26 @@ pub fn read(
         .count()
         .max(1) as f64;
     let to_rmse = |c: f64| (c / n_ink).sqrt() * 255.0;
+    // unrefined cost of each candidate first; only the best REFINED get the per-glyph refinement
+    // (it moves costs by a little, so a string far behind before it stays behind)
     let mut scored: Vec<(String, f64, Vec<Placed>)> = vec![];
-    let mut tried = 0;
     for &(_, x, l, r) in &all {
-        if tried >= TOP_STRINGS {
+        if scored.len() >= TOP_STRINGS {
             break;
         }
-        let mut gs = trace(x, l, r);
+        let gs = trace(x, l, r);
         let text = text_of(&gs);
         if !grammar.valid(&text) || scored.iter().any(|s| s.0 == text) {
             continue;
         }
-        tried += 1;
-        let c = refine(o, t, &mut gs, 1, 2);
-        scored.push((text, c, gs));
+        let cost = Canvas::new(o, t, &gs).cost;
+        scored.push((text, cost, gs));
+    }
+    scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    for s in scored.iter_mut().take(REFINED) {
+        let mut canvas = Canvas::new(o, t, &s.2);
+        canvas.refine(1, 2);
+        (s.1, s.2) = (canvas.cost, canvas.gs);
     }
     // an empty field: no glyph at all
     let empty_cost = joint_cost(o, t, &[]);
@@ -528,32 +657,41 @@ pub fn read(
     lap(2);
     // 4) per-character margins: every other character at each position (x +-2 phases)
     let alphabet: Vec<usize> = cis.clone();
+    let base = Canvas::new(o, t, &gs);
     let mut char_margin = vec![];
     for i in 0..gs.len() {
-        let mut m = f64::INFINITY;
+        // raw cost of every substitute (best x offset as placed), then refinement in order of
+        // raw cost while a substitute could still set the margin
+        let mut alts: Vec<(f64, Placed)> = vec![];
         for &d in &alphabet {
             if d == gs[i].0 {
                 continue;
             }
-            // best x offset as placed, then (if it could set the margin) refined once
-            let mut best: Option<(f64, Vec<Placed>)> = None;
+            let mut best: Option<(f64, Placed)> = None;
             for dx in -2..=2 {
+                let g = (d, gs[i].1 + dx, gs[i].2);
                 let mut alt = gs.clone();
-                alt[i] = (d, gs[i].1 + dx, gs[i].2);
+                alt[i] = g;
                 if !grammar.valid(&text_of(&alt)) {
                     continue;
                 }
-                let c = joint_cost(o, t, &alt);
-                if best.as_ref().is_none_or(|b| c < b.0) {
-                    best = Some((c, alt));
+                let c = base.cost_if(i, g);
+                if best.is_none_or(|b| c < b.0) {
+                    best = Some((c, g));
                 }
             }
-            if let Some((mut best_c, mut alt)) = best {
-                if to_rmse(best_c) - rmse < m + 3.0 {
-                    best_c = best_c.min(refine(o, t, &mut alt, 1, 2));
-                }
-                m = m.min(to_rmse(best_c) - rmse);
+            alts.extend(best);
+        }
+        alts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let mut m = f64::INFINITY;
+        for (c, g) in alts {
+            if to_rmse(c) - rmse >= m + 3.0 {
+                break;
             }
+            let mut alt = base.clone();
+            alt.set(i, g);
+            alt.refine(1, 2);
+            m = m.min(to_rmse(c.min(alt.cost)) - rmse);
         }
         char_margin.push(m);
     }
