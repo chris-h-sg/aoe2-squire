@@ -60,6 +60,8 @@ pub struct LearnedReader {
     templates: HashMap<(usize, Kind, i64), Templates>,
     /// Time per stage summed over all fields read, ms: observation, then `Reading::stage_ms`.
     pub stage_ms: [f64; 5],
+    /// The same per field (indexed by `Field as usize`).
+    pub field_ms: [[f64; 5]; 11],
     /// Pen heights (phases) of confident readings per (set, field, font size); the layout fixes
     /// them for a match, so after `PEN_VOTES` the median is used instead of a search.
     pen_votes: HashMap<(usize, Field, i64), Vec<i32>>,
@@ -88,6 +90,7 @@ impl LearnedReader {
             frames_seen: 0,
             templates: HashMap::new(),
             stage_ms: [0.0; 5],
+            field_ms: [[0.0; 5]; 11],
             pen_votes: HashMap::new(),
         }
     }
@@ -101,6 +104,11 @@ impl LearnedReader {
             }
             None => false,
         }
+    }
+
+    /// Index of the detected shape set, once detection is over.
+    pub fn set_index(&self) -> Option<usize> {
+        self.chosen
     }
 
     pub fn set_id(&self) -> Option<&str> {
@@ -134,7 +142,9 @@ impl LearnedReader {
             };
             let clock = std::time::Instant::now();
             let obs = observe::observe(strip, (0, 0), fl, u, rgb, None);
-            self.stage_ms[0] += clock.elapsed().as_secs_f64() * 1e3;
+            let obs_ms = clock.elapsed().as_secs_f64() * 1e3;
+            self.stage_ms[0] += obs_ms;
+            self.field_ms[field as usize][0] += obs_ms;
             let Some(obs) = obs else {
                 out.push(FieldReading {
                     field,
@@ -168,6 +178,12 @@ impl LearnedReader {
             }
             if let Some(r) = &reading {
                 for (sum, v) in self.stage_ms[1..].iter_mut().zip(r.stage_ms) {
+                    *sum += v;
+                }
+                for (sum, v) in self.field_ms[field as usize][1..]
+                    .iter_mut()
+                    .zip(r.stage_ms)
+                {
                     *sum += v;
                 }
             }

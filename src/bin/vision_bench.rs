@@ -7,7 +7,9 @@
 //! steady state of a running match; templates are built once per UI size and are not counted.
 //! The mean is over the 1920x1080 frames on which a game is detected.
 
-use aoe2_squire::pipeline::{self, anchor, learned::LearnedReader, matcher};
+use aoe2_squire::pipeline::{
+    self, anchor, learned::layout::Field, learned::LearnedReader, matcher,
+};
 use aoe2_squire::types::UiMap;
 use image::DynamicImage;
 use std::time::Instant;
@@ -27,6 +29,9 @@ fn ms(t: Instant) -> f64 {
 
 fn main() {
     let csv = std::env::args().any(|a| a == "--csv");
+    // --dump: every field's reading (text, RMSE, confidence) per file, for checking that a speed
+    // change reads exactly the same
+    let dump = std::env::args().any(|a| a == "--dump");
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let ui_map: UiMap =
         serde_json::from_str(&std::fs::read_to_string(root.join("ui_map.json")).unwrap()).unwrap();
@@ -45,6 +50,7 @@ fn main() {
         println!("file,WxH,anchor_ms,split_ms,learned_ms,shape_set");
     }
     let (mut n, mut sums, mut stage_sums) = (0usize, [0f64; 3], [0f64; 5]);
+    let mut field_sums = [[0f64; 5]; 11];
     for path in &files {
         let img = DynamicImage::ImageRgb8(image::open(path).unwrap().into_rgb8());
         let t = Instant::now();
@@ -66,12 +72,42 @@ fn main() {
             reader.process_frame(&img, &ui_map);
         }
         reader.stage_ms = [0.0; 5];
+        reader.field_ms = [[0.0; 5]; 11];
         let t = Instant::now();
         for _ in 0..REPS {
             std::hint::black_box(reader.process_frame(&img, &ui_map));
         }
         let learned_ms = ms(t);
         let stages = reader.stage_ms.map(|v| v / REPS as f64);
+        let field_ms = reader.field_ms;
+        if dump {
+            let ui_scale = scale.unwrap();
+            let u = aoe2_squire::pipeline::learned::layout::px_per_unit(ui_scale);
+            let strip = img
+                .crop_imm(
+                    0,
+                    0,
+                    ((1140.0 * u).ceil() as u32).min(img.width()),
+                    ((106.0 * u).ceil() as u32).min(img.height()),
+                )
+                .to_rgb8();
+            let si = reader.set_index().unwrap();
+            for r in reader.read_fields(si, &strip, ui_scale) {
+                let (text, rmse, conf) = r
+                    .reading
+                    .as_ref()
+                    .map(|x| (x.text.clone(), x.rmse, x.confidence()))
+                    .unwrap_or_default();
+                println!(
+                    "DUMP {} {} {} {:.4} {:.4}",
+                    path.file_name().unwrap().to_string_lossy(),
+                    r.field.name(),
+                    text,
+                    rmse,
+                    conf
+                );
+            }
+        }
         if csv {
             println!(
                 "{},{}x{},{:.2},{:.2},{:.2},{}",
@@ -91,6 +127,11 @@ fn main() {
             }
             for (s, v) in stage_sums.iter_mut().zip(stages) {
                 *s += v;
+            }
+            for (fs, fv) in field_sums.iter_mut().zip(field_ms) {
+                for (s, v) in fs.iter_mut().zip(fv) {
+                    *s += v / REPS as f64;
+                }
             }
         }
     }
@@ -112,4 +153,18 @@ fn main() {
         st[4],
         m(2) - st.iter().sum::<f64>()
     );
+    println!("Per field, ms per frame: observation / pen height / chains / re-scoring / confidence = total");
+    for f in Field::ALL {
+        let v = field_sums[f as usize].map(|v| v / n.max(1) as f64);
+        println!(
+            "  {:<17} {:5.2} / {:5.2} / {:5.2} / {:5.2} / {:5.2} = {:5.2}",
+            f.name(),
+            v[0],
+            v[1],
+            v[2],
+            v[3],
+            v[4],
+            v.iter().sum::<f64>()
+        );
+    }
 }

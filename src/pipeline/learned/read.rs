@@ -203,13 +203,53 @@ fn joint_cost(o: &Obs, t: &Templates, glyphs: &[Placed]) -> f64 {
     lost + render_error(o, &r)
 }
 
-/// One pixel's error at summed coverage `v` (capped at 1).
-fn pixel_error(o: &Obs, i: usize, v: f32) -> f64 {
-    let v = v.min(1.0);
-    if o.mask[i] {
-        o.wt[i] as f64 * ((v - o.img[i]) as f64).powi(2)
-    } else {
-        (v as f64).powi(2)
+/// Per-pixel error terms of a field: a pixel at summed coverage `v` costs
+/// `pw * (min(v, 1) - pt)^2`, with (pw, pt) = (weight, observed coverage) on scored pixels and
+/// (1, 0) elsewhere (ink there is all error).
+struct ErrTerms {
+    w: usize,
+    h: usize,
+    pw: Vec<f32>,
+    pt: Vec<f32>,
+}
+
+impl ErrTerms {
+    fn new(o: &Obs) -> Self {
+        let n = o.w * o.h;
+        ErrTerms {
+            w: o.w,
+            h: o.h,
+            pw: (0..n)
+                .map(|i| if o.mask[i] { o.wt[i] } else { 1.0 })
+                .collect(),
+            pt: (0..n)
+                .map(|i| if o.mask[i] { o.img[i] } else { 0.0 })
+                .collect(),
+        }
+    }
+
+    /// One pixel's error at summed coverage `v` (capped at 1).
+    #[inline]
+    fn at(&self, i: usize, v: f32) -> f64 {
+        let d = (v.min(1.0) - self.pt[i]) as f64;
+        self.pw[i] as f64 * (d * d)
+    }
+
+    /// Ink of template `tp` at pixel (gx, gy) (its box origin) that falls outside the region.
+    fn lost(&self, tp: &Tpl, gx: i32, gy: i32) -> f64 {
+        if gx >= 0 && gy >= 0 && gx as usize + tp.w <= self.w && gy as usize + tp.h <= self.h {
+            return 0.0;
+        }
+        let mut l = 0f64;
+        for j in 0..tp.h {
+            for i in 0..tp.w {
+                let (px, py) = (gx + i as i32, gy + j as i32);
+                if px < 0 || py < 0 || px as usize >= self.w || py as usize >= self.h {
+                    l += (tp.v[j * tp.w + i] as f64).powi(2);
+                }
+            }
+        }
+        l
     }
 }
 
@@ -217,7 +257,7 @@ fn pixel_error(o: &Obs, i: usize, v: f32) -> f64 {
 /// covers. Its cost equals `joint_cost` of its glyphs.
 #[derive(Clone)]
 struct Canvas<'a> {
-    o: &'a Obs,
+    e: &'a ErrTerms,
     t: &'a Templates,
     /// Summed (uncapped) glyph coverage per pixel.
     sum: Vec<f32>,
@@ -226,18 +266,15 @@ struct Canvas<'a> {
 }
 
 impl<'a> Canvas<'a> {
-    fn new(o: &'a Obs, t: &'a Templates, gs: &[Placed]) -> Self {
-        let mut sum = vec![0f32; o.w * o.h];
+    fn new(e: &'a ErrTerms, t: &'a Templates, gs: &[Placed]) -> Self {
+        let mut sum = vec![0f32; e.w * e.h];
         let mut lost = 0f64;
         for &g in gs {
-            lost += Self::stamp(o, t, g, &mut sum, 1.0);
+            lost += Self::stamp(e, t, g, &mut sum, 1.0);
         }
-        let cost = lost
-            + (0..sum.len())
-                .map(|i| pixel_error(o, i, sum[i]))
-                .sum::<f64>();
+        let cost = lost + (0..sum.len()).map(|i| e.at(i, sum[i])).sum::<f64>();
         Canvas {
-            o,
+            e,
             t,
             sum,
             gs: gs.to_vec(),
@@ -246,15 +283,15 @@ impl<'a> Canvas<'a> {
     }
 
     /// Adds `sign` times glyph `g` to `sum`; returns its ink outside the region.
-    fn stamp(o: &Obs, t: &Templates, g: Placed, sum: &mut [f32], sign: f32) -> f64 {
+    fn stamp(e: &ErrTerms, t: &Templates, g: Placed, sum: &mut [f32], sign: f32) -> f64 {
         let (tp, xi, yi) = t.get(g.0, g.1, g.2);
         let mut lost = 0f64;
         for j in 0..tp.h {
             for i in 0..tp.w {
                 let (px, py) = (xi + tp.x0 + i as i32, yi + tp.y0 + j as i32);
                 let tv = tp.v[j * tp.w + i];
-                if px >= 0 && py >= 0 && (px as usize) < o.w && (py as usize) < o.h {
-                    sum[py as usize * o.w + px as usize] += sign * tv;
+                if px >= 0 && py >= 0 && (px as usize) < e.w && (py as usize) < e.h {
+                    sum[py as usize * e.w + px as usize] += sign * tv;
                 } else {
                     lost += (tv * tv) as f64;
                 }
@@ -268,10 +305,10 @@ impl<'a> Canvas<'a> {
         let (tp, xi, yi) = self.t.get(g.0, g.1, g.2);
         let clip = |v: i32, n: usize| v.clamp(0, n as i32) as usize;
         (
-            clip(xi + tp.x0, self.o.w),
-            clip(yi + tp.y0, self.o.h),
-            clip(xi + tp.x0 + tp.w as i32, self.o.w),
-            clip(yi + tp.y0 + tp.h as i32, self.o.h),
+            clip(xi + tp.x0, self.e.w),
+            clip(yi + tp.y0, self.e.h),
+            clip(xi + tp.x0 + tp.w as i32, self.e.w),
+            clip(yi + tp.y0 + tp.h as i32, self.e.h),
         )
     }
 
@@ -282,46 +319,50 @@ impl<'a> Canvas<'a> {
         let (x0, y0, x1, y1) = (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3));
         let (ta, ax, ay) = self.t.get(old.0, old.1, old.2);
         let (tb, bx, by) = self.t.get(new.0, new.1, new.2);
-        let val = |tp: &Tpl, gx: i32, gy: i32, x: usize, y: usize| -> f32 {
-            let (i, j) = (x as i32 - gx - tp.x0, y as i32 - gy - tp.y0);
-            if i >= 0 && j >= 0 && (i as usize) < tp.w && (j as usize) < tp.h {
-                tp.v[j as usize * tp.w + i as usize]
+        // template box origins in region pixels
+        let (ax, ay) = (ax + ta.x0, ay + ta.y0);
+        let (bx, by) = (bx + tb.x0, by + tb.y0);
+        let row = |tp: &'a Tpl, gy: i32, y: usize| -> &'a [f32] {
+            let j = y as i32 - gy;
+            if j >= 0 && (j as usize) < tp.h {
+                &tp.v[j as usize * tp.w..][..tp.w]
+            } else {
+                &[]
+            }
+        };
+        let val = |r: &[f32], gx: i32, x: usize| -> f32 {
+            let i = x as i32 - gx;
+            if i >= 0 && (i as usize) < r.len() {
+                r[i as usize]
             } else {
                 0.0
             }
         };
         let mut d = 0f64;
         for y in y0..y1 {
+            let (ra, rb) = (row(ta, ay, y), row(tb, by, y));
+            if ra.is_empty() && rb.is_empty() {
+                continue;
+            }
+            let off = y * self.e.w;
             for x in x0..x1 {
-                let p = y * self.o.w + x;
+                let p = off + x;
                 let before = self.sum[p];
-                let after = before - val(ta, ax, ay, x, y) + val(tb, bx, by, x, y);
+                let after = before - val(ra, ax, x) + val(rb, bx, x);
                 if after != before {
-                    d += pixel_error(self.o, p, after) - pixel_error(self.o, p, before);
+                    d += self.e.at(p, after) - self.e.at(p, before);
                 }
             }
         }
-        let lost = |tp: &Tpl, gx: i32, gy: i32| -> f64 {
-            let mut l = 0f64;
-            for j in 0..tp.h {
-                for i in 0..tp.w {
-                    let (px, py) = (gx + tp.x0 + i as i32, gy + tp.y0 + j as i32);
-                    if px < 0 || py < 0 || px as usize >= self.o.w || py as usize >= self.o.h {
-                        l += (tp.v[j * tp.w + i] as f64).powi(2);
-                    }
-                }
-            }
-            l
-        };
-        self.cost + d + lost(tb, bx, by) - lost(ta, ax, ay)
+        self.cost + d + self.e.lost(tb, bx, by) - self.e.lost(ta, ax, ay)
     }
 
     /// Replaces glyph `i` with `new`.
     fn set(&mut self, i: usize, new: Placed) {
         self.cost = self.cost_if(i, new);
         let old = self.gs[i];
-        Self::stamp(self.o, self.t, old, &mut self.sum, -1.0);
-        Self::stamp(self.o, self.t, new, &mut self.sum, 1.0);
+        Self::stamp(self.e, self.t, old, &mut self.sum, -1.0);
+        Self::stamp(self.e, self.t, new, &mut self.sum, 1.0);
         self.gs[i] = new;
     }
 
@@ -629,6 +670,7 @@ pub fn read(
         .sum::<f64>()
         .max(1e-3);
     let to_rmse = |c: f64| (c / n_ink).sqrt() * 255.0;
+    let et = ErrTerms::new(o);
     // unrefined cost of each candidate first; only the best REFINED get the per-glyph refinement
     // (it moves costs by a little, so a string far behind before it stays behind)
     let mut scored: Vec<(String, f64, Vec<Placed>)> = vec![];
@@ -641,12 +683,12 @@ pub fn read(
         if !grammar.valid(&text) || scored.iter().any(|s| s.0 == text) {
             continue;
         }
-        let cost = Canvas::new(o, t, &gs).cost;
+        let cost = Canvas::new(&et, t, &gs).cost;
         scored.push((text, cost, gs));
     }
     scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
     for s in scored.iter_mut().take(REFINED) {
-        let mut canvas = Canvas::new(o, t, &s.2);
+        let mut canvas = Canvas::new(&et, t, &s.2);
         canvas.refine(1, 2);
         (s.1, s.2) = (canvas.cost, canvas.gs);
     }
@@ -664,7 +706,7 @@ pub fn read(
     lap(2);
     // 4) per-character margins: every other character at each position (x +-2 phases)
     let alphabet: Vec<usize> = cis.clone();
-    let base = Canvas::new(o, t, &gs);
+    let base = Canvas::new(&et, t, &gs);
     let mut char_margin = vec![];
     for i in 0..gs.len() {
         // raw cost of every substitute (best x offset as placed), then refinement in order of
