@@ -257,13 +257,18 @@ impl ErrTerms {
 /// A reading's rendering kept up to date, so that changing one glyph costs only the pixels it
 /// covers. Its cost equals `joint_cost` of its glyphs.
 /// A canvas with one glyph taken out over the pixels its alternatives cover (`Canvas::hole`).
+/// Its buffers are reused from one glyph to the next.
+#[derive(Default)]
 struct Hole {
     /// Pixel box x0, y0, x1, y1 in the region, and its width.
     r: (usize, usize, usize, usize),
     rw: usize,
-    /// Summed coverage without the glyph, and each pixel's error at it.
+    /// Summed coverage without the glyph, each pixel's error at it, and its error terms
+    /// (`ErrTerms`), all row-major over the box.
     s: Vec<f32>,
     e0: Vec<f32>,
+    pw: Vec<f32>,
+    pt: Vec<f32>,
     /// Cost without the glyph.
     base: f64,
 }
@@ -383,7 +388,7 @@ impl<'a> Canvas<'a> {
 
     /// Glyph `i` taken out over the pixels any of `cands` (alternatives for it) covers, so that
     /// each of them is costed by adding it alone (`Hole::cost`).
-    fn hole(&self, i: usize, cands: &[Placed]) -> Hole {
+    fn hole(&self, i: usize, cands: &[Placed], h: &mut Hole) {
         let old = self.gs[i];
         let mut r = self.bbox(old);
         for &g in cands {
@@ -391,11 +396,15 @@ impl<'a> Canvas<'a> {
             r = (r.0.min(b.0), r.1.min(b.1), r.2.max(b.2), r.3.max(b.3));
         }
         let (rw, rh) = (r.2 - r.0, r.3 - r.1);
-        let mut s = vec![0f32; rw * rh];
-        for y in 0..rh {
-            let o = (r.1 + y) * self.e.w + r.0;
-            s[y * rw..][..rw].copy_from_slice(&self.sum[o..o + rw]);
-        }
+        let rows = |src: &[f32], dst: &mut Vec<f32>| {
+            dst.clear();
+            for y in 0..rh {
+                let o = (r.1 + y) * self.e.w + r.0;
+                dst.extend_from_slice(&src[o..o + rw]);
+            }
+        };
+        let mut s = std::mem::take(&mut h.s);
+        rows(&self.sum, &mut s);
         let (ta, ax, ay) = self.t.get(old.0, old.1, old.2);
         let (ax, ay) = (ax + ta.x0, ay + ta.y0);
         let mut before = 0f64;
@@ -417,16 +426,17 @@ impl<'a> Canvas<'a> {
                 s[li] = after;
             }
         }
-        let e0: Vec<f32> = (0..rw * rh)
-            .map(|li| self.e.at((r.1 + li / rw) * self.e.w + r.0 + li % rw, s[li]) as f32)
-            .collect();
-        Hole {
-            r,
-            rw,
-            s,
-            e0,
-            base: self.cost + before - self.e.lost(ta, ax, ay),
-        }
+        rows(&self.e.pw, &mut h.pw);
+        rows(&self.e.pt, &mut h.pt);
+        h.e0.clear();
+        h.e0.extend(s.iter().zip(h.pw.iter().zip(&h.pt)).map(|(&v, (&w, &t))| {
+            let d = (v.min(1.0) - t) as f64;
+            (w as f64 * (d * d)) as f32
+        }));
+        h.s = s;
+        h.r = r;
+        h.rw = rw;
+        h.base = self.cost + before - self.e.lost(ta, ax, ay);
     }
 
     /// Cost with the hole's glyph replaced by `g` (one of the candidates it was made for).
@@ -443,18 +453,18 @@ impl<'a> Canvas<'a> {
             if py < h.r.1 as i32 || py >= h.r.3 as i32 || jx0 >= jx1 {
                 continue;
             }
-            let ly = py as usize - h.r.1;
-            let lrow = ly * h.rw;
-            let grow = py as usize * e.w;
-            let mut acc = 0f32;
-            for k in jx0..jx1 {
-                let lx = (gx + k as i32) as usize - h.r.0;
-                let li = lrow + lx;
-                let gi = grow + h.r.0 + lx;
-                let v = (h.s[li] + tp.v[j * tp.w + k]).min(1.0) - e.pt[gi];
-                acc += e.pw[gi] * v * v - h.e0[li];
+            let n = jx1 - jx0;
+            let li = (py as usize - h.r.1) * h.rw + (gx + jx0 as i32) as usize - h.r.0;
+            let (s, e0) = (&h.s[li..][..n], &h.e0[li..][..n]);
+            let (pw, pt) = (&h.pw[li..][..n], &h.pt[li..][..n]);
+            let tv = &tp.v[j * tp.w + jx0..][..n];
+            // eight running sums, so that the loop vectorises
+            let mut acc = [0f32; 8];
+            for k in 0..n {
+                let v = (s[k] + tv[k]).min(1.0) - pt[k];
+                acc[k % 8] += pw[k] * v * v - e0[k];
             }
-            d += acc as f64;
+            d += acc.iter().sum::<f32>() as f64;
         }
         h.base + d + e.lost(tp, gx, gy)
     }
@@ -488,21 +498,28 @@ impl<'a> Canvas<'a> {
     /// each other are all refined as far. A glyph that found no better position is tried again
     /// only once a change reaches the pixels its moves cover; until then it would find none.
     fn refine(&mut self, dx: i32, dy: i32) {
+        let (mut hole, mut moves) = (Hole::default(), vec![]);
         for _ in 0..MAX_REFINE_PASSES {
-            if !self.refine_pass(dx, dy) {
+            if !self.refine_pass(dx, dy, &mut hole, &mut moves) {
                 break;
             }
         }
     }
 
-    fn refine_pass(&mut self, dx: i32, dy: i32) -> bool {
+    fn refine_pass(
+        &mut self,
+        dx: i32,
+        dy: i32,
+        hole: &mut Hole,
+        moves: &mut Vec<Placed>,
+    ) -> bool {
         let mut moved = false;
         for i in 0..self.gs.len() {
             if self.clean[i] {
                 continue;
             }
             let b = self.gs[i];
-            let mut moves = Vec::with_capacity(((2 * dx + 1) * (2 * dy + 1)) as usize);
+            moves.clear();
             for ddy in -dy..=dy {
                 for ddx in -dx..=dx {
                     if ddx != 0 || ddy != 0 {
@@ -510,13 +527,13 @@ impl<'a> Canvas<'a> {
                     }
                 }
             }
-            let hole = self.hole(i, &moves);
+            self.hole(i, moves, hole);
             // the hole's own estimate of the current cost, so that rounding cannot make the
             // glyph move for nothing
-            let here = self.hole_cost(&hole, b);
+            let here = self.hole_cost(hole, b);
             let mut best = (here, b);
-            for &g in &moves {
-                let c = self.hole_cost(&hole, g);
+            for &g in moves.iter() {
+                let c = self.hole_cost(hole, g);
                 if c < best.0 {
                     best = (c, g);
                 }
@@ -895,7 +912,8 @@ pub fn read(
             .iter()
             .flat_map(|&d| (-2..=2).map(move |dx| (d, here.1 + dx, here.2)))
             .collect();
-        let hole = base.hole(i, &cands);
+        let mut hole = Hole::default();
+        base.hole(i, &cands, &mut hole);
         let mut alts: Vec<(f64, Placed)> = vec![];
         for per_char in cands.chunks(5) {
             let mut best: Option<(f64, Placed)> = None;
