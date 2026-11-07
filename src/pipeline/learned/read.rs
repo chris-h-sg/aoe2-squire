@@ -256,6 +256,18 @@ impl ErrTerms {
 
 /// A reading's rendering kept up to date, so that changing one glyph costs only the pixels it
 /// covers. Its cost equals `joint_cost` of its glyphs.
+/// A canvas with one glyph taken out over the pixels its alternatives cover (`Canvas::hole`).
+struct Hole {
+    /// Pixel box x0, y0, x1, y1 in the region, and its width.
+    r: (usize, usize, usize, usize),
+    rw: usize,
+    /// Summed coverage without the glyph, and each pixel's error at it.
+    s: Vec<f32>,
+    e0: Vec<f32>,
+    /// Cost without the glyph.
+    base: f64,
+}
+
 #[derive(Clone)]
 struct Canvas<'a> {
     e: &'a ErrTerms,
@@ -369,6 +381,84 @@ impl<'a> Canvas<'a> {
         self.cost + d + self.e.lost(tb, bx, by) - self.e.lost(ta, ax, ay)
     }
 
+    /// Glyph `i` taken out over the pixels any of `cands` (alternatives for it) covers, so that
+    /// each of them is costed by adding it alone (`Hole::cost`).
+    fn hole(&self, i: usize, cands: &[Placed]) -> Hole {
+        let old = self.gs[i];
+        let mut r = self.bbox(old);
+        for &g in cands {
+            let b = self.bbox(g);
+            r = (r.0.min(b.0), r.1.min(b.1), r.2.max(b.2), r.3.max(b.3));
+        }
+        let (rw, rh) = (r.2 - r.0, r.3 - r.1);
+        let mut s = vec![0f32; rw * rh];
+        for y in 0..rh {
+            let o = (r.1 + y) * self.e.w + r.0;
+            s[y * rw..][..rw].copy_from_slice(&self.sum[o..o + rw]);
+        }
+        let (ta, ax, ay) = self.t.get(old.0, old.1, old.2);
+        let (ax, ay) = (ax + ta.x0, ay + ta.y0);
+        let mut before = 0f64;
+        for j in 0..ta.h {
+            let py = ay + j as i32;
+            if py < r.1 as i32 || py >= r.3 as i32 {
+                continue;
+            }
+            for k in 0..ta.w {
+                let px = ax + k as i32;
+                if px < r.0 as i32 || px >= r.2 as i32 {
+                    continue;
+                }
+                let li = (py as usize - r.1) * rw + (px as usize - r.0);
+                let gi = py as usize * self.e.w + px as usize;
+                let v = s[li];
+                let after = v - ta.v[j * ta.w + k];
+                before += self.e.at(gi, after) - self.e.at(gi, v);
+                s[li] = after;
+            }
+        }
+        let e0: Vec<f32> = (0..rw * rh)
+            .map(|li| self.e.at((r.1 + li / rw) * self.e.w + r.0 + li % rw, s[li]) as f32)
+            .collect();
+        Hole {
+            r,
+            rw,
+            s,
+            e0,
+            base: self.cost + before - self.e.lost(ta, ax, ay),
+        }
+    }
+
+    /// Cost with the hole's glyph replaced by `g` (one of the candidates it was made for).
+    fn hole_cost(&self, h: &Hole, g: Placed) -> f64 {
+        let (tp, gx, gy) = self.t.get(g.0, g.1, g.2);
+        let (gx, gy) = (gx + tp.x0, gy + tp.y0);
+        let e = self.e;
+        let mut d = 0f64;
+        // the candidate's box clipped to the hole (which holds all of it that is in the region)
+        let jx0 = (h.r.0 as i32 - gx).max(0) as usize;
+        let jx1 = ((h.r.2 as i32 - gx).max(0) as usize).min(tp.w);
+        for j in 0..tp.h {
+            let py = gy + j as i32;
+            if py < h.r.1 as i32 || py >= h.r.3 as i32 || jx0 >= jx1 {
+                continue;
+            }
+            let ly = py as usize - h.r.1;
+            let lrow = ly * h.rw;
+            let grow = py as usize * e.w;
+            let mut acc = 0f32;
+            for k in jx0..jx1 {
+                let lx = (gx + k as i32) as usize - h.r.0;
+                let li = lrow + lx;
+                let gi = grow + h.r.0 + lx;
+                let v = (h.s[li] + tp.v[j * tp.w + k]).min(1.0) - e.pt[gi];
+                acc += e.pw[gi] * v * v - h.e0[li];
+            }
+            d += acc as f64;
+        }
+        h.base + d + e.lost(tp, gx, gy)
+    }
+
     /// Replaces glyph `i` with `new`.
     fn set(&mut self, i: usize, new: Placed) {
         self.cost = self.cost_if(i, new);
@@ -412,17 +502,23 @@ impl<'a> Canvas<'a> {
                 continue;
             }
             let b = self.gs[i];
-            let mut best = (self.cost, b);
+            let mut moves = Vec::with_capacity(((2 * dx + 1) * (2 * dy + 1)) as usize);
             for ddy in -dy..=dy {
                 for ddx in -dx..=dx {
-                    if ddx == 0 && ddy == 0 {
-                        continue;
+                    if ddx != 0 || ddy != 0 {
+                        moves.push((b.0, b.1 + ddx, b.2 + ddy));
                     }
-                    let g = (b.0, b.1 + ddx, b.2 + ddy);
-                    let c = self.cost_if(i, g);
-                    if c < best.0 {
-                        best = (c, g);
-                    }
+                }
+            }
+            let hole = self.hole(i, &moves);
+            // the hole's own estimate of the current cost, so that rounding cannot make the
+            // glyph move for nothing
+            let here = self.hole_cost(&hole, b);
+            let mut best = (here, b);
+            for &g in &moves {
+                let c = self.hole_cost(&hole, g);
+                if c < best.0 {
+                    best = (c, g);
                 }
             }
             if best.1 != b {
@@ -480,22 +576,6 @@ pub fn read(
             }
         }
     }
-    let gain = |tp: &Tpl, x: i32, y: i32| -> f32 {
-        let (bx, by) = (x + tp.x0 + P, y + tp.y0 + P);
-        if bx < 0 || by < 0 || bx as usize + tp.w > aw || by as usize + tp.h > ah {
-            return -tp.e;
-        }
-        let mut g = 0.0;
-        for j in 0..tp.h {
-            let o = (by as usize + j) * aw + bx as usize;
-            let (ra, rw) = (&a[o..][..tp.w], &wq[o..][..tp.w]);
-            let (tv, t2) = (&tp.v[j * tp.w..][..tp.w], &tp.v2[j * tp.w..][..tp.w]);
-            for i in 0..tp.w {
-                g += ra[i] * tv[i] - rw[i] * t2[i];
-            }
-        }
-        g
-    };
     let xlo = -4 * ph;
     let nx = (o.w as i32 * ph - xlo) as usize;
     // Only pens whose glyph would overlap ink can be part of the best chain (a glyph over no
@@ -529,13 +609,54 @@ pub fn read(
             )
         })
         .collect();
-    let gains_at = |yq: i32| -> Vec<f32> {
+    // Gains of every character at every pen phase x in xi0..xi1 at height yq. Per character and x
+    // phase class the template is the same, so the correlation runs over whole rows of pen
+    // positions (vectorised); each gain still sums its terms in the order `gain` does.
+    let mut row_buf: Vec<f32> = vec![];
+    let mut gains_at = |yq: i32| -> Vec<f32> {
         let mut g = vec![0f32; nx * nd];
-        for xi in xi0..xi1 {
-            let xq = xlo + xi as i32;
-            for (di, &ci) in cis.iter().enumerate() {
-                let (tp, x, y) = t.get(ci, xq, yq);
-                g[xi * nd + di] = gain(tp, x, y);
+        if xi1 <= xi0 {
+            return g;
+        }
+        let (q0, q1) = (xlo + xi0 as i32, xlo + xi1 as i32); // pen phases q0..q1
+        for (di, &ci) in cis.iter().enumerate() {
+            for fx in 0..ph {
+                // integer pens x with 4x + fx in q0..q1
+                let xa = (q0 - fx + ph - 1).div_euclid(ph);
+                let xb = (q1 - 1 - fx).div_euclid(ph);
+                if xb < xa {
+                    continue;
+                }
+                let (tp, _, y) = t.get(ci, xa * ph + fx, yq);
+                let n = (xb - xa + 1) as usize;
+                let by = y + tp.y0 + P;
+                // pens whose template fits the padded image; others get `gain`'s -e
+                let bx_a = xa + tp.x0 + P;
+                let ka = (-bx_a).max(0) as usize;
+                let kb = ((aw as i32 - tp.w as i32 - bx_a + 1).max(0) as usize).min(n);
+                row_buf.clear();
+                row_buf.resize(n, 0.0);
+                if by < 0 || by as usize + tp.h > ah || ka >= kb {
+                    row_buf.fill(-tp.e);
+                } else {
+                    row_buf[..ka].fill(-tp.e);
+                    row_buf[kb..].fill(-tp.e);
+                    let out = &mut row_buf[ka..kb];
+                    for j in 0..tp.h {
+                        let o = (by as usize + j) * aw + (bx_a as usize + ka);
+                        for i in 0..tp.w {
+                            let (tv, t2) = (tp.v[j * tp.w + i], tp.v2[j * tp.w + i]);
+                            let (ra, rw) = (&a[o + i..][..out.len()], &wq[o + i..][..out.len()]);
+                            for k in 0..out.len() {
+                                out[k] += ra[k] * tv - rw[k] * t2;
+                            }
+                        }
+                    }
+                }
+                for k in 0..n {
+                    let xi = ((xa + k as i32) * ph + fx - xlo) as usize;
+                    g[xi * nd + di] = row_buf[k];
+                }
             }
         }
         g
@@ -759,20 +880,27 @@ pub fn read(
         }
         // raw cost of every substitute (best x offset as placed), then refinement in order of
         // raw cost while a substitute could still set the margin
-        let mut alts: Vec<(f64, Placed)> = vec![];
-        for &d in &alphabet {
-            if d == gs[i].0 {
-                continue;
-            }
-            let mut best: Option<(f64, Placed)> = None;
-            for dx in -2..=2 {
-                let g = (d, gs[i].1 + dx, gs[i].2);
+        let subs: Vec<usize> = alphabet
+            .iter()
+            .copied()
+            .filter(|&d| d != gs[i].0)
+            .filter(|&d| {
                 let mut alt = gs.clone();
-                alt[i] = g;
-                if !grammar.valid(&text_of(&alt)) {
-                    continue;
-                }
-                let c = base.cost_if(i, g);
+                alt[i].0 = d;
+                grammar.valid(&text_of(&alt))
+            })
+            .collect();
+        let here = gs[i];
+        let cands: Vec<Placed> = subs
+            .iter()
+            .flat_map(|&d| (-2..=2).map(move |dx| (d, here.1 + dx, here.2)))
+            .collect();
+        let hole = base.hole(i, &cands);
+        let mut alts: Vec<(f64, Placed)> = vec![];
+        for per_char in cands.chunks(5) {
+            let mut best: Option<(f64, Placed)> = None;
+            for &g in per_char {
+                let c = base.hole_cost(&hole, g);
                 if best.is_none_or(|b| c < b.0) {
                     best = Some((c, g));
                 }
