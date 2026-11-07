@@ -6,7 +6,7 @@ This roadmap outlines the development path for the AoE2 Squire, prioritizing cor
 
 In this order; each step is its own piece of work (and session), tracked against this list:
 
-1. **Digit matcher replacement** (see "Digit Recognition Review" below): the measurements show matching is both the main CPU cost and, through splitting, the main cause of misreads, so one change addresses both. It includes cropping the panel strip once (see "Vision CPU Cost"). **In progress:** the learned-shape matcher runs end to end behind `--matcher learned` (DECISION_LOG.md, "Learned Glyph Shapes"); the split matcher stays the default. Status (2026-11-03), fixture fields correct / misread (wrong value) / unread:
+1. **Digit matcher replacement** (see "Digit Recognition Review" below): the measurements show matching is both the main CPU cost and, through splitting, the main cause of misreads, so one change addresses both. It includes cropping the panel strip once (see "Vision CPU Cost"). **In progress:** the learned-shape matcher runs end to end behind `--matcher learned` (DECISION_LOG.md, "Learned Glyph Shapes"); the split matcher stays the default. Status (2026-11-07), fixture fields correct / misread (wrong value) / unread:
 
     | Fixture group | Split matcher | Learned, before the accuracy fixes | Learned matcher now |
     |---|---|---|---|
@@ -18,7 +18,7 @@ In this order; each step is its own piece of work (and session), tracked against
     | Game 3 (75% UI) | 37 / 19 / 0 | 54 / 0 / 2 | 56 / 0 / 0 |
     | Total (incl. out of scope) | 1118 / 34 / 0 | 1060 / 15 / 80 | 1132 / 1 / 19 |
     | Out of scope: 1200p/1440p screenshots (old, from the web) | 56 / 0 / 0 | 34 / 4 / 18 | 44 / 0 / 12 |
-    | Time per 1080p frame (`vision_bench`) | 23.5 ms | 52 ms (167 ms on the first run) | 63 ms |
+    | Time per 1080p frame (`vision_bench`) | 22.8 ms (23.5 ms on 2026-11-03) | 52 ms (167 ms on the first run) | 20.9 ms (63 ms on 2026-11-03) |
 
     Since this table was first made, the three enormous-font screenshots are reference-only (no player sees that layout in a game, so they are no longer tested; they were 3 misreads for both matchers), and `extract_f0302`'s population colour accepts white or yellow (the frame is caught mid-fade, ink about 242,239,217). The middle column predates both changes.
 
@@ -28,7 +28,7 @@ In this order; each step is its own piece of work (and session), tracked against
     *   **Video stills**: the population villager count over its icon art (36, 60) is unread in 2 frames. Compression lifts the black outline above the outlined-text mask's threshold.
     *   **Anne_HK**: food villagers 42 read as 12 in `7_vil_Anne_HK-2` (the only in-scope wrong value), and the idle count 103 is unread. The Anne_HK shapes come from two screenshots.
     *   **Sans-serif fixtures**: the population total of `aoe2_16x9_min_sans` is unread (the split matcher misreads it).
-    *   **CPU**: 63 ms per frame, 2.7x the split matcher. It went down from 167 to 52 ms with a fixed pen height per match, a search only near ink, incremental costs and fewer refined candidates. It went back up to 63 ms with the accuracy fixes (refinement until it converges, contrast-weighted chain search).
+    *   ~~**CPU**~~ (done 2026-11-07): 20.9 ms per 1080p frame against the split matcher's 22.8 ms (same run), down from 63 ms, with every fixture reading unchanged. The `--dump` of `vision_bench` matched on all 1056 fields after each step. In stages: observation 5.1 -> 1.4 ms (sliding-histogram percentile, inpainting without copies), pen height 11.4 -> 2.4 (gains vectorised over rows of pens; the idle count skipped while its icon shows no idle villagers), chains 10.6 -> 4.6 (no per-cell allocations), re-scoring 16.8 -> 8.0 and confidence 13.6 -> 4.0 (a glyph's alternatives costed against the canvas without it; refinement re-tries only glyphs a move reaches; no confidence work once a field is doubtful). The population total remains the dearest field (5.7 ms). In the capture loop a field whose pixels are unchanged keeps its last reading: on the recorded frames of game `telemetry_20261101_110257` (302 frames, ~5 s apart) 17.9 -> 11.5 ms per frame, with identical results. At 4 FPS more fields are unchanged between frames, so live it should be lower still (not measured).
     *   **Higher resolutions**: to be measured on fresh screenshots; the old ones from the web are out of scope.
 2. **Quick replay fixes**: the cancelled final Age-up click and in-order matching of bursts of identical spends (both under "Technical Debt" below). Independent of 1.
 3. **Survive a short loss of the panel** (below). Touches the capture loop; independent of 1.
