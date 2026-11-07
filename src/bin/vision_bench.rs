@@ -1,11 +1,16 @@
 //! Time per frame of both digit matchers on the vision fixtures (release build, one thread):
 //!
-//! cargo run --release --bin vision_bench [-- --csv]
+//! cargo run --release --bin vision_bench [-- --csv | --dump]
+//! cargo run --release --bin vision_bench -- --frames <recorded frames dir>
 //!
 //! Each frame is processed `REPS` times. For the learned matcher the reader first sees the frame
 //! until its shape-set detection is over (as on the first frames of a match), so the time is the
 //! steady state of a running match; templates are built once per UI size and are not counted.
 //! The mean is over the 1920x1080 frames on which a game is detected.
+//!
+//! `--frames` instead runs a recording (`--record-frames`) in order, as the capture loop does,
+//! with the split matcher and with the learned one reading every field or reusing the readings
+//! of unchanged fields; it also counts frames whose results differ between the last two.
 
 use aoe2_squire::pipeline::{
     self, anchor, learned::layout::Field, learned::LearnedReader, matcher,
@@ -36,6 +41,11 @@ fn main() {
     let ui_map: UiMap =
         serde_json::from_str(&std::fs::read_to_string(root.join("ui_map.json")).unwrap()).unwrap();
     let templates = matcher::load_embedded_templates();
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--frames") {
+        frames(std::path::Path::new(&args[i + 1]), &ui_map, &templates);
+        return;
+    }
 
     let mut files = vec![];
     for dir in DIRS {
@@ -167,4 +177,45 @@ fn main() {
             v.iter().sum::<f64>()
         );
     }
+}
+
+/// Times a recorded match in order (see the module comment).
+fn frames(dir: &std::path::Path, ui_map: &UiMap, templates: &aoe2_squire::types::Templates) {
+    let mut paths: Vec<_> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "png"))
+        .collect();
+    paths.sort(); // <timestamp_ms>.png
+    let imgs: Vec<DynamicImage> = paths
+        .iter()
+        .map(|p| DynamicImage::ImageRgb8(image::open(p).unwrap().into_rgb8()))
+        .collect();
+    let n = imgs.len().max(1) as f64;
+    let run = |matcher: pipeline::Matcher, skip: bool| {
+        let mut reader = pipeline::PanelReader::new(matcher, ui_map, templates);
+        reader.skip_unchanged(skip);
+        let t = Instant::now();
+        let out: Vec<_> = imgs.iter().map(|img| reader.process_frame(img)).collect();
+        (t.elapsed().as_secs_f64() * 1000.0 / n, out, reader)
+    };
+    let (split_ms, _, _) = run(pipeline::Matcher::Split, false);
+    let (full_ms, full, _) = run(pipeline::Matcher::Learned, false);
+    let (skip_ms, skipped, reader) = run(pipeline::Matcher::Learned, true);
+    let (read, reused) = match &reader {
+        pipeline::PanelReader::Learned { reader, .. } => (reader.fields_read, reader.fields_reused),
+        _ => (0, 0),
+    };
+    let differ = full.iter().zip(&skipped).filter(|(a, b)| a != b).count();
+    println!(
+        "{} frames of {}: split matcher {:.2} ms/frame, learned matcher {:.2} ms/frame reading every field, {:.2} ms/frame reusing unchanged fields ({} fields read, {} reused); frames whose results differ between the last two: {}",
+        imgs.len(),
+        dir.display(),
+        split_ms,
+        full_ms,
+        skip_ms,
+        read,
+        reused,
+        differ
+    );
 }

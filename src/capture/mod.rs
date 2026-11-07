@@ -361,6 +361,7 @@ pub fn capture_match<S: FrameSource>(
     let mut recorder: Option<FrameRecorder> = None;
     let mut frames_dir: Option<PathBuf> = None;
     let mut reader = pipeline::PanelReader::new(opts.matcher, ui_map, templates);
+    reader.skip_unchanged(true);
     #[cfg(feature = "dev-tools")]
     let _stop_video = opts.record_video.as_ref().map(|_| video::StopOnDrop);
 

@@ -65,6 +65,13 @@ pub struct LearnedReader {
     /// Pen heights (phases) of confident readings per (set, field, font size); the layout fixes
     /// them for a match, so after `PEN_VOTES` the median is used instead of a search.
     pen_votes: HashMap<(usize, Field, i64), Vec<i32>>,
+    /// Reuse a field's last reading while its pixels are unchanged (`skip_unchanged`).
+    skip_unchanged: bool,
+    /// Per (set, field): the field's region pixels and UI scale when last read, and the reading.
+    last: HashMap<(usize, Field), (Vec<u8>, u64, FieldReading)>,
+    /// Fields read and fields reused since the reader was made.
+    pub fields_read: usize,
+    pub fields_reused: usize,
 }
 
 /// Confident readings of a field before its pen height is fixed for the match.
@@ -92,7 +99,19 @@ impl LearnedReader {
             stage_ms: [0.0; 5],
             field_ms: [[0.0; 5]; 11],
             pen_votes: HashMap::new(),
+            skip_unchanged: false,
+            last: HashMap::new(),
+            fields_read: 0,
+            fields_reused: 0,
         }
+    }
+
+    /// Reuses a field's last reading while every pixel of its region (all that reading it looks
+    /// at) is unchanged since the frame it was read on, for the frames of one match in order.
+    /// The reused reading is the one those pixels got then (with the pen height known then).
+    pub fn skip_unchanged(&mut self, on: bool) {
+        self.skip_unchanged = on;
+        self.last.clear();
     }
 
     /// Restricts the reader to one shape set (by id), skipping detection.
@@ -130,75 +149,108 @@ impl LearnedReader {
         let mut out = vec![];
         for fl in &layout.fields {
             let field = fl.field;
-            let colour = if field == Field::PopTotal {
-                observe::text_colour(strip, (0, 0), fl, u)
+            let pixels = if self.skip_unchanged {
+                let px = crop(strip, fl.crop, u)
+                    .map(|c| c.into_raw())
+                    .unwrap_or_default();
+                if let Some((p, sc, r)) = self.last.get(&(si, field)) {
+                    if *p == px && *sc == ui_scale.to_bits() {
+                        out.push(r.clone());
+                        self.fields_reused += 1;
+                        continue;
+                    }
+                }
+                Some(px)
             } else {
-                TextColour::White
-            };
-            let rgb = if field == Field::PopTotal {
-                colour.rgb()
-            } else {
-                fl.colour
-            };
-            let clock = std::time::Instant::now();
-            // No idle villagers: nothing to read (`results` reports 0).
-            let obs = if field == Field::IdleVils && !idle_active(layout, strip, u) {
                 None
-            } else {
-                observe::observe(strip, (0, 0), fl, u, rgb, None)
             };
-            let obs_ms = clock.elapsed().as_secs_f64() * 1e3;
-            self.stage_ms[0] += obs_ms;
-            self.field_ms[field as usize][0] += obs_ms;
-            let Some(obs) = obs else {
-                out.push(FieldReading {
-                    field,
-                    reading: None,
-                    colour,
-                });
-                continue;
-            };
-            let pen_y = self.sets[si].pen_y.get(&field).copied().unwrap_or(0.0);
-            let grammar = if field == Field::PopTotal {
-                Grammar::Ratio
-            } else {
-                Grammar::Number
-            };
-            let k = obs.k;
-            let key = (si, field, (k * 1e5).round() as i64);
-            let pen = match self.pen_votes.get(&key) {
-                Some(v) if v.len() >= PEN_VOTES => {
-                    let mut v = v.clone();
-                    v.sort();
-                    PenY::Fixed(v[v.len() / 2])
-                }
-                _ => PenY::Search(obs.top + pen_y * k),
-            };
-            let t = self.templates(si, field.kind(), k);
-            let reading = read::read(&obs, t, grammar, field.max_len(), pen);
-            if let (Some(r), PenY::Search(_)) = (&reading, pen) {
-                if r.confidence() >= MIN_MARGIN {
-                    self.pen_votes.entry(key).or_default().push(r.pen_yq);
-                }
+            self.fields_read += 1;
+            let reading = self.read_field(si, fl, strip, u);
+            if let Some(px) = pixels {
+                self.last
+                    .insert((si, field), (px, ui_scale.to_bits(), reading.clone()));
             }
-            if let Some(r) = &reading {
-                for (sum, v) in self.stage_ms[1..].iter_mut().zip(r.stage_ms) {
-                    *sum += v;
-                }
-                for (sum, v) in self.field_ms[field as usize][1..]
-                    .iter_mut()
-                    .zip(r.stage_ms)
-                {
-                    *sum += v;
-                }
-            }
-            out.push(FieldReading {
-                field,
-                reading,
-                colour,
-            });
+            out.push(reading);
         }
         out
+    }
+
+    /// Reads one field of `strip` with shape set `si`.
+    fn read_field(
+        &mut self,
+        si: usize,
+        fl: &layout::FieldLayout,
+        strip: &RgbImage,
+        u: f32,
+    ) -> FieldReading {
+        let layout = self.sets[si].layout;
+        let field = fl.field;
+        let colour = if field == Field::PopTotal {
+            observe::text_colour(strip, (0, 0), fl, u)
+        } else {
+            TextColour::White
+        };
+        let rgb = if field == Field::PopTotal {
+            colour.rgb()
+        } else {
+            fl.colour
+        };
+        let clock = std::time::Instant::now();
+        // No idle villagers: nothing to read (`results` reports 0).
+        let obs = if field == Field::IdleVils && !idle_active(layout, strip, u) {
+            None
+        } else {
+            observe::observe(strip, (0, 0), fl, u, rgb, None)
+        };
+        let obs_ms = clock.elapsed().as_secs_f64() * 1e3;
+        self.stage_ms[0] += obs_ms;
+        self.field_ms[field as usize][0] += obs_ms;
+        let Some(obs) = obs else {
+            return FieldReading {
+                field,
+                reading: None,
+                colour,
+            };
+        };
+        let pen_y = self.sets[si].pen_y.get(&field).copied().unwrap_or(0.0);
+        let grammar = if field == Field::PopTotal {
+            Grammar::Ratio
+        } else {
+            Grammar::Number
+        };
+        let k = obs.k;
+        let key = (si, field, (k * 1e5).round() as i64);
+        let pen = match self.pen_votes.get(&key) {
+            Some(v) if v.len() >= PEN_VOTES => {
+                let mut v = v.clone();
+                v.sort();
+                PenY::Fixed(v[v.len() / 2])
+            }
+            _ => PenY::Search(obs.top + pen_y * k),
+        };
+        let t = self.templates(si, field.kind(), k);
+        let reading = read::read(&obs, t, grammar, field.max_len(), pen);
+        if let (Some(r), PenY::Search(_)) = (&reading, pen) {
+            if r.confidence() >= MIN_MARGIN {
+                self.pen_votes.entry(key).or_default().push(r.pen_yq);
+            }
+        }
+        if let Some(r) = &reading {
+            for (sum, v) in self.stage_ms[1..].iter_mut().zip(r.stage_ms) {
+                *sum += v;
+            }
+            for (sum, v) in self.field_ms[field as usize][1..]
+                .iter_mut()
+                .zip(r.stage_ms)
+            {
+                *sum += v;
+            }
+        }
+        FieldReading {
+            field,
+            reading,
+            colour,
+        }
     }
 
     /// Reads one frame. None if the game's panel is not found (same rule as the split matcher).

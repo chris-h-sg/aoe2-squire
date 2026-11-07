@@ -322,6 +322,14 @@ impl<'a> PanelReader<'a> {
         }
     }
 
+    /// Learned matcher: reuse a field's last reading while its pixels are unchanged (the frames
+    /// of one match, in order). The split matcher reads every frame in full.
+    pub fn skip_unchanged(&mut self, on: bool) {
+        if let PanelReader::Learned { reader, .. } = self {
+            reader.skip_unchanged(on);
+        }
+    }
+
     pub fn process_frame(&mut self, img: &DynamicImage) -> Option<Results> {
         match self {
             PanelReader::Split { ui_map, templates } => process_frame(img, ui_map, templates),
