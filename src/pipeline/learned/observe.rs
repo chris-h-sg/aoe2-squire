@@ -177,21 +177,12 @@ fn panel(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bo
         })
         .collect();
     let r = 4usize;
-    let mut ink = vec![false; w * h];
-    let mut win = Vec::with_capacity(81);
-    for y in 0..h {
-        for x in 0..w {
-            win.clear();
-            for yy in y.saturating_sub(r)..(y + r + 1).min(h) {
-                win.extend_from_slice(
-                    &m[yy * w + x.saturating_sub(r)..yy * w + (x + r + 1).min(w)],
-                );
-            }
-            let n = win.len() * 3 / 10;
-            let (_, p30, _) = win.select_nth_unstable_by(n, |a, b| a.partial_cmp(b).unwrap());
-            ink[y * w + x] = m[y * w + x] > *p30 + INK_RISE;
-        }
-    }
+    let ink = if chans.iter().all(|&ch| c[ch] == 255.0) {
+        // m is then the integer channel value itself
+        ink_by_histogram(&m, w, h, r)
+    } else {
+        ink_by_selection(&m, w, h, r)
+    };
     let dil: Vec<bool> = (0..w * h)
         .map(|i| near(w, h, i % w, i / w, 1, |j| ink[j]))
         .collect();
@@ -221,6 +212,74 @@ fn panel(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bo
         }
     }
     (cov, mask, wt)
+}
+
+/// Ink: pixels brighter than the 30th percentile of their (2r+1)^2 neighbourhood (clipped to the
+/// region) by more than `INK_RISE`.
+fn ink_by_selection(m: &[f32], w: usize, h: usize, r: usize) -> Vec<bool> {
+    let mut ink = vec![false; w * h];
+    let mut win = Vec::with_capacity((2 * r + 1) * (2 * r + 1));
+    for y in 0..h {
+        for x in 0..w {
+            win.clear();
+            for yy in y.saturating_sub(r)..(y + r + 1).min(h) {
+                win.extend_from_slice(
+                    &m[yy * w + x.saturating_sub(r)..yy * w + (x + r + 1).min(w)],
+                );
+            }
+            let n = win.len() * 3 / 10;
+            let (_, p30, _) = win.select_nth_unstable_by(n, |a, b| a.partial_cmp(b).unwrap());
+            ink[y * w + x] = m[y * w + x] > *p30 + INK_RISE;
+        }
+    }
+    ink
+}
+
+/// The same as `ink_by_selection` for integer values 0-255, with a histogram of the window slid
+/// along each row: the n-th smallest value (n = 30% of the window) is below `m - INK_RISE`
+/// exactly when more than n window values are at most `m - INK_RISE - 1`.
+fn ink_by_histogram(m: &[f32], w: usize, h: usize, r: usize) -> Vec<bool> {
+    let rise = INK_RISE as i32;
+    let val: Vec<u8> = m.iter().map(|&v| v as u8).collect();
+    let mut ink = vec![false; w * h];
+    for y in 0..h {
+        let (ya, yb) = (y.saturating_sub(r), (y + r + 1).min(h));
+        let mut fine = [0u16; 256];
+        let mut coarse = [0u16; 16];
+        let col = |x: usize, add: bool, fine: &mut [u16; 256], coarse: &mut [u16; 16]| {
+            for yy in ya..yb {
+                let v = val[yy * w + x] as usize;
+                if add {
+                    fine[v] += 1;
+                    coarse[v >> 4] += 1;
+                } else {
+                    fine[v] -= 1;
+                    coarse[v >> 4] -= 1;
+                }
+            }
+        };
+        for x in 0..(r + 1).min(w) {
+            col(x, true, &mut fine, &mut coarse);
+        }
+        for x in 0..w {
+            let len = (yb - ya) * ((x + r + 1).min(w) - x.saturating_sub(r));
+            let n = len * 3 / 10;
+            let t = val[y * w + x] as i32 - rise - 1;
+            if t >= 0 {
+                let t = t as usize;
+                let mut below: usize = coarse[..t >> 4].iter().map(|&c| c as usize).sum();
+                below += fine[t & !15..=t].iter().map(|&c| c as usize).sum::<usize>();
+                ink[y * w + x] = below > n;
+            }
+            if x >= r {
+                col(x - r, false, &mut fine, &mut coarse);
+            }
+            if x + r + 1 < w {
+                col(x + r + 1, true, &mut fine, &mut coarse);
+            }
+        }
+    }
+    ink
 }
 
 /// Fills the `hole` pixels with a harmonic interpolation of the others (per channel): first
@@ -253,25 +312,36 @@ fn inpaint(rgb: &[[f32; 3]], hole: &[bool], w: usize, h: usize) -> Vec<[f32; 3]>
             }
         }
     }
-    let holes: Vec<usize> = (0..w * h).filter(|&i| hole[i]).collect();
-    for _ in 0..60 {
-        let old = bg.clone();
-        for &i in &holes {
+    // each hole's neighbours (left, right, up, down, as far as they exist)
+    let holes: Vec<(usize, [usize; 4], usize)> = (0..w * h)
+        .filter(|&i| hole[i])
+        .map(|i| {
             let (x, y) = (i % w, i / w);
-            let mut acc = [0f32; 3];
-            let mut n = 0.0;
+            let mut nb = [0usize; 4];
+            let mut n = 0;
             for (dx, dy) in [(-1i32, 0i32), (1, 0), (0, -1), (0, 1)] {
                 let (xx, yy) = (x as i32 + dx, y as i32 + dy);
                 if xx >= 0 && yy >= 0 && (xx as usize) < w && (yy as usize) < h {
-                    let p = old[yy as usize * w + xx as usize];
-                    for ch in 0..3 {
-                        acc[ch] += p[ch];
-                    }
-                    n += 1.0;
+                    nb[n] = yy as usize * w + xx as usize;
+                    n += 1;
                 }
             }
-            bg[i] = acc.map(|v| v / n);
+            (i, nb, n)
+        })
+        .collect();
+    // Jacobi iterations; only holes change, so two buffers that agree elsewhere take turns
+    let mut next = bg.clone();
+    for _ in 0..60 {
+        for &(i, nb, n) in &holes {
+            let mut acc = [0f32; 3];
+            for &j in &nb[..n] {
+                for ch in 0..3 {
+                    acc[ch] += bg[j][ch];
+                }
+            }
+            next[i] = acc.map(|v| v / n as f32);
         }
+        std::mem::swap(&mut bg, &mut next);
     }
     bg
 }
