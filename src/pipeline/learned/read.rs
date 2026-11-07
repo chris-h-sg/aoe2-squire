@@ -9,7 +9,7 @@
 //!    glyph's position refined, and invalid strings (leading zeros, misplaced slash) dropped.
 //! 4. Confidence: each character is replaced by every other one in turn; its margin is how much
 //!    worse (RMSE, grey levels) the best substitute fits. The string's margin is the gap to the
-//!    runner-up string.
+//!    runner-up string. Once one margin is below `MIN_MARGIN` the rest are not worked out.
 
 use super::observe::Obs;
 use super::shapes::{stamp, Glyph, GlyphSet};
@@ -157,7 +157,8 @@ pub struct Reading {
     pub rmse: f64,
     /// Runner-up string's RMSE minus this one's (infinite if there is none).
     pub margin: f64,
-    /// Per character: the best substitute's RMSE minus this one's.
+    /// Per character: the best substitute's RMSE minus this one's (only up to the first one
+    /// below `MIN_MARGIN`, or none if the string margin already is).
     pub char_margin: Vec<f64>,
     /// Glyph pens in region pixels.
     pub pens: Vec<(f32, f32)>,
@@ -263,6 +264,16 @@ struct Canvas<'a> {
     sum: Vec<f32>,
     gs: Vec<Placed>,
     cost: f64,
+    /// Per glyph: no refinement move improved it, and nothing it could reach has changed since.
+    clean: Vec<bool>,
+}
+
+/// Pixels by which a glyph's box can grow or shift in one refinement move of at most one pixel
+/// (4 phases): the box moves by up to 1 px and a phase's template may be 1 px wider.
+const MOVE_REACH: usize = 2;
+
+fn overlaps(a: (usize, usize, usize, usize), b: (usize, usize, usize, usize)) -> bool {
+    a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3
 }
 
 impl<'a> Canvas<'a> {
@@ -279,6 +290,7 @@ impl<'a> Canvas<'a> {
             sum,
             gs: gs.to_vec(),
             cost,
+            clean: vec![false; gs.len()],
         }
     }
 
@@ -361,14 +373,30 @@ impl<'a> Canvas<'a> {
     fn set(&mut self, i: usize, new: Placed) {
         self.cost = self.cost_if(i, new);
         let old = self.gs[i];
+        // glyphs whose moves cover the changed pixels must be tried again
+        let (a, b) = (self.bbox(old), self.bbox(new));
+        let changed = (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3));
+        for j in 0..self.gs.len() {
+            let (x0, y0, x1, y1) = self.bbox(self.gs[j]);
+            let reach = (
+                x0.saturating_sub(MOVE_REACH),
+                y0.saturating_sub(MOVE_REACH),
+                x1 + MOVE_REACH,
+                y1 + MOVE_REACH,
+            );
+            if j == i || overlaps(reach, changed) {
+                self.clean[j] = false;
+            }
+        }
         Self::stamp(self.e, self.t, old, &mut self.sum, -1.0);
         Self::stamp(self.e, self.t, new, &mut self.sum, 1.0);
         self.gs[i] = new;
     }
 
-    /// Moves each glyph in turn by up to `dx`/`dy` phases, keeping any improvement, until a pass
-    /// changes nothing (at most `MAX_REFINE_PASSES`), so that readings compared with each other
-    /// are all refined as far.
+    /// Moves each glyph in turn by up to `dx`/`dy` phases (at most 4), keeping any improvement,
+    /// until a pass changes nothing (at most `MAX_REFINE_PASSES`), so that readings compared with
+    /// each other are all refined as far. A glyph that found no better position is tried again
+    /// only once a change reaches the pixels its moves cover; until then it would find none.
     fn refine(&mut self, dx: i32, dy: i32) {
         for _ in 0..MAX_REFINE_PASSES {
             if !self.refine_pass(dx, dy) {
@@ -380,6 +408,9 @@ impl<'a> Canvas<'a> {
     fn refine_pass(&mut self, dx: i32, dy: i32) -> bool {
         let mut moved = false;
         for i in 0..self.gs.len() {
+            if self.clean[i] {
+                continue;
+            }
             let b = self.gs[i];
             let mut best = (self.cost, b);
             for ddy in -dy..=dy {
@@ -397,6 +428,8 @@ impl<'a> Canvas<'a> {
             if best.1 != b {
                 self.set(i, best.1);
                 moved = true;
+            } else {
+                self.clean[i] = true;
             }
         }
         moved
@@ -673,7 +706,7 @@ pub fn read(
     let et = ErrTerms::new(o);
     // unrefined cost of each candidate first; only the best REFINED get the per-glyph refinement
     // (it moves costs by a little, so a string far behind before it stays behind)
-    let mut scored: Vec<(String, f64, Vec<Placed>)> = vec![];
+    let mut scored: Vec<(String, f64, Vec<Placed>, Vec<bool>)> = vec![];
     for &(_, x, l, r) in &all {
         if scored.len() >= TOP_STRINGS {
             break;
@@ -684,18 +717,19 @@ pub fn read(
             continue;
         }
         let cost = Canvas::new(&et, t, &gs).cost;
-        scored.push((text, cost, gs));
+        let clean = vec![false; gs.len()];
+        scored.push((text, cost, gs, clean));
     }
     scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
     for s in scored.iter_mut().take(REFINED) {
         let mut canvas = Canvas::new(&et, t, &s.2);
         canvas.refine(1, 2);
-        (s.1, s.2) = (canvas.cost, canvas.gs);
+        (s.1, s.2, s.3) = (canvas.cost, canvas.gs, canvas.clean);
     }
     // an empty field: no glyph at all
     let empty_cost = joint_cost(o, t, &[]);
     scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-    let (text, cost, gs) = scored.first()?.clone();
+    let (text, cost, gs, clean) = scored.first()?.clone();
     let rmse = to_rmse(cost);
     let runner_up = scored
         .get(1)
@@ -706,9 +740,15 @@ pub fn read(
     lap(2);
     // 4) per-character margins: every other character at each position (x +-2 phases)
     let alphabet: Vec<usize> = cis.clone();
-    let base = Canvas::new(&et, t, &gs);
+    let mut base = Canvas::new(&et, t, &gs);
+    base.clean = clean;
     let mut char_margin = vec![];
+    // a doubtful field stays unread whatever its other margins are, so they are not worked out
+    let doubtful = |m: f64| m < super::MIN_MARGIN;
     for i in 0..gs.len() {
+        if doubtful(char_margin.iter().copied().fold(margin, f64::min)) {
+            break;
+        }
         // raw cost of every substitute (best x offset as placed), then refinement in order of
         // raw cost while a substitute could still set the margin
         let mut alts: Vec<(f64, Placed)> = vec![];
