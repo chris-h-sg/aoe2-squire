@@ -506,13 +506,7 @@ impl<'a> Canvas<'a> {
         }
     }
 
-    fn refine_pass(
-        &mut self,
-        dx: i32,
-        dy: i32,
-        hole: &mut Hole,
-        moves: &mut Vec<Placed>,
-    ) -> bool {
+    fn refine_pass(&mut self, dx: i32, dy: i32, hole: &mut Hole, moves: &mut Vec<Placed>) -> bool {
         let mut moved = false;
         for i in 0..self.gs.len() {
             if self.clean[i] {
@@ -757,13 +751,19 @@ pub fn read(
                             let c = idx(p as usize, l - 1, ps);
                             for (r, e) in best[c][..nbest[c] as usize].iter().enumerate() {
                                 if e.1 as usize == pd {
-                                    cand.push((e.0, p as u32, r as u8));
+                                    // only the K best can be kept; ties keep the first seen
+                                    if cand.len() == K && e.0 <= cand[K - 1].0 {
+                                        continue;
+                                    }
+                                    let i =
+                                        cand.iter().position(|x| e.0 > x.0).unwrap_or(cand.len());
+                                    cand.insert(i, (e.0, p as u32, r as u8));
+                                    cand.truncate(K);
                                 }
                             }
                         }
                     }
                 }
-                cand.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
                 npreds[ps] = cand.len().min(K);
                 preds[ps][..npreds[ps]].copy_from_slice(&cand[..npreds[ps]]);
             }
