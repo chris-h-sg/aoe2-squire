@@ -141,7 +141,12 @@ impl LearnedReader {
                 fl.colour
             };
             let clock = std::time::Instant::now();
-            let obs = observe::observe(strip, (0, 0), fl, u, rgb, None);
+            // No idle villagers: nothing to read (`results` reports 0).
+            let obs = if field == Field::IdleVils && !idle_active(layout, strip, u) {
+                None
+            } else {
+                observe::observe(strip, (0, 0), fl, u, rgb, None)
+            };
             let obs_ms = clock.elapsed().as_secs_f64() * 1e3;
             self.stage_ms[0] += obs_ms;
             self.field_ms[field as usize][0] += obs_ms;
@@ -276,21 +281,8 @@ impl LearnedReader {
                     };
                 }
                 Field::IdleVils => {
-                    // No idle villagers: the icon is greyed out (base) or not red (Anne_HK).
-                    let value = if text.is_empty() {
-                        let fl = layout.field(Field::IdleVils);
-                        let active = crop(strip, fl.crop, u).is_some_and(|b| {
-                            if layout.name == "anne_hk" {
-                                filter::contains_red(&b)
-                            } else {
-                                filter::contains_yellow(&b)
-                            }
-                        });
-                        if active {
-                            text
-                        } else {
-                            "0".to_string()
-                        }
+                    let value = if text.is_empty() && !idle_active(layout, strip, u) {
+                        "0".to_string()
                     } else {
                         text
                     };
@@ -302,6 +294,19 @@ impl LearnedReader {
         put("population", "color", pop_color.to_string());
         results
     }
+}
+
+/// Whether the idle-villager icon shows idle villagers: greyed out (base) or not red (Anne_HK)
+/// when there are none.
+fn idle_active(layout: &layout::Layout, strip: &RgbImage, u: f32) -> bool {
+    let fl = layout.field(Field::IdleVils);
+    crop(strip, fl.crop, u).is_some_and(|b| {
+        if layout.name == "anne_hk" {
+            filter::contains_red(&b)
+        } else {
+            filter::contains_yellow(&b)
+        }
+    })
 }
 
 fn crop(strip: &RgbImage, c: [f32; 4], u: f32) -> Option<RgbImage> {
