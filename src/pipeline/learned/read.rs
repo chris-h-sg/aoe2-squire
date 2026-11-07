@@ -598,38 +598,40 @@ pub fn read(
     let slash = cis.iter().position(|&ci| t.chars[ci] == '/');
     let ns = if grammar == Grammar::Ratio { 2 } else { 1 };
     let idx = |x: usize, l: usize, s: usize| (x * maxl + l) * ns + s;
-    let mut best: Vec<Vec<Entry>> = vec![vec![]; nx * maxl * ns];
+    let mut best: Vec<[Entry; K]> = vec![[(f32::MIN, 0, 0, 0, 0); K]; nx * maxl * ns];
+    let mut nbest: Vec<u8> = vec![0; nx * maxl * ns];
+    let mut cand: Vec<(f32, u32, u8)> = Vec::with_capacity(256);
+    let mut preds = [[(0f32, 0u32, 0u8); K]; 2];
+    let mut npreds = [0usize; 2];
     for x in xi0..xi1 {
         for l in 0..maxl {
-            for s in 0..ns {
-                let mut c: Vec<Entry> = Vec::with_capacity(K + 1);
-                // best predecessors one advance (of the predecessor's character) back, per
-                // predecessor state; they do not depend on this character
-                let preds: Vec<Vec<(f32, u32, u8)>> = (0..ns)
-                    .map(|ps| {
-                        let mut pred: Vec<(f32, u32, u8)> = vec![];
-                        if l > 0 {
-                            for (pd, &(lo, hi)) in win.iter().enumerate() {
-                                for adv in lo..=hi {
-                                    let p = x as i32 - adv;
-                                    if p < 0 {
-                                        continue;
-                                    }
-                                    for (r, e) in
-                                        best[idx(p as usize, l - 1, ps)].iter().enumerate()
-                                    {
-                                        if e.1 as usize == pd {
-                                            pred.push((e.0, p as u32, r as u8));
-                                        }
-                                    }
+            // best predecessors one advance (of the predecessor's character) back, per
+            // predecessor state; they do not depend on this character or state
+            for ps in 0..ns {
+                cand.clear();
+                if l > 0 {
+                    for (pd, &(lo, hi)) in win.iter().enumerate() {
+                        for adv in lo..=hi {
+                            let p = x as i32 - adv;
+                            if p < 0 {
+                                continue;
+                            }
+                            let c = idx(p as usize, l - 1, ps);
+                            for (r, e) in best[c][..nbest[c] as usize].iter().enumerate() {
+                                if e.1 as usize == pd {
+                                    cand.push((e.0, p as u32, r as u8));
                                 }
                             }
                         }
-                        pred.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-                        pred.truncate(K);
-                        pred
-                    })
-                    .collect();
+                    }
+                }
+                cand.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+                npreds[ps] = cand.len().min(K);
+                preds[ps][..npreds[ps]].copy_from_slice(&cand[..npreds[ps]]);
+            }
+            for s in 0..ns {
+                let mut c = [(f32::MIN, 0u8, 0u32, 0u8, 0u8); K];
+                let mut nc = 0usize;
                 for d in 0..nd {
                     let is_slash = Some(d) == slash;
                     // the state before this character
@@ -643,12 +645,16 @@ pub fn read(
                     };
                     let gd = g[x * nd + d];
                     let mut push = |e: Entry| {
-                        if c.len() == K && e.0 <= c[K - 1].0 {
+                        if nc == K && e.0 <= c[K - 1].0 {
                             return;
                         }
-                        let i = c.iter().position(|x| e.0 > x.0).unwrap_or(c.len());
-                        c.insert(i, e);
-                        c.truncate(K);
+                        let i = c[..nc].iter().position(|x| e.0 > x.0).unwrap_or(nc);
+                        let end = (nc + 1).min(K);
+                        for j in (i + 1..end).rev() {
+                            c[j] = c[j - 1];
+                        }
+                        c[i] = e;
+                        nc = end;
                     };
                     if l == 0 {
                         if s == 0 {
@@ -656,11 +662,12 @@ pub fn read(
                         }
                         continue;
                     }
-                    for &(sc, p, r) in &preds[ps] {
+                    for &(sc, p, r) in &preds[ps][..npreds[ps]] {
                         push((sc + gd, d as u8, p, r, ps as u8));
                     }
                 }
                 best[idx(x, l, s)] = c;
+                nbest[idx(x, l, s)] = nc as u8;
             }
         }
     }
@@ -668,7 +675,8 @@ pub fn read(
     let mut all: Vec<(f32, usize, usize, usize)> = vec![];
     for x in 0..nx {
         for l in 0..maxl {
-            for (r, e) in best[idx(x, l, ns - 1)].iter().enumerate() {
+            let c = idx(x, l, ns - 1);
+            for (r, e) in best[c][..nbest[c] as usize].iter().enumerate() {
                 all.push((e.0, x, l, r));
             }
         }
