@@ -1,6 +1,8 @@
 use crate::game_data::{GameData, Kind, FARM_BUILDING};
 use crate::types::Age;
-use aoe2rec::Savegame;
+use aoe2rec::actions::{ActionData, Game, OrderType};
+use aoe2rec::typed::{TypedAction, TypedOperation};
+use aoe2rec::{Operation, Savegame};
 use binrw::BinReaderExt;
 use chrono::{Local, TimeZone};
 use serde::Serialize;
@@ -274,13 +276,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
 
     let mut cursor = std::io::Cursor::new(&buffer);
     // Fully qualified: std may add a `read_le` method that would shadow binrw's.
-    let mut savegame: Savegame = BinReaderExt::read_le(&mut cursor)?;
-    // All chapters' operations in order, owned (what `Savegame::operations()` iterates by reference).
-    let operations: Vec<aoe2rec::Operation> = savegame
-        .chapters
-        .iter_mut()
-        .flat_map(|chapter| std::mem::take(&mut chapter.operations))
-        .collect();
+    let savegame: Savegame = BinReaderExt::read_le(&mut cursor)?;
+    let typed = savegame.get_typed();
     let header = savegame
         .header()
         .ok_or("replay contains no recorded chapters")?;
@@ -363,51 +360,51 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
     let mut current_ms = 0;
     let mut loser_id: Option<u8> = None;
 
-    for op in operations {
+    for op in typed.operations() {
         match op {
-            aoe2rec::Operation::Sync { time_increment, .. } => {
-                current_ms += time_increment;
+            TypedOperation::Other(Operation::Sync { time_increment, .. }) => {
+                current_ms += *time_increment;
             }
-            aoe2rec::Operation::Action {
-                action_data: Some(action),
-                ..
-            } => match action {
-                aoe2rec::actions::ActionData::Research {
+            // A Build, Queue or Delete the parser could not decode arrives as
+            // `TypedAction::Other` with raw data (every Build before game build 71094) and is
+            // skipped by the catch-all arm.
+            TypedOperation::Action { action_data, .. } => match action_data {
+                TypedAction::Other(ActionData::Research {
                     player_id,
                     technology_type,
                     building_id,
                     ..
-                } => {
-                    let tech_id = technology_type as u32;
+                }) => {
+                    let tech_id = *technology_type as u32;
                     let (tech_name, cost) = lookup.name_and_cost(Kind::Tech, tech_id);
 
                     let b_type_name = instance_map
-                        .get(&building_id)
+                        .get(building_id)
                         .cloned()
                         .unwrap_or_else(|| "Unknown Building".to_string());
 
                     events.push(ReplayEvent::TechResearch {
                         timestamp_ms: current_ms,
-                        player_id,
+                        player_id: *player_id,
                         tech_id,
                         tech_type: tech_name,
                         cost,
-                        building_id,
+                        building_id: *building_id,
                         building_type: b_type_name,
                     });
                 }
-                aoe2rec::actions::ActionData::DeQueue {
+                TypedAction::Other(ActionData::DeQueue {
                     player_id,
                     unit_id,
                     amount,
                     building_type,
                     building_ids,
                     ..
-                } => {
-                    let unit_id = unit_id as u32;
-                    let b_type_name = lookup.name(Kind::Building, building_type as u32);
+                }) => {
+                    let unit_id = *unit_id as u32;
+                    let b_type_name = lookup.name(Kind::Building, *building_type as u32);
 
-                    for b_id in &building_ids {
+                    for b_id in building_ids {
                         instance_map.insert(*b_id, b_type_name.clone());
                     }
 
@@ -415,10 +412,10 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
 
                     // `amount` is the total number of units, spread across the selected
                     // buildings, so each queued unit costs the base cost once.
-                    for _ in 0..amount {
+                    for _ in 0..*amount {
                         events.push(ReplayEvent::UnitQueued {
                             timestamp_ms: current_ms,
-                            player_id,
+                            player_id: *player_id,
                             unit_id,
                             unit_type: unit_name.clone(),
                             cost: base_cost.clone(),
@@ -427,16 +424,16 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         });
                     }
                 }
-                aoe2rec::actions::ActionData::Order {
+                TypedAction::Other(ActionData::Order {
                     player_id,
                     order_type,
                     object_ids,
                     unknown5,
                     ..
-                } => {
+                }) => {
                     let building_ids = object_ids;
 
-                    if order_type == aoe2rec::actions::OrderType::Unqueue {
+                    if *order_type == OrderType::Unqueue {
                         let building_types: Vec<String> = building_ids
                             .iter()
                             .map(|id| {
@@ -449,21 +446,21 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
 
                         events.push(ReplayEvent::QueueCancellation {
                             timestamp_ms: current_ms,
-                            player_id,
-                            building_ids,
+                            player_id: *player_id,
+                            building_ids: building_ids.clone(),
                             building_types,
-                            queue_position: unknown5 as i32,
+                            queue_position: *unknown5 as i32,
                         });
                     }
                 }
-                aoe2rec::actions::ActionData::Queue {
+                TypedAction::Queue {
                     player_id,
                     unit_type,
                     building_ids,
                     count,
                     ..
                 } => {
-                    let unit_id = unit_type as u32;
+                    let unit_id = *unit_type as u32;
 
                     let b_type_name = if !building_ids.is_empty() {
                         instance_map
@@ -478,10 +475,10 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
 
                     // `count` is the total number of units, spread across the selected
                     // buildings, so each queued unit costs the base cost once.
-                    for _ in 0..count {
+                    for _ in 0..*count {
                         events.push(ReplayEvent::UnitQueued {
                             timestamp_ms: current_ms,
-                            player_id,
+                            player_id: *player_id,
                             unit_id,
                             unit_type: unit_name.clone(),
                             cost: base_cost.clone(),
@@ -490,7 +487,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         });
                     }
                 }
-                aoe2rec::actions::ActionData::Build {
+                TypedAction::Build {
                     player_id,
                     building_type_id,
                     x,
@@ -498,25 +495,26 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                     ..
                 } => {
                     let (b_type_name, cost) =
-                        lookup.name_and_cost(Kind::Building, building_type_id);
+                        lookup.name_and_cost(Kind::Building, *building_type_id);
 
-                    let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
+                    let pos_key = ((*x * 10.0) as i32, (*y * 10.0) as i32);
                     pending_builds.insert(pos_key, b_type_name.clone());
 
                     events.push(ReplayEvent::BuildingConstruction {
                         timestamp_ms: current_ms,
-                        player_id,
+                        player_id: *player_id,
                         building_type: b_type_name,
-                        building_type_id,
-                        x,
-                        y,
+                        building_type_id: *building_type_id,
+                        x: *x,
+                        y: *y,
                         cost,
                     });
                 }
-                aoe2rec::actions::ActionData::Interact {
+                TypedAction::Other(ActionData::Interact {
                     target_id, x, y, ..
-                } => {
-                    let pos_key = ((x * 10.0) as i32, (y * 10.0) as i32);
+                }) => {
+                    let target_id = *target_id;
+                    let pos_key = ((*x * 10.0) as i32, (*y * 10.0) as i32);
                     if let Some(b_type_name) = pending_builds.get(&pos_key) {
                         if target_id > 0 && !instance_map.contains_key(&target_id) {
                             instance_map.insert(target_id, b_type_name.clone());
@@ -534,40 +532,40 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         }
                     }
                 }
-                aoe2rec::actions::ActionData::Delete {
+                TypedAction::Delete {
                     player_id,
                     object_id,
                     ..
                 } => {
                     let name = instance_map
-                        .get(&object_id)
+                        .get(object_id)
                         .cloned()
                         .unwrap_or_else(|| "Unknown".to_string());
 
                     events.push(ReplayEvent::Deletion {
                         timestamp_ms: current_ms,
-                        player_id,
-                        object_id,
+                        player_id: *player_id,
+                        object_id: *object_id,
                         object_name: name,
                     });
                 }
-                aoe2rec::actions::ActionData::Game {
+                TypedAction::Other(ActionData::Game {
                     player_id,
-                    game_command: aoe2rec::actions::Game::FarmQueue {},
+                    game_command: Game::FarmQueue {},
                     ..
-                } => {
+                }) => {
                     let (_, cost) = lookup.name_and_cost(Kind::Building, FARM_BUILDING);
                     events.push(ReplayEvent::OtherSpend {
                         timestamp_ms: current_ms,
-                        player_id,
+                        player_id: *player_id,
                         description: FARM_QUEUE_DESC.to_string(),
                         cost,
                         gives_resources: false,
                     });
                 }
-                aoe2rec::actions::ActionData::Sell {
+                TypedAction::Other(ActionData::Sell {
                     player_id, data, ..
-                } => {
+                }) => {
                     // data: resource (0 food, 1 wood, 2 stone), unknown, amount in hundreds,
                     // unknown, market object id (u32).
                     if let (Some(&resource), Some(&hundreds)) = (data.first(), data.get(2)) {
@@ -595,16 +593,16 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         };
                         events.push(ReplayEvent::OtherSpend {
                             timestamp_ms: current_ms,
-                            player_id,
+                            player_id: *player_id,
                             description: format!("{}{}", MARKET_SELL_PREFIX, name),
                             cost,
                             gives_resources: true,
                         });
                     }
                 }
-                aoe2rec::actions::ActionData::Wall {
+                TypedAction::Other(ActionData::Wall {
                     player_id, data, ..
-                } => {
+                }) => {
                     // data: selected count (u32), start x, y and end x, y (u16 each), wall
                     // building id (u32), ...
                     if data.len() >= 16 {
@@ -617,7 +615,7 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         let (name, per_tile) = lookup.name_and_cost(Kind::Building, wall_id);
                         events.push(ReplayEvent::BuildingConstruction {
                             timestamp_ms: current_ms,
-                            player_id,
+                            player_id: *player_id,
                             building_type: name,
                             building_type_id: wall_id,
                             x: x1 as f32,
@@ -631,8 +629,8 @@ pub fn extract_events(replay_path: &Path) -> Result<ReplayData, Box<dyn std::err
                         });
                     }
                 }
-                aoe2rec::actions::ActionData::Resign { player_id, .. } => {
-                    loser_id = Some(player_id);
+                TypedAction::Other(ActionData::Resign { player_id, .. }) => {
+                    loser_id = Some(*player_id);
                 }
                 _ => {}
             },
