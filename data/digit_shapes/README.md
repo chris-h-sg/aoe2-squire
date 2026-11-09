@@ -19,7 +19,8 @@ One set per font and panel layout. Anti-Alias Text on and off use the same shape
 | `anne_hk_sans` | Anne_HK mod | sans-serif | 100%, both AA settings |
 
 Each set has two label types, by outline: `count` (villager counts, black outline) and `total`
-(resource totals, population and the idle count, no or a very thin outline). Text size follows the layout rule (`PointSize * 0.625 *
+(resource totals, population and the base game's idle count, no or a very thin outline). The
+idle count on the Anne_HK bell is read with the `count` shapes; `learn_shapes` only calibrates its pen height and does not train on it. Text size follows the layout rule (`PointSize * 0.625 *
 ui_scale` pixels), so shapes learned at one UI size read the others. Tested on the base font:
 shapes learned from 100% alone read every other size from 75% to 125% correctly.
 
