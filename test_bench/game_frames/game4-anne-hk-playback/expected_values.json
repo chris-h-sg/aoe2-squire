@@ -1,0 +1,215 @@
+{
+  "_comment": "Selected frames of a playback of game 1 with the Anne_HK UI mod, saved by --record-frames: masked except for the resource panel and the anchor search band. File names are the frame timestamps. Values read by eye from the enlarged panel.",
+  "images": {
+    "1794216666427.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 10, read as 16 before the outlined-bell fix",
+      "values": {
+        "wood": {
+          "total": "222",
+          "vils": "5"
+        },
+        "food": {
+          "total": "491",
+          "vils": "5"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "10"
+        },
+        "population": {
+          "total": "22",
+          "housing": "25",
+          "vils": "21",
+          "color": "white"
+        }
+      }
+    },
+    "1794216695265.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 10 with the population blinking yellow",
+      "values": {
+        "wood": {
+          "total": "335",
+          "vils": "6"
+        },
+        "food": {
+          "total": "179",
+          "vils": "6"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "10"
+        },
+        "population": {
+          "total": "23",
+          "housing": "25",
+          "vils": "22",
+          "color": "yellow"
+        }
+      }
+    },
+    "1794217466783.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 7, left unread before the outlined-bell fix",
+      "values": {
+        "wood": {
+          "total": "723",
+          "vils": "8"
+        },
+        "food": {
+          "total": "2237",
+          "vils": "15"
+        },
+        "gold": {
+          "total": "1539",
+          "vils": "6"
+        },
+        "stone": {
+          "total": "300",
+          "vils": "5"
+        },
+        "idle": {
+          "vils": "7"
+        },
+        "population": {
+          "total": "59",
+          "housing": "115",
+          "vils": "42",
+          "color": "white"
+        }
+      }
+    },
+    "1794216696016.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 11",
+      "values": {
+        "wood": {
+          "total": "335",
+          "vils": "6"
+        },
+        "food": {
+          "total": "179",
+          "vils": "5"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "11"
+        },
+        "population": {
+          "total": "23",
+          "housing": "25",
+          "vils": "22",
+          "color": "white"
+        }
+      }
+    },
+    "1794217376239.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 6",
+      "values": {
+        "wood": {
+          "total": "462",
+          "vils": "9"
+        },
+        "food": {
+          "total": "1464",
+          "vils": "15"
+        },
+        "gold": {
+          "total": "1492",
+          "vils": "4"
+        },
+        "stone": {
+          "total": "650",
+          "vils": "5"
+        },
+        "idle": {
+          "vils": "6"
+        },
+        "population": {
+          "total": "54",
+          "housing": "95",
+          "vils": "39",
+          "color": "white"
+        }
+      }
+    },
+    "1794216467500.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 9, first seconds of the match",
+      "values": {
+        "wood": {
+          "total": "170",
+          "vils": "0"
+        },
+        "food": {
+          "total": "110",
+          "vils": "0"
+        },
+        "gold": {
+          "total": "100",
+          "vils": "0"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "9"
+        },
+        "population": {
+          "total": "10",
+          "housing": "15",
+          "vils": "9",
+          "color": "white"
+        }
+      }
+    },
+    "1794216917765.png": {
+      "source": "playback of game 1 on Anne_HK (default font, Anti-Alias Text on, 100% UI, 1080p), recording telemetry_20261109_102746: idle 2, population villagers 30 (sensitive to retrained shapes)",
+      "values": {
+        "wood": {
+          "total": "85",
+          "vils": "12"
+        },
+        "food": {
+          "total": "630",
+          "vils": "7"
+        },
+        "gold": {
+          "total": "65",
+          "vils": "6"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "2"
+        },
+        "population": {
+          "total": "34",
+          "housing": "45",
+          "vils": "30",
+          "color": "white"
+        }
+      }
+    }
+  }
+}

@@ -28,17 +28,25 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-const MANIFESTS: [&str; 5] = [
+const MANIFESTS: [&str; 6] = [
     "test_bench/expected_values.json",
     "test_bench/video_frames/expected_values.json",
     "test_bench/game_frames/game1-castle-vs-ai/expected_values.json",
     "test_bench/game_frames/game2-fast-pauses/expected_values.json",
     "test_bench/game_frames/game3-playback-75ui/expected_values.json",
+    "test_bench/game_frames/game4-anne-hk-playback/expected_values.json",
 ];
 const ACCURACY_BASELINE: &str = "test_bench/snapshots/vision_accuracy.json";
 const LEARNED_BASELINE: &str = "test_bench/snapshots/vision_accuracy_learned.json";
 /// Fixture group names, by manifest.
-const GROUPS: [&str; 5] = ["screenshots", "video stills", "game 1", "game 2", "game 3"];
+const GROUPS: [&str; 6] = [
+    "screenshots",
+    "video stills",
+    "game 1",
+    "game 2",
+    "game 3",
+    "Anne_HK playback",
+];
 const GAME_DETECTED: &str = "game_detected";
 
 type Values = HashMap<String, HashMap<String, String>>;
@@ -147,7 +155,7 @@ struct FieldResult {
 }
 
 /// Report groups, in order.
-const REPORT_GROUPS: [&str; 7] = [
+const REPORT_GROUPS: [&str; 8] = [
     "screenshots 1080p",
     "screenshots 1366x768",
     "video stills",
@@ -155,6 +163,7 @@ const REPORT_GROUPS: [&str; 7] = [
     "game 2",
     "game 3",
     "screenshots above 1080p",
+    "Anne_HK playback",
 ];
 
 fn check_fixture(
