@@ -1,5 +1,5 @@
 {
-    "_comment": "Screenshots the shape sets are learned from (cargo run --release --bin learn_shapes; see data/digit_shapes/README.md). Paths are relative to the repository root; recordings/ is not in git (data release). value_sets name the numbers a group of screenshots shows, by field.",
+    "_comment": "Screenshots the shape sets are learned from (cargo run --release --bin learn_shapes; see data/digit_shapes/README.md). Paths are relative to the repository root; recordings/ is not in git (data release). value_sets name the numbers a group of screenshots shows, by field. A set with shapes_from copies that set's learned shapes and only fits its own pen heights on its screenshots.",
     "value_sets": {
         "sweep": {
             "wood_vils": "25", "food_vils": "17", "gold_vils": "8", "stone_vils": "9", "population_vils": "64", "idle_vils": "3",
@@ -17,19 +17,18 @@
             "font": "combined",
             "description": "Base game panel, default font (the 'smooth' font option draws the same pixels). Anti-Alias Text on and off.",
             "shots": [
-                ["recordings/screenshots/default_75-125_interval_5/default_75.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_80.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_85.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_90.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_95.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_100.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_105.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_110.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_115.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_120.png", "sweep"],
-                ["recordings/screenshots/default_75-125_interval_5/default_125.png", "sweep"],
-                ["recordings/screenshots/100_only/default_100_aa.png", "all_digits"],
-                ["recordings/screenshots/100_only/default_100_no_aa.png", "all_digits"]
+                ["recordings/screenshots/base_default/75.png", "sweep"],
+                ["recordings/screenshots/base_default/80.png", "sweep"],
+                ["recordings/screenshots/base_default/85.png", "sweep"],
+                ["recordings/screenshots/base_default/90.png", "sweep"],
+                ["recordings/screenshots/base_default/95.png", "sweep"],
+                ["recordings/screenshots/base_default/105.png", "sweep"],
+                ["recordings/screenshots/base_default/110.png", "sweep"],
+                ["recordings/screenshots/base_default/115.png", "sweep"],
+                ["recordings/screenshots/base_default/120.png", "sweep"],
+                ["recordings/screenshots/base_default/125.png", "sweep"],
+                ["recordings/screenshots/base_default/100_aa_digits.png", "all_digits"],
+                ["recordings/screenshots/base_default/100_no_aa_digits.png", "all_digits"]
             ]
         },
         {
@@ -38,22 +37,20 @@
             "font": "combined_sansserif",
             "description": "Base game panel, sans-serif font. Anti-Alias Text on and off.",
             "shots": [
-                ["recordings/screenshots/sans_75-125_interval_5/sans_75.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_75_no_aa.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_80.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_85.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_90.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_95.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_100.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_100_no_aa.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_105.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_110.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_115.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_120.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_125.png", "all_digits"],
-                ["recordings/screenshots/sans_75-125_interval_5/sans_125_no_aa.png", "all_digits"],
-                ["recordings/screenshots/100_only/sans_100_aa.png", "all_digits"],
-                ["recordings/screenshots/100_only/sans_100_no_aa.png", "all_digits"]
+                ["recordings/screenshots/base_sans/75.png", "all_digits"],
+                ["recordings/screenshots/base_sans/75_no_aa.png", "all_digits"],
+                ["recordings/screenshots/base_sans/80.png", "all_digits"],
+                ["recordings/screenshots/base_sans/85.png", "all_digits"],
+                ["recordings/screenshots/base_sans/90.png", "all_digits"],
+                ["recordings/screenshots/base_sans/95.png", "all_digits"],
+                ["recordings/screenshots/base_sans/100.png", "all_digits"],
+                ["recordings/screenshots/base_sans/100_no_aa.png", "all_digits"],
+                ["recordings/screenshots/base_sans/105.png", "all_digits"],
+                ["recordings/screenshots/base_sans/110.png", "all_digits"],
+                ["recordings/screenshots/base_sans/115.png", "all_digits"],
+                ["recordings/screenshots/base_sans/120.png", "all_digits"],
+                ["recordings/screenshots/base_sans/125.png", "all_digits"],
+                ["recordings/screenshots/base_sans/125_no_aa.png", "all_digits"]
             ]
         },
         {
@@ -62,28 +59,46 @@
             "font": "combined",
             "description": "Anne_HK resource panel mod, default font. Anti-Alias Text on and off.",
             "shots": [
-                ["recordings/screenshots/100_only/anne_HK_default_100_aa.png", "all_digits"],
-                ["recordings/screenshots/100_only/anne_HK_default_100_no_aa.png", "all_digits"]
+                ["recordings/screenshots/anne_hk_default/75.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/75_no_aa.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/80.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/85.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/90.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/95.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/100.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/100_no_aa.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/105.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/110.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/115.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/120.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/125.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_default/125_no_aa.png", "all_digits"]
             ]
         },
         {
             "id": "anne_hk_smooth",
             "layout": "anne_hk",
             "font": "combined",
-            "description": "Anne_HK resource panel mod, smooth font. Anti-Alias Text on and off.",
+            "shapes_from": "base_default",
+            "description": "Anne_HK resource panel mod, smooth font: the base_default shapes with this layout's pen heights.",
             "shots": [
-                ["recordings/screenshots/100_only/anne_HK_smooth_100_aa.png", "all_digits"],
-                ["recordings/screenshots/100_only/anne_HK_smooth_100_no_aa.png", "all_digits"]
+                ["recordings/screenshots/anne_hk_smooth/75.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_smooth/100.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_smooth/100_no_aa.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_smooth/125.png", "all_digits"]
             ]
         },
         {
             "id": "anne_hk_sans",
             "layout": "anne_hk",
             "font": "combined_sansserif",
-            "description": "Anne_HK resource panel mod, sans-serif font. Anti-Alias Text on and off.",
+            "shapes_from": "base_sans",
+            "description": "Anne_HK resource panel mod, sans-serif font: the base_sans shapes with this layout's pen heights.",
             "shots": [
-                ["recordings/screenshots/100_only/anne_HK_sans_100_aa.png", "all_digits"],
-                ["recordings/screenshots/100_only/anne_HK_sans_100_no_aa.png", "all_digits"]
+                ["recordings/screenshots/anne_hk_sans/75.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_sans/100.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_sans/100_no_aa.png", "all_digits"],
+                ["recordings/screenshots/anne_hk_sans/125.png", "all_digits"]
             ]
         }
     ]

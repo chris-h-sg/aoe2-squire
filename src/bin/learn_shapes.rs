@@ -29,6 +29,9 @@ struct SetSpec {
     layout: String,
     font: String,
     description: String,
+    /// Copy this set's learned shapes (from the output directory) and only fit pen heights.
+    #[serde(default)]
+    shapes_from: Option<String>,
     shots: Vec<(String, String)>,
 }
 
@@ -115,6 +118,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let (mut placed_only, mut counts): (Vec<Sample>, Vec<Sample>) = counts
             .into_iter()
             .partition(|s| layout.field(s.field).backing == Backing::OutlinedOverColour);
+        if let Some(source) = &spec.shapes_from {
+            let source = ShapeSet::from_files(
+                &std::fs::read_to_string(out.join(format!("{source}.json")))?,
+                &std::fs::read(out.join(format!("{source}.png")))?,
+            )?;
+            for s in counts.iter_mut().chain(placed_only.iter_mut()) {
+                train::fit_pens(s, &source.count, true);
+            }
+            for s in totals.iter_mut() {
+                train::fit_pens(s, &source.total, true);
+            }
+            let mut pen_y = train::pen_heights(&counts);
+            pen_y.extend(train::pen_heights(&totals));
+            pen_y.extend(train::pen_heights(&placed_only));
+            let set = ShapeSet {
+                id: spec.id.clone(),
+                layout,
+                count: source.count,
+                total: source.total,
+                pen_y,
+            };
+            set.save(&out, &spec.description)?;
+            println!(" written {} (shapes copied)", out.join(format!("{}.json", spec.id)).display());
+            continue;
+        }
         let log = |s: &str| println!("{s}");
         println!(" counts ({} samples)", counts.len());
         let mut count = train::learn_kind(&mut counts, init.clone(), ROUNDS, ITERS, LAMBDA, log);

@@ -12,11 +12,14 @@ One set per font and panel layout. Anti-Alias Text on and off use the same shape
 
 | Set | Layout | Font | Learned from |
 |---|---|---|---|
-| `base_default` | base | default (`combined`); the "smooth" option draws the same pixels | UI sizes 75-125% in steps of 5, and both AA settings at 100% |
+| `base_default` | base | default (`combined`); the "smooth" option draws the same pixels | UI sizes 75-125% in steps of 5 except the 64/75 shot at 100%, which is held out as a test (`test_bench/held_out/`), and both AA settings at 100% showing 104/160 |
 | `base_sans` | base | sans-serif (`combined_sansserif`) | UI sizes 75-125% in steps of 5, AA off as well at 75, 100 and 125% |
-| `anne_hk_default` | Anne_HK mod | default | 100%, both AA settings |
-| `anne_hk_smooth` | Anne_HK mod | smooth | 100%, both AA settings |
-| `anne_hk_sans` | Anne_HK mod | sans-serif | 100%, both AA settings |
+| `anne_hk_default` | Anne_HK mod | default | UI sizes 75-125% in steps of 5, AA off as well at 75, 100 and 125% |
+| `anne_hk_smooth` | Anne_HK mod | smooth | Copies the `base_default` shapes; only its pen heights are fitted (75, 100 and 125%, AA off as well at 100%) |
+| `anne_hk_sans` | Anne_HK mod | sans-serif | Copies the `base_sans` shapes; only its pen heights are fitted (75, 100 and 125%, AA off as well at 100%) |
+
+Anne_HK's default font needs its own shapes: the base shapes read it badly. Its smooth and sans
+fonts are read better by the base shapes than by shapes learned from the mod's own screenshots.
 
 Each set has two label types, by outline: `count` (villager counts, black outline) and `total`
 (resource totals, population and the base game's idle count, no or a very thin outline). The
@@ -55,9 +58,10 @@ The screenshots and their values are listed in `training.json`; they live in
 ```bash
 gh release download font-screenshots-2026-11 -R chris-h-sg/aoe2-squire-data
 unzip font_screenshots.zip -d recordings/
-unzip font_screenshots_sans_sweep.zip -d recordings/
-mv recordings/screenshots/75-125_interval_5 recordings/screenshots/default_75-125_interval_5
 ```
+
+Each folder in `recordings/screenshots/` is one panel layout and font (`base_sans`,
+`anne_hk_default`, ...). Files are named by UI size, with `_no_aa` for Anti-Alias Text off.
 
 The game directory provides the starting point: the font
 metrics and atlas in `resources/_common/fonts/`. `base_default` takes about 4 minutes, the others
@@ -69,4 +73,6 @@ To add a font or UI mod:
    `training.json`'s `all_digits`), with Anti-Alias Text on and off.
 2. Add the mod's layout to `layout.rs` (from its `widgetui/resourcepanel.json`) if it moves or
    resizes the labels.
-3. Add a set to `training.json` and to `embedded_sets` in `shapes.rs`.
+3. Add a set to `training.json` and to `embedded_sets` in `shapes.rs`. If an existing set's shapes
+   already read the new screenshots, give the new set `"shapes_from": "<that set>"` to copy them
+   and fit only its pen heights.

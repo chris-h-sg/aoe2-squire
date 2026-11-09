@@ -25,7 +25,7 @@ gh release download sample-games-2026-11 -R chris-h-sg/aoe2-squire-data
 | Release | Contents |
 |---|---|
 | [`sample-games-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/sample-games-2026-11) | videos and frame sets of games 1-3 (below) |
-| [`font-screenshots-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/font-screenshots-2026-11) | `font_screenshots.zip` and `font_screenshots_sans_sweep.zip`: the screenshots the learned digit shapes are trained from (UI 75-125% sweeps of the default and sans fonts; fonts default, smooth and sans with Anti-Alias Text on and off, base game and Anne_HK). Unzip both into `recordings/`; see `data/digit_shapes/README.md` |
+| [`font-screenshots-2026-11`](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/font-screenshots-2026-11) | `font_screenshots.zip`: the screenshots the learned digit shapes are trained from (UI 75-125% sweeps of the default and sans fonts on the base game and of the default font on Anne_HK; spot checks of the other fonts; Anti-Alias Text on and off), one folder per layout and font. Unzip it into `recordings/`; see `data/digit_shapes/README.md` |
 
 ## Recorded sample games
 

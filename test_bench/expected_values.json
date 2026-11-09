@@ -1,6 +1,14 @@
 {
     "_comment": "Expected OCR values for test bench screenshots. Images can reference named value sets to avoid repetition.",
     "value_sets": {
+        "held_out_64_75": {
+            "wood": { "vils": "25", "total": "18249" },
+            "food": { "vils": "17", "total": "16800" },
+            "gold": { "vils": "8", "total": "10000" },
+            "stone": { "vils": "9", "total": "3400" },
+            "population": { "vils": "64", "total": "64", "housing": "75", "color": "white" },
+            "idle": { "vils": "3" }
+        },
         "baseline_1080p": {
             "wood": {
                 "vils": "17",
@@ -318,6 +326,9 @@
         }
     },
     "images": {
+        "held_out/base_default_100.png": {
+            "use_value_set": "held_out_64_75"
+        },
         "aoe2_16x9.png": {
             "use_value_set": "baseline_1080p"
         },
