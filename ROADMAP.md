@@ -10,14 +10,14 @@ In this order; each step is its own piece of work (and session), tracked against
 
     | Fixture group | Split matcher | Learned, before the accuracy fixes | Learned matcher now |
     |---|---|---|---|
-    | Screenshots 1080p | 211 / 13 / 0 | 204 / 5 / 18 | 222 / 0 / 2 |
+    | Screenshots 1080p | 211 / 13 / 0 | 204 / 5 / 18 | 224 / 0 / 0 |
     | Screenshots 1366x768 | 14 / 0 / 0 | 14 / 0 / 0 | 14 / 0 / 0 |
     | Video stills | 625 / 1 / 0 | 580 / 6 / 40 | 622 / 0 / 4 |
     | Game 1 | 107 / 2 / 0 | 108 / 0 / 1 | 109 / 0 / 0 |
     | Game 2 | 67 / 0 / 0 | 66 / 0 / 1 | 67 / 0 / 0 |
     | Game 3 (75% UI) | 37 / 19 / 0 | 54 / 0 / 2 | 56 / 0 / 0 |
     | Anne_HK playback (7 frames) | 98 / 0 / 0 | not measured | 98 / 0 / 0 |
-    | Total | 1159 / 35 / 0 | 1026 / 11 / 62 | 1188 / 0 / 6 |
+    | Total | 1159 / 35 / 0 | 1026 / 11 / 62 | 1190 / 0 / 4 |
     | Reference only, not in the total: 1200p/1440p screenshots (old, from the web) | 56 / 0 / 0 | 34 / 4 / 18 | 44 / 0 / 12 |
     | Time per 1080p frame (`vision_bench`) | 22.8 ms (23.5 ms on 2026-11-03) | 52 ms (167 ms on the first run) | 20.9 ms (63 ms on 2026-11-03) |
 
@@ -28,7 +28,7 @@ In this order; each step is its own piece of work (and session), tracked against
     Weak spots before it can become the default:
     *   **Video stills**: the population villager count over its icon art (36, 60) is unread in 2 frames. Compression lifts the black outline above the outlined-text mask's threshold.
     *   ~~**Anne_HK**~~ (done 2026-11-09): the idle count on the red bell is white on a black outline, not white blended into the red, so most of its ink was left out of the comparison (10 read as 16, 7 and 103 unread). It is now read as outlined text with the villager-count shapes. "Food villagers 42 read as 12" was a wrong label: the panel shows 12 (wood 7 + food 12 = 19 villagers), and 42 is the split matcher's misread, now listed as its known failure. Training the villager-count shapes on the bell digits as well brought no gain and left population villagers 30 unread on three frames of the new recording, so `learn_shapes` only calibrates the bell's pen height, and the committed shapes were not regenerated. Only 1080p at 100% UI has been checked on the bell.
-    *   **Sans-serif fixtures**: the population total of `aoe2_16x9_min_sans` is unread (the split matcher misreads it).
+    *   ~~**Sans-serif fixtures**~~ (done 2026-11-09): the population total of `aoe2_16x9_min_sans` now reads correctly, after `base_sans` was relearned from a UI sweep (75-125% in steps of 5, Anti-Alias Text off as well at 75, 100 and 125%) instead of 100% alone. The sweep shows 104/160, not that fixture's 64/75, so the fixture stays independent of the training data. The `anne_hk_sans` set still comes from two 100% screenshots.
     *   ~~**CPU**~~ (done 2026-11-07): 20.9 ms per 1080p frame against the split matcher's 22.8 ms (same run), down from 63 ms, with every fixture reading unchanged. The `--dump` of `vision_bench` matched on all 1056 fields after each step. In stages: observation 5.1 -> 1.4 ms (sliding-histogram percentile, inpainting without copies), pen height 11.4 -> 2.4 (gains vectorised over rows of pens; the idle count skipped while its icon shows no idle villagers), chains 10.6 -> 4.6 (no per-cell allocations), re-scoring 16.8 -> 8.0 and confidence 13.6 -> 4.0 (a glyph's alternatives costed against the canvas without it; refinement re-tries only glyphs a move reaches; no confidence work once a field is doubtful). The population total remains the dearest field (5.7 ms). In the capture loop a field whose pixels are unchanged keeps its last reading: on the recorded frames of game `telemetry_20261101_110257` (302 frames, ~5 s apart) 17.9 -> 11.5 ms per frame, with identical results. At 4 FPS more fields are unchanged between frames, so live it should be lower still (not measured).
     *   **Higher resolutions**: to be measured on fresh screenshots; the old ones from the web are reference-only.
 2. **Quick replay fixes**: the cancelled final Age-up click and in-order matching of bursts of identical spends (both under "Technical Debt" below). Independent of 1.

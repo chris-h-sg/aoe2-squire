@@ -1,5 +1,5 @@
 {
-  "correct": 1188,
+  "correct": 1190,
   "fields": {
     "food.total": "83/83",
     "food.vils": "83/83",
@@ -8,8 +8,8 @@
     "gold.vils": "83/83",
     "idle.vils": "83/83",
     "population.color": "102/102",
-    "population.housing": "79/81",
-    "population.total": "79/81",
+    "population.housing": "80/81",
+    "population.total": "80/81",
     "population.vils": "79/81",
     "stone.total": "83/83",
     "stone.vils": "83/83",

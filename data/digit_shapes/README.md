@@ -13,7 +13,7 @@ One set per font and panel layout. Anti-Alias Text on and off use the same shape
 | Set | Layout | Font | Learned from |
 |---|---|---|---|
 | `base_default` | base | default (`combined`); the "smooth" option draws the same pixels | UI sizes 75-125% in steps of 5, and both AA settings at 100% |
-| `base_sans` | base | sans-serif (`combined_sansserif`) | 100%, both AA settings |
+| `base_sans` | base | sans-serif (`combined_sansserif`) | UI sizes 75-125% in steps of 5, AA off as well at 75, 100 and 125% |
 | `anne_hk_default` | Anne_HK mod | default | 100%, both AA settings |
 | `anne_hk_smooth` | Anne_HK mod | smooth | 100%, both AA settings |
 | `anne_hk_sans` | Anne_HK mod | sans-serif | 100%, both AA settings |
@@ -49,7 +49,8 @@ cargo run --release --bin learn_shapes -- --game-dir "<Steam>/steamapps/common/A
 - `--out <dir>` writes the files somewhere else.
 
 The screenshots and their values are listed in `training.json`; they live in
-`recordings/screenshots/` (not in git). They are the release `font-screenshots-2026-11` of
+`recordings/screenshots/` (not in git). `sans_75-125_interval_5/` and the name of
+`default_75-125_interval_5/` (`75-125_interval_5/` in the zip) are newer than the release. Otherwise they are the release `font-screenshots-2026-11` of
 [chris-h-sg/aoe2-squire-data](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/font-screenshots-2026-11):
 
 ```bash
