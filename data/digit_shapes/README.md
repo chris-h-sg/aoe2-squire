@@ -49,13 +49,14 @@ cargo run --release --bin learn_shapes -- --game-dir "<Steam>/steamapps/common/A
 - `--out <dir>` writes the files somewhere else.
 
 The screenshots and their values are listed in `training.json`; they live in
-`recordings/screenshots/` (not in git). `sans_75-125_interval_5/` and the name of
-`default_75-125_interval_5/` (`75-125_interval_5/` in the zip) are newer than the release. Otherwise they are the release `font-screenshots-2026-11` of
+`recordings/screenshots/` (not in git). They are the release `font-screenshots-2026-11` of
 [chris-h-sg/aoe2-squire-data](https://github.com/chris-h-sg/aoe2-squire-data/releases/tag/font-screenshots-2026-11):
 
 ```bash
 gh release download font-screenshots-2026-11 -R chris-h-sg/aoe2-squire-data
 unzip font_screenshots.zip -d recordings/
+unzip font_screenshots_sans_sweep.zip -d recordings/
+mv recordings/screenshots/75-125_interval_5 recordings/screenshots/default_75-125_interval_5
 ```
 
 The game directory provides the starting point: the font
