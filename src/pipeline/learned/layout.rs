@@ -58,20 +58,6 @@ impl Field {
         Field::ALL.into_iter().find(|f| f.name() == name)
     }
 
-    /// The label type, which decides the glyph shapes used to read it. The idle count has (almost)
-    /// no outline, like the totals, so it shares their shapes (drawn at its own size).
-    pub fn kind(self) -> Kind {
-        match self {
-            Field::WoodTotal
-            | Field::FoodTotal
-            | Field::GoldTotal
-            | Field::StoneTotal
-            | Field::PopTotal
-            | Field::IdleVils => Kind::Total,
-            _ => Kind::Count,
-        }
-    }
-
     /// Most characters the field can show.
     pub fn max_len(self) -> usize {
         match self {
@@ -82,9 +68,9 @@ impl Field {
     }
 }
 
-/// Label type, by outline: villager counts (black outline 0.05) or text without one (resource
-/// totals and population; idle count, outline 0.01). The outline changes the glyph edges on
-/// screen, so each type has its own shapes.
+/// Label type, by outline: text with a black outline (villager counts; the idle count on the
+/// Anne_HK bell) or text without one (resource totals and population; the base game's idle count,
+/// outline 0.01). The outline changes the glyph edges on screen, so each type has its own shapes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Kind {
     Count,
@@ -105,6 +91,9 @@ impl Kind {
 pub enum Backing {
     /// Thick black outline over the icon's dark box: coverage is measured against black.
     Outlined,
+    /// Black outline over a saturated colour with no grey art in the region (the Anne_HK bell):
+    /// measured against black like `Outlined`, and every pixel of a grey shade is scored.
+    OutlinedOverColour,
     /// Over the panel or an icon (thin or no outline): the background under the text is
     /// estimated from the pixels around it.
     Panel,
@@ -124,6 +113,8 @@ pub struct FieldLayout {
     /// Text colour (0-255) when nothing changes it (the population total also turns yellow).
     pub colour: [f32; 3],
     pub backing: Backing,
+    /// Label type, which decides the glyph shapes used to read it.
+    pub kind: Kind,
     /// Which edge of the box the text is anchored to.
     pub anchor: Anchor,
 }
@@ -170,6 +161,7 @@ const fn count(
         point_size: pt,
         colour,
         backing: Backing::Outlined,
+        kind: Kind::Count,
         anchor: Anchor::Right,
     }
 }
@@ -182,19 +174,12 @@ const fn total(field: Field, x0: f32, x1: f32, top: f32, bottom: f32, pt: f32) -
         point_size: pt,
         colour: WHITE,
         backing: Backing::Panel,
+        kind: Kind::Total,
         anchor: Anchor::Left,
     }
 }
 
-const fn idle(
-    x0: f32,
-    x1: f32,
-    top: f32,
-    y0: f32,
-    y1: f32,
-    pt: f32,
-    anchor: Anchor,
-) -> FieldLayout {
+const fn idle(x0: f32, x1: f32, top: f32, y0: f32, y1: f32, pt: f32) -> FieldLayout {
     FieldLayout {
         field: Field::IdleVils,
         top,
@@ -202,7 +187,8 @@ const fn idle(
         point_size: pt,
         colour: WHITE,
         backing: Backing::Panel,
-        anchor,
+        kind: Kind::Total,
+        anchor: Anchor::Right,
     }
 }
 
@@ -258,7 +244,6 @@ pub static BASE: Layout = Layout {
             56.0 + 0.2 * 32.0,
             56.0 + 0.85 * 32.0,
             32.0,
-            Anchor::Right,
         ),
         total(Field::WoodTotal, 108.0, 208.0, 43.0, 73.0, 34.0),
         total(Field::FoodTotal, 308.0, 408.0, 43.0, 73.0, 34.0),
@@ -272,6 +257,21 @@ pub static BASE: Layout = Layout {
 const BASE_COUNT_Y: [f32; 2] = [70.0 + 0.2 * 32.0, 70.0 + 0.85 * 32.0];
 const HK_COUNT_Y: [f32; 2] = [62.0, 94.0];
 
+/// The idle count on the Anne_HK bell: white with a black outline over red (screen pixels are
+/// white over black inside the outline, whatever the red beside it), read like a villager count.
+const fn hk_idle(x0: f32, x1: f32, top: f32, y0: f32, y1: f32, pt: f32) -> FieldLayout {
+    FieldLayout {
+        field: Field::IdleVils,
+        top,
+        crop: [x0 - 2.0, y0, x1 + 2.0, y1],
+        point_size: pt,
+        colour: WHITE,
+        backing: Backing::OutlinedOverColour,
+        kind: Kind::Count,
+        anchor: Anchor::Centre,
+    }
+}
+
 const HK_YELLOW: [f32; 3] = [255.0, 214.2, 0.0];
 const HK_CYAN: [f32; 3] = [127.5, 255.0, 255.0];
 
@@ -279,7 +279,7 @@ const HK_CYAN: [f32; 3] = [127.5, 255.0, 255.0];
 /// `widgetui/resourcepanel.json`, same font). Villager counts: 40 pt yellow (population cyan),
 /// outline 0.05, top right in a 70x42 box at (4, 45) inside each icon. Totals: 41 pt white, top
 /// left in a 110x34 box centred on y = 55 (top 38; population 147 wide). Idle: 39 pt white,
-/// outline 0.01, centred in a 60x32 box over the red bell.
+/// black outline as drawn, centred in a 60x32 box over the red bell.
 pub static ANNE_HK: Layout = Layout {
     name: "anne_hk",
     fields: [
@@ -328,7 +328,7 @@ pub static ANNE_HK: Layout = Layout {
             40.0,
             HK_CYAN,
         ),
-        idle(1065.0, 1125.0, 45.0, 43.0, 79.0, 39.0, Anchor::Centre),
+        hk_idle(1065.0, 1125.0, 45.0, 43.0, 79.0, 39.0),
         total(Field::WoodTotal, 103.0, 213.0, 38.0, 72.0, 41.0),
         total(Field::FoodTotal, 305.0, 415.0, 38.0, 72.0, 41.0),
         total(Field::GoldTotal, 503.0, 613.0, 38.0, 72.0, 41.0),

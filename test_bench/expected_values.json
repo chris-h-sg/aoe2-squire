@@ -241,7 +241,7 @@
                 "total": "290"
             },
             "food": {
-                "vils": "42",
+                "vils": "12",
                 "total": "9"
             },
             "gold": {
@@ -370,7 +370,10 @@
             "use_value_set": "7_vil_Anne_HK"
         },
         "7_vil_Anne_HK-2.png": {
-            "use_value_set": "7_vil_Anne_HK-2"
+            "use_value_set": "7_vil_Anne_HK-2",
+            "known_failures": {
+                "food.vils": "split matcher reads the yellow 12 as 42 (wood 7 + food 12 = 19 villagers, as the panel shows)"
+            }
         },
         "11_vil_Anne_HK.png": {
             "use_value_set": "11_vil_Anne_HK"

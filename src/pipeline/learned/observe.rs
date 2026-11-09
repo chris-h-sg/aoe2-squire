@@ -109,7 +109,8 @@ pub fn observe(
         })
         .collect();
     let (img, mask, wt) = match fl.backing {
-        Backing::Outlined => outlined(&rgb, w, h, colour),
+        Backing::Outlined => outlined(&rgb, w, h, colour, true),
+        Backing::OutlinedOverColour => outlined(&rgb, w, h, colour, false),
         Backing::Panel => panel(&rgb, w, h, colour),
     };
     let k = fl.point_size * u / 64.0;
@@ -133,8 +134,16 @@ fn near(w: usize, h: usize, x: usize, y: usize, r: usize, f: impl Fn(usize) -> b
 
 /// Outlined text over black: coverage is the projection on the text colour. Scored: pixels
 /// whose colour is consistent with that (text, outline or backing) within 2 px of black
-/// (outline or backing), minus dim pixels away from any ink (the box border).
-fn outlined(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bool>, Vec<f32>) {
+/// (outline or backing), minus dim pixels away from any ink (the box border). Over a saturated
+/// colour (`near_black` false) the colour test alone separates text from background: there the
+/// thin side of the outline can stay above `DARK_MAX`, which would leave a whole stem unscored.
+fn outlined(
+    rgb: &[[f32; 3]],
+    w: usize,
+    h: usize,
+    c: [f32; 3],
+    near_black: bool,
+) -> (Vec<f32>, Vec<bool>, Vec<f32>) {
     let cc: f32 = c.iter().map(|v| v * v).sum();
     let img: Vec<f32> = rgb
         .iter()
@@ -155,7 +164,7 @@ fn outlined(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec
         .map(|i| {
             let (x, y) = (i % w, i / w);
             let dim = bright[i] > 4.0 && bright[i] < 30.0 && !near(w, h, x, y, 2, inky);
-            consistent[i] && near(w, h, x, y, 2, dark) && !dim
+            consistent[i] && (!near_black || near(w, h, x, y, 2, dark)) && !dim
         })
         .collect();
     (img, mask, vec![1.0; w * h])

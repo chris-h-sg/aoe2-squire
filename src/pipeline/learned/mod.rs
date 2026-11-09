@@ -228,7 +228,7 @@ impl LearnedReader {
             }
             _ => PenY::Search(obs.top + pen_y * k),
         };
-        let t = self.templates(si, field.kind(), k);
+        let t = self.templates(si, fl.kind, k);
         let reading = read::read(&obs, t, grammar, field.max_len(), pen);
         if let (Some(r), PenY::Search(_)) = (&reading, pen) {
             if r.confidence() >= MIN_MARGIN {

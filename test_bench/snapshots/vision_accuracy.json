@@ -1,8 +1,8 @@
 {
-  "correct": 1062,
+  "correct": 1061,
   "fields": {
     "food.total": "74/76",
-    "food.vils": "73/76",
+    "food.vils": "72/76",
     "game_detected": "95/95",
     "gold.total": "75/76",
     "gold.vils": "73/76",

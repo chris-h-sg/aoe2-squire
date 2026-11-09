@@ -8,7 +8,7 @@
 //! `data/digit_shapes/README.md`.
 
 use aoe2_squire::pipeline::anchor;
-use aoe2_squire::pipeline::learned::layout::{px_per_unit, Field, Kind, Layout};
+use aoe2_squire::pipeline::learned::layout::{px_per_unit, Backing, Field, Kind, Layout};
 use aoe2_squire::pipeline::learned::observe::{observe, text_colour};
 use aoe2_squire::pipeline::learned::shapes::ShapeSet;
 use aoe2_squire::pipeline::learned::train::{self, Sample};
@@ -107,9 +107,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  {shot}: ui_scale {ui_scale:.4}");
         }
 
-        let (mut counts, mut totals): (Vec<Sample>, Vec<Sample>) = samples
+        let (counts, mut totals): (Vec<Sample>, Vec<Sample>) = samples
             .into_iter()
-            .partition(|s| s.field.kind() == Kind::Count);
+            .partition(|s| layout.field(s.field).kind == Kind::Count);
+        // Digits drawn over a colour (the Anne_HK bell) are read with the villager-count shapes
+        // but do not train them: they only calibrate their own pen height.
+        let (mut placed_only, mut counts): (Vec<Sample>, Vec<Sample>) = counts
+            .into_iter()
+            .partition(|s| layout.field(s.field).backing == Backing::OutlinedOverColour);
         let log = |s: &str| println!("{s}");
         println!(" counts ({} samples)", counts.len());
         let mut count = train::learn_kind(&mut counts, init.clone(), ROUNDS, ITERS, LAMBDA, log);
@@ -131,6 +136,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(" counts seen {cs}, from totals {to_count:?}; totals seen {ts}, from counts {to_total:?}");
         let mut pen_y = train::pen_heights(&counts);
         pen_y.extend(train::pen_heights(&totals));
+        for s in placed_only.iter_mut() {
+            train::fit_pens(s, &count, true);
+        }
+        pen_y.extend(train::pen_heights(&placed_only));
         let set = ShapeSet {
             id: spec.id.clone(),
             layout,
