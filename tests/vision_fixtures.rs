@@ -146,8 +146,7 @@ struct FieldResult {
     detail: String,
 }
 
-/// Report groups, in order. The high-resolution screenshots are old ones from the web that may
-/// not match the current game.
+/// Report groups, in order.
 const REPORT_GROUPS: [&str; 7] = [
     "screenshots 1080p",
     "screenshots 1366x768",
@@ -155,7 +154,7 @@ const REPORT_GROUPS: [&str; 7] = [
     "game 1",
     "game 2",
     "game 3",
-    "high-res screenshots (out of scope: old online screenshots)",
+    "screenshots above 1080p",
 ];
 
 fn check_fixture(

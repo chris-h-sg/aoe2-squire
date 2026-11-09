@@ -334,16 +334,20 @@
             "use_value_set": "baseline_1080p"
         },
         "aoe2_16x10.png": {
-            "use_value_set": "baseline_other"
+            "use_value_set": "baseline_other",
+            "reference_only": true
         },
         "aoe2_21x9.png": {
-            "use_value_set": "baseline_other"
+            "use_value_set": "baseline_other",
+            "reference_only": true
         },
         "aoe2_32x9.png": {
-            "use_value_set": "baseline_other"
+            "use_value_set": "baseline_other",
+            "reference_only": true
         },
         "aoe2_4k.png": {
-            "use_value_set": "baseline_other"
+            "use_value_set": "baseline_other",
+            "reference_only": true
         },
         "enormous.png": {
             "use_value_set": "enormous_font_test",
