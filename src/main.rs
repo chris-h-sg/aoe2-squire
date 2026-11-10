@@ -231,7 +231,7 @@ fn run_app() -> Result<(), Box<dyn Error>> {
 
     let templates = pipeline::matcher::load_embedded_templates();
 
-    // Digit matcher: --matcher split (default) or learned
+    // Digit matcher: --matcher learned (default) or split
     let matcher = match args.iter().position(|arg| arg == "--matcher") {
         Some(pos) => match args.get(pos + 1).and_then(|m| pipeline::Matcher::parse(m)) {
             Some(m) => m,

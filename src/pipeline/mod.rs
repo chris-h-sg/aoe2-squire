@@ -281,10 +281,10 @@ impl<'a> ExtractorPipeline<'a> {
 /// Which digit matcher reads the panel numbers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Matcher {
-    /// Splits each number into characters and matches each against scaled templates.
-    #[default]
+    /// Splits each number into characters and matches each against scaled templates (`split`).
     Split,
-    /// Learned glyph shapes, whole numbers at once (`learned`).
+    /// Learned glyph shapes, whole numbers at once (`learned`, the default).
+    #[default]
     Learned,
 }
 
