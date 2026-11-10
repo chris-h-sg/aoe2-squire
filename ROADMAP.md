@@ -10,7 +10,7 @@ In this order; each step is its own piece of work (and session), tracked against
 2. **Survive a short loss of the panel** (below). Touches the capture loop.
 3. **Sync phase 2 remainder**: explain game 1's 5 segments, then record a regular-speed replay playback at 1x/2x/1x (game 3 has no speed change within the supported 0.5-4.0).
 4. **Upstream parser fix**: decide whether to offer the Fast-speed AI fix (`fix/ai-skip-fast-speed` in chris-h-sg/aoe2rec) to liouh/aoe2rec.
-5. **Release preparation**: user-facing README limits (regular-speed replay playback only; resolutions above 1080p untested with the digit matcher; pauses are now tested on real games).
+5. **Release preparation**: user-facing README limits (regular-speed replay playback only; resolutions above 1080p untested with the digit matcher; pause detection is a first version, see "Pause Detection").
 
 Later: fast replay playback analysis (needs a higher capture rate), civilization cost bonuses, refreshing civ/map data from aoc-reference-data, game data per replay build, and a 4th sample game for what games 1-3 did not cover (5-digit resources, 100+ villagers, population 150+, Imperial Age, stone walls, market buys, other resolutions).
 
@@ -19,7 +19,10 @@ Later: fast replay playback analysis (needs a higher capture rate), civilization
 Once the MVP is providing user value, development will shift toward expanding our data capture capabilities to unlock more complex coaching features.
 
 ### Core Automation & Fundamentals
-*   **Pause Detection:** Sync finds pauses between matched spends (see "Sync Rework" below). Where the in-game clock is visible, it could also find them at the very start and end of a game.
+*   **Pause Detection (a first version, not yet a supported feature):** Sync finds a pause as a jump between two stretches of matched spends: the spends give its length, and it is placed where the panel's numbers stand still (DECISION_LOG.md, "Time Mapping from Spend Alignment"). Evidence so far: simulated pauses of 8 s and 30 s, one or several (`tests/sync_stress.rs`), and game 2's three real pauses (4-19 s, all found at the right places).
+    *   **Where it can break**: a pause before the first or after the last matched spend is not seen; a pause under 2 s (`MIN_PAUSE_MS`) is taken as a speed change; two pauses with no spends between them become one; a pause in a stretch with few spends (fighting, saving up) gets its length from distant spends, and is misplaced if the numbers also stand still unpaused; an alt-tab during a pause ends the capture (see "Short Loss of the Panel"); drops with no replay command (automatic farm reseeding, repairs) and, late in a game, many villagers dropping off at once can pair the wrong spends with the wrong drops around a pause. A missed pause is folded into the game speed and shifts the times around it.
+    *   **To be confident**: real games, each with the in-game clock (F11) on or a video, so every detected pause can be checked for place and length: a pause in the Dark Age with only villager spends, a long one (minutes), one in a fight, two close together, one in the first minute and one near the end, and replay playback paused. Check that the report then counts no idle or housed time during a pause. Add each game to `tests/sanity_report.rs`.
+    *   **How to describe it**: until then, as experimental: Squire attempts to detect pauses and reconcile them with the replay, and may lose sync after some pauses (at the very start or end of a game, very short ones, or in busy late-game stretches). Where the in-game clock is visible, it could also find pauses at the very start and end of a game.
 *   **Civilization Tech Tree Data Integration:** Integrate a comprehensive data file defining what units and technologies each civilization has access to, preventing the tool from penalizing players for missing unavailable upgrades.
 *   **Starting Resource Extraction:** Update the `aoe2rec` parser to correctly extract starting resources for the recorded player, replacing the current "first frame" heuristic with absolute ground truth.
 
