@@ -210,6 +210,116 @@
           "color": "white"
         }
       }
+    },
+    "1794238896602.png": {
+      "source": "playback of game 1 on Anne_HK (smooth font by the player's setting, Anti-Alias Text on, 75% UI, 1080p, learned matcher live), recording telemetry_20261109_163047: housed, population box flashing yellow; its right edge was read as an extra 75 (unread) before the flash-box fix",
+      "values": {
+        "wood": {
+          "total": "630",
+          "vils": "11"
+        },
+        "food": {
+          "total": "438",
+          "vils": "12"
+        },
+        "gold": {
+          "total": "266",
+          "vils": "8"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "45",
+          "housing": "45",
+          "vils": "34",
+          "color": "overlay"
+        }
+      },
+      "known_failures": {
+        "food.total": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "population.housing": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "population.vils": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "stone.vils": "split matcher: 75% UI scale is not supported (small digits misread)"
+      }
+    },
+    "1794238898852.png": {
+      "source": "playback of game 1 on Anne_HK (smooth font by the player's setting, Anti-Alias Text on, 75% UI, 1080p, learned matcher live), recording telemetry_20261109_163047: housed, population box flashing yellow (unread before the flash-box fix)",
+      "values": {
+        "wood": {
+          "total": "630",
+          "vils": "11"
+        },
+        "food": {
+          "total": "438",
+          "vils": "13"
+        },
+        "gold": {
+          "total": "292",
+          "vils": "8"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "45",
+          "housing": "45",
+          "vils": "34",
+          "color": "overlay"
+        }
+      },
+      "known_failures": {
+        "food.total": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "food.vils": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "population.housing": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "population.vils": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "stone.vils": "split matcher: 75% UI scale is not supported (small digits misread)"
+      }
+    },
+    "1794238899101.png": {
+      "source": "playback of game 1 on Anne_HK (smooth font by the player's setting, Anti-Alias Text on, 75% UI, 1080p, learned matcher live), recording telemetry_20261109_163047: housed, between flashes (read before the fix too)",
+      "values": {
+        "wood": {
+          "total": "630",
+          "vils": "11"
+        },
+        "food": {
+          "total": "438",
+          "vils": "13"
+        },
+        "gold": {
+          "total": "292",
+          "vils": "8"
+        },
+        "stone": {
+          "total": "200",
+          "vils": "0"
+        },
+        "idle": {
+          "vils": "0"
+        },
+        "population": {
+          "total": "45",
+          "housing": "45",
+          "vils": "34",
+          "color": "white"
+        }
+      },
+      "known_failures": {
+        "food.total": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "food.vils": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "population.housing": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "population.vils": "split matcher: 75% UI scale is not supported (small digits misread)",
+        "stone.vils": "split matcher: 75% UI scale is not supported (small digits misread)"
+      }
     }
   }
 }
