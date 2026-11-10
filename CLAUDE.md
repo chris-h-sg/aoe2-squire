@@ -26,7 +26,7 @@ aoe2-squire/
 │   ├── game_data.rs        ← unit/building/tech names and costs by ID (data/game_data.csv)
 │   ├── analysis/           ← modular analyzer implementation
 │   ├── capture/            ← capture loop, frame sources (DXGI, recorded PNGs), frame recording
-│   ├── pipeline/           ← Vision pipeline implementation
+│   ├── pipeline/           ← Vision pipeline (learned/ is the default digit matcher; --matcher split selects the older one)
 │   ├── bin/                ← Standalone CLI tools
 │   ├── replay.rs           ← replay parsing logic
 │   ├── replay_discovery.rs ← automated replay location
@@ -34,7 +34,7 @@ aoe2-squire/
 │   ├── sync/               ← replay/telemetry time mapping (spend↔drop alignment, piecewise fit)
 │   ├── types.rs            ← shared data structures
 │   └── validation.rs       ← sanity checks for a captured game (no ground truth needed)
-├── data/                   ← game data (IDs, costs, names; civs, maps); data/SOURCES.md says how to update it after a game patch
+├── data/                   ← game data (IDs, costs, names; civs, maps; data/SOURCES.md says how to update it after a game patch) and learned digit shapes (data/digit_shapes/)
 ├── templates/              ← HTML report templates
 ├── tests/                  ← analysis snapshot, sync stress, vision fixtures, sanity report, capture loop
 ├── tools/                  ← scripts (game data update, video frame fixture extraction, video/telemetry alignment)

@@ -3,7 +3,7 @@
 ## Data Extraction Pipeline
 - **Frame Capture:** Utilize Windows DXGI for low-overhead screen capture via `windows-rs`.
 - **UI Calibration:** "Detect First, Extract Second" architecture establishes coordinate origin, UI scale, vertical bounding baselines, and active UI mods (e.g., Anne_HK) before processing digits.
-- **Digit Recognition:** Uses native Rust Template Matching via Sum of Squared Differences (SSD) over pixel crops, featuring a ±1 pixel vertical wiggle and symmetry tie-breakers for 100% resolution-independent accuracy.
+- **Digit Recognition:** Reads each panel number as a whole: candidate strings are rendered from glyph shapes learned from screenshots (one set per font and UI mod, sized by the game's layout rule) and the best fit wins. A doubtful field is reported as unread rather than guessed (DECISION_LOG.md, "Learned Glyph Shapes").
 - **Efficiency Logic:** Compare "Ground Truth" (scraped) vs "Theoretical Max" (parsed via tech logs).
 
 ## Replay Parsing

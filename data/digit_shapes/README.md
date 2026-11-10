@@ -1,6 +1,6 @@
 # Learned glyph shapes
 
-The learned-shape matcher (`src/pipeline/learned/`, `--matcher learned`) reads the resource panel
+The learned-shape matcher (`src/pipeline/learned/`, the default; `--matcher split` selects the older one) reads the resource panel
 by rendering candidate numbers from these shapes and keeping the one that fits the pixels best.
 Each shape is the coverage of one character as the game actually draws it on screen, learned
 from screenshots with known values. The shapes differ from the font atlas (`DECISION_LOG.md`,
