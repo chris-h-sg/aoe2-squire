@@ -220,6 +220,18 @@ fn panel(rgb: &[[f32; 3]], w: usize, h: usize, c: [f32; 3]) -> (Vec<f32>, Vec<bo
             }
         }
     }
+    // Housed population (yellow text): a column that is ink over the whole region height is the
+    // edge of the flashing yellow box, not text (the population glyphs are shorter than its
+    // region). Unscored, so that it neither costs the true reading nor passes for extra digits.
+    // Only for yellow: other fields' regions (the base idle count's) are as tall as their digits.
+    let housed = c == TextColour::Yellow.rgb();
+    for x in 0..w {
+        if housed && (0..h).all(|y| dil[y * w + x]) {
+            for y in 0..h {
+                mask[y * w + x] = false;
+            }
+        }
+    }
     (cov, mask, wt)
 }
 
