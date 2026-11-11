@@ -43,7 +43,7 @@ Once the MVP is providing user value, development will shift toward expanding ou
 
 As we bridge the gap between vision-based telemetry and binary replay data, we are maintaining a list of specific technical hurdles to resolve:
 
-*   **Investigate `aoe2rec` Player Stats Parsing**: The forked library currently has trouble reading the correct `PlayerInit` blocks sequentially for DE replays. We've bypassed this by using "First Frame Ground Truth" from telemetry to find starting resources. Sync no longer needs starting resources, so this is low priority.
+*   **Investigate `aoe2rec` Player Stats Parsing**: The library currently has trouble reading the correct `PlayerInit` blocks sequentially for DE replays. We've bypassed this by using "First Frame Ground Truth" from telemetry to find starting resources. Sync no longer needs starting resources, so this is low priority.
 *   **Sync Granularity Tuning**: Capture runs every 250 ms; evaluate whether that is enough for villager production analysis or whether specific micro-gap detection needs a higher rate.
 *   **Sync Rework**:
     *   **Phase 1 (done)**: Sync is a piecewise-linear time mapping fitted to replay spends matched with resource drops over the whole game (DECISION_LOG.md, "Time Mapping from Spend Alignment"). It handles any speed from 0.5 to 4.0, pauses, a speed that changes or drifts (replay playback), unread values and a late capture start, and fails with an error instead of guessing. `tests/sync_stress.rs` has no ignored scenarios left; all of them are simulated by distorting the sample game.
