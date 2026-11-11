@@ -42,7 +42,7 @@ aoe2-squire/
 └── research/               ← Python R&D only (reference)
 ```
 
-The replay parser `aoe2rec` is our fork (github.com/chris-h-sg/aoe2rec), pinned by a tag in `Cargo.toml` (`Cargo.lock` records its commit). The fork's `main` is the head of our upstream pull request (liouh/aoe2rec#1), so fixes go on a branch of the fork, the commit we use gets a tag `aoe2-squire/<name>` (today `aoe2-squire/ai-fast-speed-fix`, on branch `fix/ai-skip-fast-speed`), and `tag` in `Cargo.toml` points at it.
+The replay parser `aoe2rec` comes from github.com/liouh/aoe2rec, pinned by `rev` in `Cargo.toml` to a commit on its `main` (`Cargo.lock` records the full hash). `src/replay.rs` reads it through the typed API (`Savegame::get_typed()`).
 
 ## Validating a Change
 Check that a change works without playing a game, in this order:

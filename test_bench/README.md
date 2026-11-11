@@ -9,7 +9,7 @@ Reference data for the automated tests (`cargo test`, no game needed):
 | `1v1-RM-sample.csv` + `.aoe2record` | `tests/analysis_snapshot.rs`, `tests/sync_stress.rs`, `tests/sanity_report.rs` |
 | `game1-castle-vs-ai.csv` + `.aoe2record`, `game2-fast-pauses.csv` + `.aoe2record` (recorded sample games, see below) | `tests/analysis_snapshot.rs`, `tests/sanity_report.rs` |
 | `game3-playback-75ui.csv` (game 2's replay played back at regular, 4x and 8x speed at 75% UI scale; replay `game2-fast-pauses.aoe2record`) | `tests/sanity_report.rs` (refused: fast playback is not supported) |
-| `deletions-sample.aoe2record` (a short game against the AI at Fast speed with deletions; it is also the aoe2rec fork's test replay for the Fast-speed header fix) | `tests/replay_events.rs` |
+| `deletions-sample.aoe2record` (a short game against the AI at Fast speed with deletions; it is also aoe2rec's test replay `replay-ai-fast.aoe2record` for the Fast-speed header fix) | `tests/replay_events.rs` |
 | `game_frames/<game>/` (selected frames of a recorded game) | `tests/vision_fixtures.rs` |
 | `interpolation/` | housing interpolation unit tests |
 | `snapshots/` | regression baselines (`UPDATE_SNAPSHOTS=1` regenerates them), and each game's sanity report findings with explanations (`<game>.sanity.json`) |

@@ -81,7 +81,7 @@ dependencies = [
 [[package]]
 name = "aoe2rec"
 version = "0.10.0"
-source = "git+https://github.com/chris-h-sg/aoe2rec?rev=d70416f#d70416f435ea90f4c7bf93d226e7fede33fcbb8d"
+source = "git+https://github.com/liouh/aoe2rec?rev=e87e68a#e87e68a98334f802ca5313b91e0a22274330cbea"
 dependencies = [
  "binrw",
  "bytes",
